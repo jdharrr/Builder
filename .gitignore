@@ -22,7 +22,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+client/.idea
 .DS_Store
 *.suo
 *.ntvs*
