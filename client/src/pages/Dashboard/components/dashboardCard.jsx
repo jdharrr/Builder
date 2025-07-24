@@ -1,9 +1,12 @@
 import React from 'react';
 
-export const Card = () => {
+import '../css/dashboardCard.css';
+
+export const Card = ({ title, customComponent: CustomComponent }) => {
     return (
-        <>
-            <h1>Card</h1>
-        </>
+        <div className="card">
+            <h1>{title}</h1>
+            {CustomComponent && <CustomComponent /> }
+        </div>
     );
 }

@@ -1,0 +1,11 @@
+.dashboard {
+
+}
+
+.dashboardCards {
+    box-Sizing: border-box;
+    display: flex;
+    align-Items: center;
+    justify-Content: center;
+    flex-Direction: column;
+}

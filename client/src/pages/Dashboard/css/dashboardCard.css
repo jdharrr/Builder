@@ -1,0 +1,14 @@
+.card {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 3rem;
+    margin: 2rem;
+    width: fit-content;
+    height: fit-content;
+    border-radius: 1rem;
+    background-color: white;
+    box-shadow: 0 0.2rem 0.8rem rgba(0,0,0,0.2);
+}
