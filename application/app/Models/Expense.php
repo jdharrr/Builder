@@ -1,6 +1,6 @@
 <?php
 
-namespace app\Models;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,10 +17,10 @@ class Expense extends Model
         'name',
         'cost',
         'description',
-        'recurring_date',
         'recurrence_rate',
         'category',
-        'user_id'
+        'user_id',
+        'next_due_date'
     ];
 
     /**
@@ -40,7 +40,15 @@ class Expense extends Model
     protected function casts(): array
     {
         return [
-
+            'next_due_date' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'active' => 'boolean',
+            'cost' => 'decimal:2',
+            'id' =>'integer',
+            'user_id' =>'integer',
+            'cost_updated_at' => 'datetime',
+            'last_cost' => 'decimal:2',
         ];
     }
 

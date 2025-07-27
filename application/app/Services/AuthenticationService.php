@@ -1,10 +1,10 @@
 <?php
 
-namespace app\Services;
+namespace App\Services;
 
 use Illuminate\Support\Facades\Hash;
 
-use app\Models\User;
+use App\Models\User;
 use Mockery\Exception;
 
 class AuthenticationService {
@@ -16,5 +16,13 @@ class AuthenticationService {
         }
 
         return $user;
+    }
+
+    public function deleteUser($userId) {
+        if (User::destroy($userId)) {
+            return true;
+        }
+
+        return false;
     }
 }

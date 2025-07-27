@@ -1,10 +1,10 @@
 <?php
 
-namespace app\Providers;
+namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
-use app\Services\AuthenticationService;
+use App\Services\AuthenticationService;
 
 class AuthenticationServiceProvider extends ServiceProvider
 {

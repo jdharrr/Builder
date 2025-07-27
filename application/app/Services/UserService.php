@@ -1,11 +1,11 @@
 <?php
 
-namespace app\Services;
+namespace App\Services;
 
-use app\Models\User;
+use App\Models\User;
 
 class UserService {
-    public function getById($id): User {
-        return User::query()->find($id);
+    public function getById($userId): User {
+        return User::query()->find($userId);
     }
 }

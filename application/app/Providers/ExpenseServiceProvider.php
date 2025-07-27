@@ -1,10 +1,10 @@
 <?php
 
-namespace app\Providers;
+namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
-use app\Services\ExpenseService;
+use App\Services\ExpenseService;
 
 class ExpenseServiceProvider extends ServiceProvider
 {

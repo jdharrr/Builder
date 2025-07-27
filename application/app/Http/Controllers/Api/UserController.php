@@ -1,15 +1,15 @@
 <?php
 
-namespace app\Http\Controllers\Api;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\CreateExpenseRequest;
-use app\Models\Expense;
-use app\Services\ExpenseService;
+use App\Http\Requests\GetExpensesInRangeRequest;
+use App\Models\Expense;
+use App\Services\ExpenseService;
 use Illuminate\Database\Eloquent\Collection;
 
-use app\Models\User;
-use app\Services\UserService;
-use Mockery\Exception;
+use App\Models\User;
+use App\Services\UserService;
 
 class UserController extends Controller
 {
@@ -21,38 +21,25 @@ class UserController extends Controller
         $this->expenseService = $expenseService;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(): Collection
-    {
-        return User::all();
-    }
+    public function index(): void {}
 
-    /**
-     * Get the specified resource.
-     */
     public function getById($id): User
     {
         return $this->userService->getById($id);
     }
 
-    /**
-     * @throws \Exception
-     */
     public function createExpense(CreateExpenseRequest $request): Expense {
         try {
             return $this->expenseService->createExpense(
-                $request->input('cost'),
+                $request->input('name'),
                 $request->input('cost'),
                 $request->input('description'),
-                $request->input('recurring_date'),
                 $request->input('recurrence_rate'),
                 $request->input('category'),
-                $request->input('user_id')
+                $request->input('user_id'),
+                $request->input('next_due_date')
             );
-        }
-        catch (Exception) {
+        } catch (\Exception) {
             throw new \Exception('Failed to create expense.', 500);
         }
     }
@@ -61,11 +48,16 @@ class UserController extends Controller
         return $this->expenseService->getExpensesByUserId($userId);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(): void
+    public function getExpensesInRange(GetExpensesInRangeRequest $request): Collection
     {
-        //
+        try {
+            return $this->expenseService->getExpensesInRange($request->input('userId'), $request->input('dateFrom'), $request->input('dateTo'));
+        } catch (\Exception) {
+            throw new \Exception('Failed to get expenses in the range.', 500);
+        }
+    }
+
+    public function deleteExpense($expenseId): bool {
+        return $this->expenseService->deleteExpense($expenseId);
     }
 }
