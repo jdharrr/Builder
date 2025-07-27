@@ -3,6 +3,7 @@
 namespace app\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
@@ -19,6 +20,7 @@ class Expense extends Model
         'recurring_date',
         'recurrence_rate',
         'category',
+        'user_id'
     ];
 
     /**
@@ -42,7 +44,8 @@ class Expense extends Model
         ];
     }
 
-    public function user() {
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class);
     }
 }

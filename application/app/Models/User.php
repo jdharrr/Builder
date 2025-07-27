@@ -3,6 +3,7 @@
 namespace app\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Model
 {
@@ -13,7 +14,7 @@ class User extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'username',
         'email',
         'password_hash',
     ];
@@ -24,7 +25,7 @@ class User extends Model
      * @var list<string>
      */
     protected $hidden = [
-        'password',
+        'password_hash',
     ];
 
     /**
@@ -35,11 +36,11 @@ class User extends Model
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+
         ];
     }
 
-    public function expenses() {
+    public function expenses(): HasMany {
         return $this->hasMany(Expense::class);
     }
 }

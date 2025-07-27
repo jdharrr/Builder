@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->text('description')->nullable();
 
             $table->date('recurring_date')->nullable();
-            $table->enum('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly'])->nullable(); // or use string
+            $table->enum('recurrence_rate', ['once', 'daily', 'weekly', 'monthly', 'yearly'])->nullable(); // or use string
 
             $table->date('last_paid')->nullable();
             $table->decimal('last_cost', 10, 2)->nullable();

@@ -2,63 +2,69 @@
 
 namespace app\Http\Controllers\Api;
 
+use App\Http\Requests\CreateExpenseRequest;
+use app\Models\Expense;
+use app\Services\ExpenseService;
+use Illuminate\Database\Eloquent\Collection;
+
 use app\Models\User;
-use Illuminate\Http\Request;
+use app\Services\UserService;
+use Mockery\Exception;
 
 class UserController extends Controller
 {
+    private UserService $userService;
+    private ExpenseService $expenseService;
+
+    public function __construct(UserService $userService, ExpenseService $expenseService) {
+        $this->userService = $userService;
+        $this->expenseService = $expenseService;
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): Collection
     {
         return User::all();
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Get the specified resource.
      */
-    public function create()
+    public function getById($id): User
     {
-        //
+        return $this->userService->getById($id);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * @throws \Exception
      */
-    public function store()
-    {
-        //
+    public function createExpense(CreateExpenseRequest $request): Expense {
+        try {
+            return $this->expenseService->createExpense(
+                $request->input('cost'),
+                $request->input('cost'),
+                $request->input('description'),
+                $request->input('recurring_date'),
+                $request->input('recurrence_rate'),
+                $request->input('category'),
+                $request->input('user_id')
+            );
+        }
+        catch (Exception) {
+            throw new \Exception('Failed to create expense.', 500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show()
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit()
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request)
-    {
-        //
+    public function getExpenses($userId): Collection {
+        return $this->expenseService->getExpensesByUserId($userId);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy()
+    public function destroy(): void
     {
         //
     }
