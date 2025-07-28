@@ -5,8 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthenticationController;
 
-Route::prefix('users')->group(function() {
-    Route::get('/getById/{id}', [UserController::class, 'getById']);
+Route::middleware('auth:sanctum')->get('/user', fn () => auth()->user());
+Route::middleware('auth:sanctum')->prefix('user')->group(function() {
     Route::get('/getExpenses/{id}', [UserController::class, 'getExpenses']);
     Route::get('/getExpensesInRange', [UserController::class, 'getExpensesInRange']);
 
@@ -17,6 +17,7 @@ Route::prefix('users')->group(function() {
 
 Route::prefix('auth')->group(function() {
     Route::post('/createUser', [AuthenticationController::class, 'createUser']);
+    Route::post('/login', [AuthenticationController::class, 'login']);
 
-    Route::delete('/deleteUser/{id}', [AuthenticationController::class, 'deleteUser']);
+    Route::delete('/deleteUser/{id}', [AuthenticationController::class, 'deleteUser'])->middleware('auth:sanctum');
 });

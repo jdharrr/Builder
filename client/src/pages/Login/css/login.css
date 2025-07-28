@@ -1,0 +1,42 @@
+.loginWrapper {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    width: 100vw;
+    height: 100vh;
+}
+
+.loginForm {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+}
+
+.loginInput {
+    border: 0.05rem solid #ccc;
+    background-color: white;
+    border-radius: 1rem;
+    padding: 0.5rem;
+    margin: 0.1rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.loginInput:focus {
+    outline: none;
+    border-color: #4A90E2;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.4);
+}
+
+.loginSubmit {
+    border-radius: 0.5rem;
+    background-color: white;
+    border: 1px solid #ccc;
+}

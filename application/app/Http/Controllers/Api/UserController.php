@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Database\Eloquent\Collection;
+
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\GetExpensesInRangeRequest;
 use App\Models\Expense;
 use App\Services\ExpenseService;
-use Illuminate\Database\Eloquent\Collection;
-
 use App\Models\User;
 use App\Services\UserService;
 
@@ -22,11 +22,6 @@ class UserController extends Controller
     }
 
     public function index(): void {}
-
-    public function getById($id): User
-    {
-        return $this->userService->getById($id);
-    }
 
     public function createExpense(CreateExpenseRequest $request): Expense {
         try {
