@@ -22,7 +22,6 @@ class GetExpensesInRangeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'userId' => 'required|integer|min:1',
             'dateFrom' => 'required|date|date_format:Y-m-d',
             'dateTo' => 'required|date|date_format:Y-m-d',
         ];

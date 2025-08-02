@@ -6,7 +6,7 @@
 }
 
 .upcomingList {
-    max-height: 20rem;
+    max-height: 25rem;
     overflow: auto;
     border: 1px solid black;
     border-radius: 1rem;
@@ -21,6 +21,10 @@
     align-items: center;
     padding: 1rem;
     justify-content: space-between;
+}
+
+.upcomingDay:last-child {
+    border-bottom: none;
 }
 
 .upcomingCheckbox {

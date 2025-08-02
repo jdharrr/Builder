@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from "axios";
 import Cookies from "js-cookie";
+
+import {login} from "../../api.jsx";
 
 import './css/login.css';
 
@@ -13,24 +14,13 @@ export const Login = () =>  {
 
     const handleSubmitClick = async () => {
         try {
-            const res = await axios.post('http://localhost:8000/api/auth/login', {
-                username: username,
-                password: password
-            }, {
-                withCredentials: true,
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-            });
-
-            Cookies.set('access_token', res.data);
+            const token = await login(username, password);
+            Cookies.set('access_token', token);
             navigate('/');
         } catch (err) {
             if (err.status === 401) {
                 navigate('./login');
             }
-
             alert(err.message);
         }
     }

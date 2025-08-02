@@ -24,6 +24,7 @@ class UserController extends Controller
     public function index(): void {}
 
     public function createExpense(CreateExpenseRequest $request): Expense {
+        $userId = $request->user()->id;
         try {
             return $this->expenseService->createExpense(
                 $request->input('name'),
@@ -31,7 +32,7 @@ class UserController extends Controller
                 $request->input('description'),
                 $request->input('recurrence_rate'),
                 $request->input('category'),
-                $request->input('user_id'),
+                $userId,
                 $request->input('next_due_date')
             );
         } catch (\Exception) {
@@ -43,10 +44,10 @@ class UserController extends Controller
         return $this->expenseService->getExpensesByUserId($userId);
     }
 
-    public function getExpensesInRange(GetExpensesInRangeRequest $request): Collection
-    {
+    public function getExpensesInRange(GetExpensesInRangeRequest $request): Collection {
+        $userId = $request->user()->id;
         try {
-            return $this->expenseService->getExpensesInRange($request->input('userId'), $request->input('dateFrom'), $request->input('dateTo'));
+            return $this->expenseService->getExpensesInRange($userId, $request->input('dateFrom'), $request->input('dateTo'));
         } catch (\Exception) {
             throw new \Exception('Failed to get expenses in the range.', 500);
         }
