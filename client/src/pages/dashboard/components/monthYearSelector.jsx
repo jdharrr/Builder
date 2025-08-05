@@ -1,14 +1,19 @@
 import React from 'react';
 
-export const MonthYearSelector = ({ currentYear, selectedYear, setSelectedYear, selectedMonth, setSelectedMonth }) => {
+export const MonthYearSelector = ({ currentYear, selectedYear, selectedMonth, setSelectedMonthYear }) => {
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
     ];
-
     const surroundingYears = Array.from({ length: 50 }, (_, i) => currentYear - 25 + i);
 
-    const handleYearChange = (e) => setSelectedYear(Number(e.target.value));
-    const handleMonthChange = (e) => setSelectedMonth(Number(e.target.value));
+    const handleYearChange = (e) => setSelectedMonthYear((prevState) => ({
+        ...prevState,
+        year: Number(e.target.value),
+    }));
+    const handleMonthChange = (e) => setSelectedMonthYear((prevState) => ({
+        ...prevState,
+        month: Number(e.target.value)
+    }));
 
     return (
         <div>

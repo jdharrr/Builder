@@ -2,15 +2,16 @@ import Cookies from "js-cookie";
 
 export const getAccessToken = () => Cookies.get("access_token");
 
-export function hasExpense(day, expenses, month, year) {
-    if (!day) return false;
+export function hasExpense(date, expenses) {
+    if (!date) return false;
 
     return expenses.some(exp => {
-        const [y, m, d] = exp.next_due_date.substring(0, 10).split('-').map(Number);
+        const [expY, expM, expD] = exp.next_due_date.substring(0, 10).split('-').map(Number);
+        const [dateY, dateM, dateD] = date.split('-').map(Number);
         return (
-            y === year &&
-            m - 1 === month &&
-            d === day
+            expY === dateY &&
+            expM === dateM &&
+            expD === dateD
         );
     });
 }

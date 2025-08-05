@@ -47,6 +47,7 @@ export const fetchExpenses = async (dateFrom, dateTo) => {
             'dateTo': dateTo
         }
     });
+
     return expensesRes.data;
 }
 
@@ -78,4 +79,19 @@ export const postExpense = async (expenseProps) => {
             'Accept': 'application/json',
         }
     })
+}
+
+export const updateExpensePaidStatus = async (expenseId, isPaid) => {
+    const token = getAccessToken();
+    return await axios.put('http://localhost:8000/api/user/updateExpensePaidStatus', {
+        expenseId: expenseId,
+        isPaid: isPaid,
+    }, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
 }

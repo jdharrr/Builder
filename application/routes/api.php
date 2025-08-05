@@ -12,6 +12,8 @@ Route::middleware('auth:sanctum')->prefix('user')->group(function() {
 
     Route::post('/createExpense', [UserController::class, 'createExpense']);
 
+    Route::put('/updateExpensePaidStatus', [UserController::class, 'updateExpensePaidStatus']);
+
     Route::delete('/deleteExpense/{id}', [UserController::class, 'deleteExpense']);
 });
 

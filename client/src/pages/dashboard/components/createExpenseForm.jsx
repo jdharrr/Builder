@@ -2,11 +2,11 @@ import React, {useContext, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 
 import {postExpense} from "../../../api.jsx";
-import {ExpenseContext} from "../contexts/expenseContext.jsx";
+import {ExpenseContext} from "../providers/expenses/expenseContext.jsx";
 
 import '../css/createExpenseForm.css';
 
-export const CreateExpenseForm = ({ setShowExpenseForm, day, month, year }) => {
+export const CreateExpenseForm = ({ setShowExpenseForm, date}) => {
     const { setExpenses } = useContext(ExpenseContext);
     const navigate = useNavigate();
 
@@ -14,7 +14,7 @@ export const CreateExpenseForm = ({ setShowExpenseForm, day, month, year }) => {
         name: '',
         cost: 0.0,
         recurrence_rate: '',
-        next_due_date: new Date(year, month, day).toISOString(),
+        next_due_date: date,
         category: '',
         description: '',
     });

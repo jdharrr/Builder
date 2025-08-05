@@ -20,7 +20,11 @@ class Expense extends Model
         'recurrence_rate',
         'category',
         'user_id',
-        'next_due_date'
+        'next_due_date',
+        'last_paid',
+        'active',
+        'last_cost',
+        'prev_last_paid'
     ];
 
     /**
@@ -49,6 +53,7 @@ class Expense extends Model
             'user_id' =>'integer',
             'cost_updated_at' => 'datetime',
             'last_cost' => 'decimal:2',
+            'prev_last_paid' => 'datetime'
         ];
     }
 

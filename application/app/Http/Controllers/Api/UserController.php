@@ -8,8 +8,8 @@ use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\GetExpensesInRangeRequest;
 use App\Models\Expense;
 use App\Services\ExpenseService;
-use App\Models\User;
 use App\Services\UserService;
+use App\Http\Requests\UpdateExpensePaidStatusRequest;
 
 class UserController extends Controller
 {
@@ -55,5 +55,9 @@ class UserController extends Controller
 
     public function deleteExpense($expenseId): bool {
         return $this->expenseService->deleteExpense($expenseId);
+    }
+
+    public function updateExpensePaidStatus(UpdateExpensePaidStatusRequest $request): Expense {
+        return $this->expenseService->updateExpensePaidStatus($request->input('expenseId'), $request->input('isPaid'));
     }
 }
