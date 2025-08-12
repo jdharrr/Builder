@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateExpensePaidStatusRequest extends FormRequest
+class GetPaymentsForDateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,9 +22,8 @@ class UpdateExpensePaidStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'expenseId' => 'required|integer',
-            'isPaid' => 'required|boolean',
-            'dueDate' => 'required|date:Y-m-d',
+            'date' => 'required|date|date_format:Y-m-d',
+            'expenseIds' => 'required|array'
         ];
     }
 }

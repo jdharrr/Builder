@@ -2,17 +2,17 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Collection;
+
 use App\Models\Expense;
+use App\Models\Payment;
 use DateInterval;
 use DateTime;
 use DateTimeZone;
-use Illuminate\Database\Eloquent\Collection;
 
 class ExpenseService {
     public function createExpense($name, $cost, $description, $recurrenceRate, $category, $userId, $nextDueDate): Expense {
-        // TODO: Date is sending back next due date as day before for some serialization reason
-        $nextDueDate = new DateTime($nextDueDate, new DateTimeZone('UTC'));
-        $nextDueDate->setTime(23, 59, 59);
+        $nextDueDate = new DateTime($nextDueDate);
         $expense = new Expense([
             'name' => $name,
             'cost' => $cost,
@@ -51,23 +51,40 @@ class ExpenseService {
         return false;
     }
 
-    public function updateExpensePaidStatus($expenseId, $isPaid): Expense {
-        $expense = Expense::query()->where('id', $expenseId)->firstOrFail();
-        if (!$isPaid) {
-            $this->updateNextDueDate($expense, false);
-            $expense->update([
-                'last_paid' => $expense->prev_last_paid,
-                'prev_last_paid' => null
-            ]);
+    public function updateExpensePaidStatus($expenseId, $isPaid, $dueDate): void {
+        $expense = Expense::query()->find($expenseId)->firstOrFail();
+        if ($isPaid) {
+            $payment = new Payment(
+                [
+                    'expense_id' => $expenseId,
+                    'user_id' => $expense->user->id,
+                    'cost' => $expense->cost,
+                    'due_date_paid' => $dueDate,
+                    'payment_date' => new Datetime(),
+                ]
+            );
+            try {
+                $payment->save();
+            } catch (\Exception $e) {
+                echo $e->getMessage();
+            }
         } else {
-            $this->updateNextDueDate($expense, true);
-            $expense->update([
-                'last_paid' => new DateTime(),
-                'prev_last_paid' => $expense->last_paid
-            ]);
+            try {
+                $payment = Payment::query()
+                    ->where('expense_id', $expenseId)
+                    ->whereDate('due_date_paid', $dueDate)
+                    ->select('id')
+                    ->firstOrFail();
+            } catch (\Exception $e) {
+                echo $e->getMessage();
+            }
+
+            Payment::destroy($payment->id);
         }
 
-        return $expense;
+        if (new DateTime($dueDate) == new DateTime($expense->next_due_date)) {
+            $this->updateNextDueDate($expense, $isPaid);
+        }
     }
 
     private function updateNextDueDate($expense, $isFuture): void {
@@ -90,5 +107,13 @@ class ExpenseService {
         } else {
             $expense->update(['next_due_date' => null]);
         }
+    }
+
+    public function getPaymentsForDate($date, $userId, $expenseIds) : Collection {
+        return Payment::query()
+            ->where('user_id', $userId)
+            ->whereIn('expense_id', $expenseIds)
+            ->whereDate('due_date_paid', $date)
+            ->get();
     }
 }

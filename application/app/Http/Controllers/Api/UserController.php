@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\GetExpensesInRangeRequest;
@@ -10,6 +11,7 @@ use App\Models\Expense;
 use App\Services\ExpenseService;
 use App\Services\UserService;
 use App\Http\Requests\UpdateExpensePaidStatusRequest;
+use App\Http\Requests\GetPaymentsForDateRequest;
 
 class UserController extends Controller
 {
@@ -57,7 +59,16 @@ class UserController extends Controller
         return $this->expenseService->deleteExpense($expenseId);
     }
 
-    public function updateExpensePaidStatus(UpdateExpensePaidStatusRequest $request): Expense {
-        return $this->expenseService->updateExpensePaidStatus($request->input('expenseId'), $request->input('isPaid'));
+    public function updateExpensePaidStatus(UpdateExpensePaidStatusRequest $request): JsonResponse
+    {
+        $this->expenseService->updateExpensePaidStatus($request->input('expenseId'), $request->input('isPaid'), $request->input('dueDate'));
+
+        return response()->json([
+            'success' => true
+        ]);
+    }
+
+    public function getPaymentsForDate(GetPaymentsForDateRequest $request): Collection {
+        return $this->expenseService->getPaymentsForDate($request->input('date'), $request->user()->id, $request->input('expenseIds'));
     }
 }

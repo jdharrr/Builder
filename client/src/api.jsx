@@ -1,5 +1,6 @@
 import axios from "axios";
-import {formatDate, getAccessToken} from "./utils.jsx";
+
+import {deepCopyArray, formatDate, getAccessToken} from "./utils.jsx";
 
 export const login = async (username, password) => {
     const loginRes = await axios.post('http://localhost:8000/api/auth/login', {
@@ -81,11 +82,12 @@ export const postExpense = async (expenseProps) => {
     })
 }
 
-export const updateExpensePaidStatus = async (expenseId, isPaid) => {
+export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate) => {
     const token = getAccessToken();
     return await axios.put('http://localhost:8000/api/user/updateExpensePaidStatus', {
         expenseId: expenseId,
         isPaid: isPaid,
+        dueDate: dueDate
     }, {
         withCredentials: true,
         headers: {
@@ -94,4 +96,23 @@ export const updateExpensePaidStatus = async (expenseId, isPaid) => {
             'Accept': 'application/json',
         }
     });
+}
+
+export const getPaymentsForDate = async (date, expenses) => {
+    if (!date || !expenses.length) return [];
+
+    const token = getAccessToken();
+    const expenseIds = deepCopyArray(expenses).map(exp => exp.id);
+    return await axios.get('http://localhost:8000/api/user/getPaymentsForDate', {
+        withCredentials: true,
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        params: {
+            'date': date,
+            'expenseIds': expenseIds
+        }
+    })
 }

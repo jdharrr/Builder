@@ -11,6 +11,7 @@ const App = () => {
     const [authenticated, setAuthenticated] = useState(false);
 
     useEffect(() => {
+        document.cookie = "XDEBUG_SESSION=PHPSTORM; path=/";
         setAuthenticated(validateToken());
     }, []);
 

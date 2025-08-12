@@ -9,6 +9,7 @@ Route::middleware('auth:sanctum')->get('/user', fn () => auth()->user());
 Route::middleware('auth:sanctum')->prefix('user')->group(function() {
     Route::get('/getExpenses/{id}', [UserController::class, 'getExpenses']);
     Route::get('/getExpensesInRange', [UserController::class, 'getExpensesInRange']);
+    Route::get('/getPaymentsForDate', [UserController::class, 'getPaymentsForDate']);
 
     Route::post('/createExpense', [UserController::class, 'createExpense']);
 

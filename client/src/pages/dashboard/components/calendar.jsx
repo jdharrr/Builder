@@ -3,7 +3,6 @@ import React, {useState, useContext } from 'react';
 import { MonthYearSelector } from './monthYearSelector.jsx';
 import {ExpenseContext} from "../providers/expenses/expenseContext.jsx";
 import { CalendarDateContext } from "../providers/calendarDate/calendarDateContext.jsx";
-import { hasExpense } from "../../../utils.jsx";
 import {CreateExpenseForm} from "./createExpenseForm.jsx";
 import { Selector } from "./selector.jsx"
 import { ViewExpensesModal } from './viewExpensesModal.jsx';
@@ -141,4 +140,28 @@ const getExpensesForDay = (selectedDate, expenses) => {
     })
 
     return expensesForDay;
+}
+
+const hasExpense = (date, expenses) => {
+    if (!date) return false;
+
+    const expensesArray = Array.isArray(expenses) ? expenses : [expenses];
+    return expensesArray.some(exp => {
+        const expDate = new Date(exp.next_due_date.substring(0, 10));
+        const targetDate = new Date(date);
+        const diffDays = Math.floor((targetDate - expDate) / (1000 * 60 * 60 * 24));
+        if (expDate.getFullYear() === targetDate.getFullYear() && expDate.getMonth() === targetDate.getMonth() && expDate.getDate() === targetDate.getDate()) {
+            return true;
+        } else if (exp.recurrence_rate === 'daily') {
+            return true;
+        } else if (exp.recurrence_rate === 'weekly' && diffDays % 7 === 0) {
+            return true;
+        } else if (exp.recurrence_rate === 'monthly' && expDate.getDate() === targetDate.getDate()) {
+            return true;
+        } else if (exp.recurrence_rate === 'yearly' && expDate.getMonth() === targetDate.getMonth() && expDate.getDate() === targetDate.getDate() ) {
+            return true;
+        }
+
+        return false;
+    });
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Expense extends Model
 {
@@ -41,8 +42,7 @@ class Expense extends Model
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
+    protected function casts(): array {
         return [
             'next_due_date' => 'datetime',
             'created_at' => 'datetime',
@@ -57,8 +57,11 @@ class Expense extends Model
         ];
     }
 
-    public function user(): BelongsTo
-    {
+    public function user(): BelongsTo {
         return $this->belongsTo(User::class);
+    }
+
+    public function payments(): HasMany {
+        return $this->hasMany(Payment::class);
     }
 }
