@@ -17,26 +17,30 @@ export const ViewExpensesModal = ({ expenses, handleClose, handleAddExpense, dat
     const day = Number(date.substring(8, 10));
 
     return (
-      <div className="viewExpensesOverlay">
-        <div className="viewExpensesModal">
-            <h1>{day} {month}, {year}</h1>
-            <div className='viewExpensesModalBody'>
-                {expensesArray.length === 0 ? (
-                    <p>No expenses found</p>
-                    ) : (
-                        expensesArray.map((expense, idx) => (
-                            <div className='expenseRow' key={idx}>
-                                <div className='expenseRowItem'>{expense.name}</div>
-                            </div>
-                        ))
-                    )
-                }
-            </div>
-            <div className='viewExpensesModalFooter'>
-                <button type='button' onClick={handleClose}>Close</button>
-                <button type='button' onClick={handleAddExpense}>+</button>
+        <div className="modal show d-block">
+            <div className="modal-dialog">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className={'modal-title'}>{day} {month}, {year}</h5>
+                    </div>
+                    <div className="modal-body">
+                        {expensesArray.length === 0 ? (
+                            <p>No expenses found</p>
+                            ) : (
+                                expensesArray.map((expense, idx) => (
+                                    <div className='border border-dark' key={idx}>
+                                        <div>{expense.name}</div>
+                                    </div>
+                                ))
+                            )
+                        }
+                    </div>
+                    <div className='modal-footer'>
+                        <button type='button' className={'btn btn-primary'} onClick={handleClose}>Close</button>
+                        <button type='button' className={'btn btn-primary'} onClick={handleAddExpense}>+</button>
+                    </div>
+                </div>
             </div>
         </div>
-      </div>
     );
 }

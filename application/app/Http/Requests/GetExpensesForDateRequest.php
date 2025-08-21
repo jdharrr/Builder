@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class GetExpensesInRangeRequest extends FormRequest
+class GetExpensesForDateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +22,7 @@ class GetExpensesInRangeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dateFrom' => 'required|date|date_format:Y-m-d',
-            'dateTo' => 'required|date|date_format:Y-m-d',
+            'date' => 'required|date|date_format:Y-m-d',
         ];
     }
 }

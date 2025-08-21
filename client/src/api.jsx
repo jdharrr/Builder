@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import {deepCopyArray, formatDate, getAccessToken} from "./utils.jsx";
+import {getAccessToken} from "./utils.jsx";
 
 export const login = async (username, password) => {
     const loginRes = await axios.post('http://localhost:8000/api/auth/login', {
@@ -34,9 +34,9 @@ export const validateToken = async () => {
     }
 }
 
-export const fetchExpenses = async (dateFrom, dateTo) => {
+export const fetchExpensesForCalendar = async (month, year) => {
     const token = getAccessToken();
-    const expensesRes = await axios.get('http://localhost:8000/api/user/getExpensesInRange', {
+    const expensesRes = await axios.get('http://localhost:8000/api/user/getExpensesForDashboardCalendar', {
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -44,8 +44,8 @@ export const fetchExpenses = async (dateFrom, dateTo) => {
             'Accept': 'application/json'
         },
         params: {
-            'dateFrom': dateFrom,
-            'dateTo': dateTo
+            'month': month,
+            'year': year
         }
     });
 
@@ -59,19 +59,22 @@ export const postExpense = async (expenseProps) => {
         recurrence_rate,
         next_due_date,
         category,
-        description
+        description,
+        start_date,
+        end_date,
     } = expenseProps;
-    const formattedDueDate = formatDate(next_due_date);
 
     const token = getAccessToken();
     if (!token) throw new Error('401');
-    return await axios.post('http://localhost:8000/api/user/createExpense', {
+    const result = await axios.post('http://localhost:8000/api/user/createExpense', {
         name: name,
         cost: cost,
         recurrence_rate: recurrence_rate,
-        next_due_date: formattedDueDate,
+        next_due_date: next_due_date,
         category: category,
-        description: description
+        description: description,
+        start_date: start_date,
+        end_date: end_date,
     }, {
         withCredentials: true,
         headers: {
@@ -80,11 +83,13 @@ export const postExpense = async (expenseProps) => {
             'Accept': 'application/json',
         }
     })
+
+    return result.data;
 }
 
 export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate) => {
     const token = getAccessToken();
-    return await axios.put('http://localhost:8000/api/user/updateExpensePaidStatus', {
+    const result = await axios.put('http://localhost:8000/api/user/updateExpensePaidStatus', {
         expenseId: expenseId,
         isPaid: isPaid,
         dueDate: dueDate
@@ -96,14 +101,16 @@ export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate) => {
             'Accept': 'application/json',
         }
     });
+
+    return result.data;
 }
 
 export const getPaymentsForDate = async (date, expenses) => {
-    if (!date || !expenses.length) return [];
+    if (!date || expenses.length < 1) return [];
 
     const token = getAccessToken();
-    const expenseIds = deepCopyArray(expenses).map(exp => exp.id);
-    return await axios.get('http://localhost:8000/api/user/getPaymentsForDate', {
+    const expenseIds = expenses.map(exp => exp.id);
+    const result = await axios.get('http://localhost:8000/api/user/getPaymentsForDate', {
         withCredentials: true,
         headers: {
             'Accept': 'application/json',
@@ -115,4 +122,40 @@ export const getPaymentsForDate = async (date, expenses) => {
             'expenseIds': expenseIds
         }
     })
+
+    return result.data;
+}
+
+export const getExpensesForDate = async (date) => {
+    if (!date) return [];
+
+    const token = getAccessToken();
+    const result = await axios.get('http://localhost:8000/api/user/getExpensesForDate', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        params: {
+            'date': date,
+        }
+    });
+
+    return result.data;
+}
+
+export const fetchLateExpenses = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/user/getLateExpenses', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
 }

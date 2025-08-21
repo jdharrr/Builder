@@ -16,7 +16,7 @@ export const Login = () =>  {
         try {
             const token = await login(username, password);
             Cookies.set('access_token', token);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             if (err.status === 401) {
                 navigate('./login');

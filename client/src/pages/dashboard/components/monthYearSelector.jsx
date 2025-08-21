@@ -1,22 +1,19 @@
 import React from 'react';
 
-export const MonthYearSelector = ({ currentYear, selectedYear, selectedMonth, setSelectedMonthYear }) => {
+import '../css/monthYearSelector.css';
+
+export const MonthYearSelector = ({ selectedYear, selectedMonth, setSelectedMonth, setSelectedYear }) => {
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
     ];
+    const currentYear = new Date().getFullYear();
     const surroundingYears = Array.from({ length: 50 }, (_, i) => currentYear - 25 + i);
 
-    const handleYearChange = (e) => setSelectedMonthYear((prevState) => ({
-        ...prevState,
-        year: Number(e.target.value),
-    }));
-    const handleMonthChange = (e) => setSelectedMonthYear((prevState) => ({
-        ...prevState,
-        month: Number(e.target.value)
-    }));
+    const handleYearChange = (e) => setSelectedYear(Number(e.target.value));
+    const handleMonthChange = (e) => setSelectedMonth(Number(e.target.value));
 
     return (
-        <div>
+        <div className="monthYearSelector">
             <div className="dateSelector">
                 <select value={selectedMonth} onChange={handleMonthChange}>
                     {months.map((month, i) => (

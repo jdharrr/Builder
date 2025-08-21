@@ -1,10 +1,22 @@
 import { useNavigate } from "react-router-dom";
+import {useEffect} from "react";
 
-export const PrivateRoute = ({element, authenticated}) => {
+export const PrivateRoute = ({children, authenticated}) => {
     const navigate = useNavigate();
-    if (!authenticated) {
-        navigate('/login');
-    }
 
-    return element;
+    useEffect(() => {
+        if (authenticated === null) {
+            return;
+        }
+
+        if (!authenticated) {
+            navigate('/login');
+        }
+    }, [navigate, authenticated]);
+
+    return (
+        <>
+            {children}
+        </>
+    );
 }

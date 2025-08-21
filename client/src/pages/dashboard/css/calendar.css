@@ -5,10 +5,6 @@
     justify-content: center;
 }
 
-.calendar {
-
-}
-
 .calendarHeader {
     display: grid;
     grid-template-columns: repeat(7, 1fr);

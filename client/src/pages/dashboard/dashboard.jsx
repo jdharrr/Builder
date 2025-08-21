@@ -3,45 +3,65 @@ import {useNavigate} from "react-router-dom";
 
 import { Card } from "./components/dashboardCard.jsx";
 import { Calendar } from "./components/calendar.jsx";
-import { UpcomingList } from "./components/upcomingList.jsx";
-import {fetchExpenses} from "../../api.jsx";
-import { CalendarDateContext } from "./providers/calendarDate/calendarDateContext.jsx";
+import {fetchExpensesForCalendar, getPaymentsForDate} from "../../api.jsx";
 import {ExpenseContext} from "./providers/expenses/expenseContext.jsx";
+import {RefreshExpenseContext} from "./providers/expenses/refreshExpensesContext.jsx";
+import { UpcomingExpensesSection } from "./sections/upcomingExpensesSection.jsx";
 
 import './css/dashboard.css';
 
 export const Dashboard = () => {
     const navigate = useNavigate();
-    const { selectedCalendarMonthYear } = useContext(CalendarDateContext);
     const { setExpenses } = useContext(ExpenseContext);
+    const { refreshExpenses } = useContext(RefreshExpenseContext);
 
     useEffect(() => {
-        const daysInMonth = new Date(selectedCalendarMonthYear.year, selectedCalendarMonthYear.month + 1, 0).getDate();
-        // getMonth returns index 0-11, add 1 for actual date
-        const dateFrom = `${selectedCalendarMonthYear.year}-${String(selectedCalendarMonthYear.month + 1).padStart(2, '0')}-01`;
-        const dateTo = `${selectedCalendarMonthYear.year}-${String(selectedCalendarMonthYear.month + 1).padStart(2, '0')}-${daysInMonth}`;
-        fetchExpenses(dateFrom, dateTo)
-            .then((loadedExpenses) => {setExpenses(loadedExpenses)})
-            .catch((err) => {
+        async function loadExpenses(){
+            try {
+                const loadedExpenses = await fetchExpensesForCalendar(new Date().getMonth() + 1, new Date().getFullYear());
+                await Promise.all(Object.entries(loadedExpenses).map(async ([date, exps]) => {
+                    let payments = null;
+                    try {
+                        payments = await getPaymentsForDate(date, exps);
+                    } catch (err) {
+                        if (err.status === 401) {
+                            navigate('/login');
+                        }
+                    }
+
+                    if (payments && payments.length) {
+                        const paymentMap = Object.fromEntries(
+                            payments.map(p => [p.expense_id, p.due_date_paid])
+                        );
+
+                        exps.forEach(exp => {
+                            if (paymentMap[exp.id] !== undefined) {
+                                exp.due_date_paid = paymentMap[exp.id];
+                            }
+                        });
+                    }
+                }))
+
+                setExpenses(loadedExpenses);
+            } catch (err) {
                 if (err.status === 401) {
                     navigate('/login');
                 }
-            })
-    }, [navigate, selectedCalendarMonthYear]);
+            }
+        }
+
+        loadExpenses();
+    }, [navigate, setExpenses, refreshExpenses]);
 
     return (
         <div className="dashboard">
             <div className="dashboardCards">
-                    <Card
-                        title='Expense Tracker'
-                        customComponent={Calendar}
-                    />
-                    <Card
-                        title='Upcoming Expenses'
-                        customComponent={UpcomingList}
-                        customProps={{numDays: 7}}
-                    />
-                    <Card title='Expense Totals' />
+                    <Card title='Expense Tracker' >
+                        <Calendar />
+                    </Card>
+                    <Card title='Upcoming Expenses' >
+                        <UpcomingExpensesSection />
+                    </Card>
             </div>
         </div>
     );

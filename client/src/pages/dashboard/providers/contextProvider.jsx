@@ -1,14 +1,14 @@
 import React from 'react';
 
 import {ExpenseProvider} from "./expenses/expenseProvider.jsx";
-import {CalendarDateProvider} from "./calendarDate/calendarDateProvider.jsx";
+import {RefreshExpensesProvider} from "./expenses/RefreshExpenseProvider.jsx";
 
 export const ContextProvider = ({ children }) => {
     return (
-        <ExpenseProvider>
-            <CalendarDateProvider>
-                {children}
-            </CalendarDateProvider>
-        </ExpenseProvider>
+        <RefreshExpensesProvider>
+            <ExpenseProvider>
+                    {children}
+            </ExpenseProvider>
+        </RefreshExpensesProvider>
     );
 }

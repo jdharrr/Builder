@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Expense extends Model
 {
-
     /**
      * The attributes that are mass assignable.
      *
@@ -25,7 +24,9 @@ class Expense extends Model
         'last_paid',
         'active',
         'last_cost',
-        'prev_last_paid'
+        'prev_last_paid',
+        'start_date',
+        'end_date',
     ];
 
     /**
