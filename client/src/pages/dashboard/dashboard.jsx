@@ -55,7 +55,7 @@ export const Dashboard = () => {
 
     return (
         <div className="dashboard">
-            <div className="dashboardCards">
+            <div className="d-flex justify-content-center align-items-center">
                     <Card title='Expense Tracker' >
                         <Calendar />
                     </Card>

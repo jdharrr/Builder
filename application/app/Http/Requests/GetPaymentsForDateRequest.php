@@ -23,7 +23,7 @@ class GetPaymentsForDateRequest extends FormRequest
     {
         return [
             'date' => 'required|date|date_format:Y-m-d',
-            'expenseIds' => 'required|array'
+            'expense_ids' => 'required|array'
         ];
     }
 }

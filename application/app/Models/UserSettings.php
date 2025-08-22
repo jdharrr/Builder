@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class UserSettings extends Authenticatable
 {
     use HasApiTokens;
 
@@ -17,9 +17,8 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'username',
-        'email',
-        'password_hash',
+        'dark_mode',
+        'user_id'
     ];
 
     /**
@@ -28,7 +27,6 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password_hash',
     ];
 
     /**
@@ -39,23 +37,11 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'id' => 'integer',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
+            'dark_mode' => 'boolean',
         ];
     }
 
-    public function expenses(): HasMany
-    {
-        return $this->hasMany(Expense::class);
-    }
-
-    public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
-    }
-
-    public function settings() : HasOne {
-        return $this->hasOne(USerSettings::class);
+    public function user(): BelongsTo {
+        return $this->belongsTo(User::class);
     }
 }

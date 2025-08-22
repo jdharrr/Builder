@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import { FaPlus } from 'react-icons/fa';
-import {CreateExpenseForm} from "../pages/dashboard/components/createExpenseForm.jsx";
+import {CreateExpenseForm} from "./createExpenseForm.jsx";
 
 export const Fab = () => {
     const [showExpenseForm, setShowExpenseForm] = useState(false);

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Cookies from "js-cookie";
+import {useNavigate} from "react-router-dom";
 
 import {login} from "../../api.jsx";
 
 import './css/login.css';
 
-export const Login = () =>  {
+export const Login = ({setAuthenticated}) =>  {
     const navigate = useNavigate();
 
     const [username, setUsername] = useState('');
@@ -16,11 +16,9 @@ export const Login = () =>  {
         try {
             const token = await login(username, password);
             Cookies.set('access_token', token);
+            setAuthenticated(true);
             navigate('/dashboard');
         } catch (err) {
-            if (err.status === 401) {
-                navigate('./login');
-            }
             alert(err.message);
         }
     }

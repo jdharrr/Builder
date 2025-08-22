@@ -2,27 +2,32 @@
 
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthenticationController;
-
-Route::middleware('auth:sanctum')->get('/user', fn () => auth()->user());
-Route::middleware('auth:sanctum')->prefix('user')->group(function() {
-    Route::get('/getExpenses/{id}', [UserController::class, 'getExpenses']);
-    Route::get('/getExpensesForDashboardCalendar', [UserController::class, 'getExpensesForDashboardCalendar']);
-    Route::get('/getPaymentsForDate', [UserController::class, 'getPaymentsForDate']);
-    Route::get('/getExpensesForDate', [UserController::class, 'getExpensesForDate']);
-    Route::get('/getLateExpenses', [UserController::class, 'getLateExpenses']);
-
-    Route::post('/createExpense', [UserController::class, 'createExpense']);
-
-    Route::put('/updateExpensePaidStatus', [UserController::class, 'updateExpensePaidStatus']);
-
-    Route::delete('/deleteExpense/{id}', [UserController::class, 'deleteExpense']);
-});
 
 Route::prefix('auth')->group(function() {
     Route::post('/createUser', [AuthenticationController::class, 'createUser']);
     Route::post('/login', [AuthenticationController::class, 'login']);
 
     Route::delete('/deleteUser/{id}', [AuthenticationController::class, 'deleteUser'])->middleware('auth:sanctum');
+});
+
+
+Route::middleware('auth:sanctum')->prefix('user')->group(function() {
+    Route::get('/', [UserController::class, 'getUserById']);
+    Route::patch('/update/settings', [UserController::class, 'updateSettings']);
+});
+
+Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
+    Route::get('/expensesForDashboardCalendar', [ExpenseController::class, 'getExpensesForDashboardCalendar']);
+    Route::get('/paymentsForDate', [ExpenseController::class, 'getPaymentsForDate']);
+    Route::get('/expensesForDate', [ExpenseController::class, 'getExpensesForDate']);
+    Route::get('/lateExpenses', [ExpenseController::class, 'getLateExpenses']);
+
+    Route::post('/createExpense', [ExpenseController::class, 'createExpense']);
+
+    Route::patch('/update/paidStatus', [ExpenseController::class, 'updateExpensePaidStatus']);
+
+    Route::delete('/deleteExpense/{id}', [ExpenseController::class, 'deleteExpense']);
 });

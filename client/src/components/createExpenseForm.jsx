@@ -1,8 +1,8 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 
-import {postExpense} from "../../../api.jsx";
-import {RefreshExpenseContext} from "../providers/expenses/refreshExpensesContext.jsx";
+import {postExpense} from "../api.jsx";
+import {RefreshExpenseContext} from "../pages/dashboard/providers/expenses/refreshExpensesContext.jsx";
 
 import '../css/createExpenseForm.css';
 
@@ -65,8 +65,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                     </div>
                     <div className='modal-body'>
                         <form>
-                            <div className='form-group'>
-                                <label>Name</label>
+                            <div className='mb-3'>
+                                <label className={'form-label'}>Name</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -78,8 +78,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                        }
                                 />
                             </div>
-                            <div className='form-group'>
-                                <label>Cost</label>
+                            <div className='mb-3'>
+                                <label className={'form-label'}>Cost</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -91,8 +91,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                        }
                                 />
                             </div>
-                            <div className='form-group'>
-                            <label>Recurrence Rate</label>
+                            <div className='mb-3'>
+                            <label className={'form-label'}>Recurrence Rate</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -105,8 +105,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                 />
                             </div>
                             {includeStartDateInput && (
-                                <div className={'form-group'}>
-                                    <label>Start Date</label>
+                                <div className={'mb-3'}>
+                                    <label className={'form-label'}>Start Date</label>
                                     <input className={'form-control'} type='text'
                                            onChange={
                                                (e) => {
@@ -119,8 +119,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                     />
                                 </div>
                             )}
-                            <div className='form-group'>
-                                <label>End Date</label>
+                            <div className='mb-3'>
+                                <label className={'form-label'}>End Date</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -132,8 +132,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                        }
                                 />
                             </div>
-                            {date === null && <div className='form-group'>
-                                <label>Next Due Date</label>
+                            {date === null && <div className='mb-3'>
+                                <label className={'form-label'}>Next Due Date</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -145,8 +145,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                        }
                                 />
                             </div>}
-                            <div className='form-group'>
-                                <label>Category</label>
+                            <div className='mb-3'>
+                                <label className={'form-label'}>Category</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -158,8 +158,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                                        }
                                 />
                             </div>
-                            <div className='form-group'>
-                            <label>Description</label>
+                            <div className='mb-3'>
+                            <label className={'form-label'}>Description</label>
                                 <input className={'form-control'} type='text'
                                        onChange={
                                            (e) => {
@@ -174,8 +174,8 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
                         </form>
                     </div>
                     <div className={'modal-footer'}>
-                        <button type="button" className="btn btn-primary" onClick={handleSaveForm}>Save</button>
                         <button type="button" className="btn btn-primary" onClick={handleCloseForm}>Close</button>
+                        <button type="button" className="btn btn-primary" onClick={handleSaveForm}>Save</button>
                     </div>
                 </div>
             </div>

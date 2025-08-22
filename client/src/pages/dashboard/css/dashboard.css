@@ -1,8 +1,0 @@
-.dashboardCards {
-    box-Sizing: border-box;
-    display: grid;
-    grid-template-columns: repeat(2, 0.3fr);
-    align-Items: center;
-    justify-Content: center;
-    flex-Direction: row;
-}

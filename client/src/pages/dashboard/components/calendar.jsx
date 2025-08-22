@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 
 import { MonthYearSelector } from './monthYearSelector.jsx';
 import {ExpenseContext} from "../providers/expenses/expenseContext.jsx";
-import {CreateExpenseForm} from "./createExpenseForm.jsx";
+import {CreateExpenseForm} from "../../../components/createExpenseForm.jsx";
 import { Selector } from "./selector.jsx"
 import { ViewExpensesModal } from './viewExpensesModal.jsx';
 import {fetchExpensesForCalendar, getExpensesForDate} from "../../../api.jsx";

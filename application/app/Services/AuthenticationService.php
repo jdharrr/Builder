@@ -20,7 +20,9 @@ class AuthenticationService {
             throw new Exception('Failed to create user.');
         }
 
-        return $user;
+        $user->settings()->create();
+
+        return $user->fresh('settings');
     }
 
     public function deleteUser($userId): bool {
