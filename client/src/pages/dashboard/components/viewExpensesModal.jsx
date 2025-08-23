@@ -28,7 +28,7 @@ export const ViewExpensesModal = ({ expenses, handleClose, handleAddExpense, dat
                             <p>No expenses found</p>
                             ) : (
                                 expensesArray.map((expense, idx) => (
-                                    <div className='border border-dark' key={idx}>
+                                    <div  key={idx}>
                                         <div>{expense.name}</div>
                                     </div>
                                 ))

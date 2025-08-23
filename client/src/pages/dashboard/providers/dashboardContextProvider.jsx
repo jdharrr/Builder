@@ -5,10 +5,8 @@ import {RefreshExpensesProvider} from "./expenses/RefreshExpenseProvider.jsx";
 
 export const DashboardContextProvider = ({ children }) => {
     return (
-        <RefreshExpensesProvider>
-            <ExpenseProvider>
-                    {children}
-            </ExpenseProvider>
-        </RefreshExpensesProvider>
+        <ExpenseProvider>
+                {children}
+        </ExpenseProvider>
     );
 }

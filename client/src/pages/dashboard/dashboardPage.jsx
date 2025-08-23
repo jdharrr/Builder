@@ -8,9 +8,9 @@ import {ExpenseContext} from "./providers/expenses/expenseContext.jsx";
 import {RefreshExpenseContext} from "./providers/expenses/refreshExpensesContext.jsx";
 import { UpcomingExpensesSection } from "./sections/upcomingExpensesSection.jsx";
 
-import './css/dashboard.css';
+import './css/dashboardPage.css';
 
-export const Dashboard = () => {
+export default function DashboardPage() {
     const navigate = useNavigate();
     const { setExpenses } = useContext(ExpenseContext);
     const { refreshExpenses } = useContext(RefreshExpenseContext);

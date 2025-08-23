@@ -23,8 +23,8 @@ export const UserModal = ({handleClose}) => {
     const handleDarkModeChange = async (isChecked) => {
         setUser((prevUser) => ({
             ...prevUser,
-            setting: {
-                ...prevUser.setting,
+            settings: {
+                ...prevUser.settings,
                 dark_mode: isChecked
             }
         }))
@@ -71,17 +71,19 @@ export const UserModal = ({handleClose}) => {
                             <div className="col-9">
                                 <div className={'tab-content'} >
                                     <div className="tab-pane show active" id={'general-tab-content'} role={'tabpanel'}>
-                                        <div>
-                                            {`Username: ${user.username}`}
-                                        </div>
-                                        <div>
-                                            {`Email: ${user.email}`}
-                                        </div>
-                                        <div>
-                                            {`User Created: ${user.created_at.substring(0, 10)}`}
-                                        </div>
-                                        <div>
-                                            {`User Last Updated: ${user.updated_at.substring(0,10)}`}
+                                        <div className={'list-group'}>
+                                            <div className={'list-group-item'}>
+                                                {`Username: ${user.username}`}
+                                            </div >
+                                            <div className={'list-group-item'}>
+                                                {`Email: ${user.email}`}
+                                            </div>
+                                            <div className={'list-group-item'}>
+                                                {`Created: ${user.created_at.substring(0, 10)}`}
+                                            </div>
+                                            <div className={'list-group-item'}>
+                                                {`Last Updated: ${user.updated_at.substring(0,10)}`}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="tab-pane" id={'settings-tab-content'} role={'tabpanel'}>

@@ -1,3 +1,8 @@
 .titleText {
     font-family: "Didot", serif;
 }
+
+:root,[data-bs-theme]{
+    --bs-heading-color: var(--bs-emphasis-color);
+    --bs-tertiary-bg: color-mix(in oklab, var(--bs-body-bg), #fff 6%);
+}

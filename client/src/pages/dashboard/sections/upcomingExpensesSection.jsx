@@ -39,7 +39,7 @@ export const UpcomingExpensesSection = () => {
     return (
         <>
             <h1 className={'titleText'}>{currentMonth}</h1>
-            <div className={'border border-dark rounded-2'}>
+            <div className={'border border-dark'}>
                 <ul className={'nav nav-tabs border-0'} role={'tablist'}>
                     <li className={'nav-item'} role={'presentation'}>
                         <button className={'nav-link active border-0'} data-bs-toggle={'tab'} id={'upcoming-tab'}

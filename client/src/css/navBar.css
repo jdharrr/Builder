@@ -8,3 +8,7 @@
     height: 3rem;
     display: flex;
 }
+
+.navBarSection {
+    background-color: #eeeeee;
+}

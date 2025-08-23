@@ -1,14 +1,15 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {lazy, Suspense, useContext, useEffect, useState} from 'react';
 import {BrowserRouter as Router, Routes, Route, Navigate} from "react-router-dom";
 
-import { Dashboard } from './pages/dashboard/dashboard.jsx';
 import {Login} from "./pages/login/login.jsx";
 import { PrivateRoute } from "./components/PrivateRoute.jsx";
 import {fetchUser, validateToken} from "./api.jsx";
 import {DashboardContextProvider} from "./pages/dashboard/providers/dashboardContextProvider.jsx";
-import {TotalsPage} from "./pages/totals/totalsPage.jsx";
 import {BuilderLayout} from "./layouts/BuilderLayout.jsx";
 import {UserContext} from "./providers/user/userContext.jsx";
+
+const DashboardPage = lazy(() => import("./pages/dashboard/dashboardPage.jsx"));
+const TotalsPage = lazy(() => import("./pages/totals/totalsPage.jsx"));
 
 const App = () => {
     const {setUser} = useContext(UserContext);
@@ -39,35 +40,37 @@ const App = () => {
 
     return (
         <Router>
-            <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/login"
-                    element={
-                        <Login setAuthenticated={setAuthenticated} />
-                    }
-                />
-                <Route
-                    exact path="/dashboard"
-                    element={
-                        <DashboardContextProvider>
+            <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/login"
+                        element={
+                            <Login setAuthenticated={setAuthenticated} />
+                        }
+                    />
+                    <Route
+                        exact path="/dashboard"
+                        element={
+                            <DashboardContextProvider>
+                                <PrivateRoute authenticated={authenticated} >
+                                    <BuilderLayout>
+                                        <DashboardPage />
+                                    </BuilderLayout>
+                                </PrivateRoute>
+                            </DashboardContextProvider>
+                        }
+                    />
+                    <Route path="/totals"
+                        element={
                             <PrivateRoute authenticated={authenticated} >
                                 <BuilderLayout>
-                                    <Dashboard />
+                                    <TotalsPage />
                                 </BuilderLayout>
                             </PrivateRoute>
-                        </DashboardContextProvider>
-                    }
-                />
-                <Route path="/totals"
-                    element={
-                        <PrivateRoute authenticated={authenticated} >
-                            <BuilderLayout>
-                                <TotalsPage />
-                            </BuilderLayout>
-                        </PrivateRoute>
-                    }
-                />
-            </Routes>
+                        }
+                    />
+                </Routes>
+            </Suspense>
         </Router>
     );
 }

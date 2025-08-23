@@ -1,8 +1,10 @@
 import React from 'react';
 
-export const TotalsPage = () => {
+import './css/totalsPage.css';
+
+export default function TotalsPage() {
     return (
-      <div>
+      <div className={'totalsPage'}>
           <p>Totals Page</p>
       </div>
     );
