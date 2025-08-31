@@ -4,8 +4,8 @@ import {useNavigate} from "react-router-dom";
 import { Card } from "./components/dashboardCard.jsx";
 import { Calendar } from "./components/calendar.jsx";
 import {fetchExpensesForCalendar, getPaymentsForDate} from "../../api.jsx";
-import {ExpenseContext} from "./providers/expenses/expenseContext.jsx";
-import {RefreshExpenseContext} from "./providers/expenses/refreshExpensesContext.jsx";
+import {ExpenseContext} from "../../providers/expenses/expenseContext.jsx";
+import {RefreshExpenseContext} from "../../providers/expenses/refreshExpensesContext.jsx";
 import { UpcomingExpensesSection } from "./sections/upcomingExpensesSection.jsx";
 
 import './css/dashboardPage.css';
@@ -54,15 +54,13 @@ export default function DashboardPage() {
     }, [navigate, setExpenses, refreshExpenses]);
 
     return (
-        <div className="dashboard">
-            <div className="d-flex justify-content-center align-items-center">
-                    <Card title='Expense Tracker' >
-                        <Calendar />
-                    </Card>
-                    <Card title='Upcoming Expenses' >
-                        <UpcomingExpensesSection />
-                    </Card>
-            </div>
+        <div className="d-flex justify-content-center align-items-center">
+                <Card title='Expense Tracker' >
+                    <Calendar />
+                </Card>
+                <Card title='Upcoming Expenses' >
+                    <UpcomingExpensesSection />
+                </Card>
         </div>
     );
 }

@@ -1,0 +1,12 @@
+.expensesCard {
+    width: fit-content;
+    height: fit-content;
+}
+
+.expensesCardHeader {
+    width: 54rem;
+}
+
+.expensesCardFooter {
+    width: 54rem;
+}

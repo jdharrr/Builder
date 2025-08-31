@@ -3,7 +3,7 @@ import { FaPlus } from 'react-icons/fa';
 import {CreateExpenseForm} from "./createExpenseForm.jsx";
 
 export const Fab = () => {
-    const [showExpenseForm, setShowExpenseForm] = useState(false);
+    const [showCreateExpenseForm, setShowCreateExpenseForm] = useState(false);
 
     return (
         <>
@@ -16,12 +16,12 @@ export const Fab = () => {
                     width: "4rem",
                     height: "4rem",
                 }}
-                onClick={() => setShowExpenseForm(true)}
+                onClick={() => setShowCreateExpenseForm(true)}
             >
                 <FaPlus size={28} />
             </button>
 
-            { showExpenseForm && <CreateExpenseForm setShowExpenseForm={setShowExpenseForm} includeStartDateInput={true} /> }
+            { showCreateExpenseForm && <CreateExpenseForm setShowCreateExpenseForm={setShowCreateExpenseForm} includeStartDateInput={true} /> }
         </>
     );
 }

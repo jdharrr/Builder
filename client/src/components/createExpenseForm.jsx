@@ -2,11 +2,11 @@ import React, {useContext, useEffect, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 
 import {postExpense} from "../api.jsx";
-import {RefreshExpenseContext} from "../pages/dashboard/providers/expenses/refreshExpensesContext.jsx";
+import {RefreshExpenseContext} from "../providers/expenses/refreshExpensesContext.jsx";
 
 import '../css/createExpenseForm.css';
 
-export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStartDateInput}) => {
+export const CreateExpenseForm = ({ setShowCreateExpenseForm, date = null, includeStartDateInput}) => {
     const { setRefreshExpenses } = useContext(RefreshExpenseContext);
     const navigate = useNavigate();
 
@@ -25,13 +25,13 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setShowExpenseForm(false);
+                setShowCreateExpenseForm(false);
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setShowExpenseForm]);
+    }, [setShowCreateExpenseForm]);
 
     const handleSaveForm = async () => {
         let isCreated = false;
@@ -49,11 +49,11 @@ export const CreateExpenseForm = ({ setShowExpenseForm, date = null, includeStar
 
         isCreated ? alert('Expense successfully created.'): alert('Failed to create Expense.');
         setRefreshExpenses((prevState) => !prevState);
-        setShowExpenseForm(!isCreated);
+        setShowCreateExpenseForm(!isCreated);
     }
 
     const handleCloseForm = () => {
-        setShowExpenseForm(false);
+        setShowCreateExpenseForm(false);
     }
 
     return (

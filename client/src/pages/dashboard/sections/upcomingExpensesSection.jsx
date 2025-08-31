@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 
 import {UpcomingList} from "../components/upcomingList.jsx";
 import {LateExpenses} from "../components/lateExpenses.jsx";
-import {ExpenseContext} from "../providers/expenses/expenseContext.jsx";
+import {ExpenseContext} from "../../../providers/expenses/expenseContext.jsx";
 import {fetchLateExpenses} from "../../../api.jsx";
 
 export const UpcomingExpensesSection = () => {
@@ -38,8 +38,7 @@ export const UpcomingExpensesSection = () => {
 
     return (
         <>
-            <h1 className={'titleText'}>{currentMonth}</h1>
-            <div className={'border border-dark'}>
+            <div className={'border border-dark mt-3'}>
                 <ul className={'nav nav-tabs border-0'} role={'tablist'}>
                     <li className={'nav-item'} role={'presentation'}>
                         <button className={'nav-link active border-0'} data-bs-toggle={'tab'} id={'upcoming-tab'}

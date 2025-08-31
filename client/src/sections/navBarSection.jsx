@@ -30,6 +30,16 @@ export const NavBarSection = () => {
                     </div>
                     <div className={'navItem px-3'}>
                         <NavLink
+                            to="/expenses"
+                            className={({ isActive }) =>
+                                isActive ? "text-primary fw-bold nav-link" : "nav-link"
+                            }
+                        >
+                            Expenses
+                        </NavLink>
+                    </div>
+                    <div className={'navItem px-3'}>
+                        <NavLink
                             to="/totals"
                             className={({ isActive }) =>
                                 isActive ? "text-primary fw-bold nav-link" : "nav-link"

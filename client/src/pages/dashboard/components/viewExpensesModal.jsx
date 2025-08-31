@@ -1,8 +1,31 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 
 import '../css/viewExpensesModal.css'
 
-export const ViewExpensesModal = ({ expenses, handleClose, handleAddExpense, date }) => {
+export const ViewExpensesModal = ({ expenses, handleAddExpense, date, isLoading, setShowViewExpensesModal }) => {
+    const wrapperRef = useRef(null);
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setShowViewExpensesModal((prevState) => ({
+                    ...prevState,
+                    isShowing: false,
+                    expenses: []
+                }));
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [setShowViewExpensesModal]);
+
+    const handleClose = () => {
+        setShowViewExpensesModal((prevState) => ({
+            ...prevState,
+            isShowing: false,
+            expenses: []
+        }));
+    }
 
     let expensesArray = [];
     if (Array.isArray(expenses)) {
@@ -18,22 +41,25 @@ export const ViewExpensesModal = ({ expenses, handleClose, handleAddExpense, dat
 
     return (
         <div className="modal show d-block">
-            <div className="modal-dialog">
+            <div className="modal-dialog" ref={wrapperRef}>
                 <div className="modal-content">
                     <div className="modal-header">
                         <h5 className={'modal-title'}>{day} {month}, {year}</h5>
                     </div>
                     <div className="modal-body">
-                        {expensesArray.length === 0 ? (
-                            <p>No expenses found</p>
-                            ) : (
-                                expensesArray.map((expense, idx) => (
-                                    <div  key={idx}>
-                                        <div>{expense.name}</div>
-                                    </div>
-                                ))
-                            )
-                        }
+                        {isLoading ? (
+                            <p>Loading...</p>
+                        ) : (
+                            expensesArray.length === 0 ? (
+                                <p>No expenses found</p>
+                                ) : (
+                                    expensesArray.map((expense, idx) => (
+                                        <div  key={idx}>
+                                            <div>{expense.name}</div>
+                                        </div>
+                                    ))
+                                )
+                            )}
                     </div>
                     <div className='modal-footer'>
                         <button type='button' className={'btn btn-primary'} onClick={handleClose}>Close</button>

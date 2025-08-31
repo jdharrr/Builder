@@ -1,5 +1,5 @@
 .upcomingList {
-    height: 27.7rem;
+    height: fit-content;
     overflow-y: auto;
     overflow-x: hidden;
-}
+}...

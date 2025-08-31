@@ -2,21 +2,23 @@ import React, {useState, useContext, useEffect} from 'react';
 import {useNavigate} from "react-router-dom";
 
 import { MonthYearSelector } from './monthYearSelector.jsx';
-import {ExpenseContext} from "../providers/expenses/expenseContext.jsx";
+import {ExpenseContext} from "../../../providers/expenses/expenseContext.jsx";
 import {CreateExpenseForm} from "../../../components/createExpenseForm.jsx";
 import { Selector } from "./selector.jsx"
 import { ViewExpensesModal } from './viewExpensesModal.jsx';
 import {fetchExpensesForCalendar, getExpensesForDate} from "../../../api.jsx";
+import {RefreshExpenseContext} from "../../../providers/expenses/refreshExpensesContext.jsx";
 
 import '../css/calendar.css';
 import '../../../css/global.css';
 
 export const Calendar = () => {
     const { expenses } = useContext(ExpenseContext);
+    const { refreshExpenses } = useContext(RefreshExpenseContext);
     const navigate = useNavigate();
 
-    const [showViewExpensesModal, setShowViewExpensesModal] = useState({isShowing: false, expenses: null});
-    const [showExpenseForm, setShowExpenseForm] = useState(false);
+    const [showViewExpensesModal, setShowViewExpensesModal] = useState({isShowing: false, expenses: [], isLoading: false});
+    const [showCreateExpenseForm, setShowCreateExpenseForm] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
 
     const actionOptions = ['View Expenses', 'Create Expense'];
@@ -45,7 +47,7 @@ export const Calendar = () => {
         }
 
         loadExpenses();
-    }, [selectedYear, selectedMonth, navigate])
+    }, [selectedYear, selectedMonth, navigate, refreshExpenses]);
 
     useEffect(() => {
         const emptyDays = [];
@@ -66,8 +68,16 @@ export const Calendar = () => {
     }
 
     const handleActionChange = async (e) => {
+        setShowActionSelector(false);
+
         const option = e.target.value;
         if (option === 'View Expenses') {
+            setShowViewExpensesModal((prevState) => ({
+                ...prevState,
+                isShowing: true,
+                isLoading: true,
+            }));
+
             let expensesForDate = [];
             try {
                 expensesForDate = await getExpensesForDate(selectedDate, expenses);
@@ -78,27 +88,26 @@ export const Calendar = () => {
             }
             setShowViewExpensesModal((prevState) => ({
                 ...prevState,
-                isShowing: true,
-                expenses: expensesForDate
+                expenses: expensesForDate,
+                isLoading: false
             }));
         } else if (option === 'Create Expense') {
-            setShowExpenseForm(true);
+            setShowCreateExpenseForm(true);
         }
-
-        setShowActionSelector(false);
     }
 
     const handleActionSelectorClose = () => {
         setShowActionSelector(false);
     }
 
-    const handleViewExpensesModalClose = () => {
-        setShowViewExpensesModal({isShowing: false, expenses: null});
-    }
-
     const handleViewExpensesModalAddExpense = () => {
-        setShowViewExpensesModal({isShowing: false, expenses: null});
-        setShowExpenseForm(true);
+        setShowViewExpensesModal((prevState) => ({
+            ...prevState,
+            isShowing: false,
+            expenses: [],
+            isLoading: false
+        }));
+        setShowCreateExpenseForm(true);
     }
 
     return (
@@ -146,8 +155,22 @@ export const Calendar = () => {
                     </div>
                 </div>
             </div>
-            { showExpenseForm && <CreateExpenseForm date={selectedDate} setShowExpenseForm={setShowExpenseForm} includeStartDateInput={false} /> }
-            { showViewExpensesModal.isShowing && <ViewExpensesModal expenses={showViewExpensesModal.expenses} handleClose={handleViewExpensesModalClose} handleAddExpense={handleViewExpensesModalAddExpense} date={selectedDate} />}
+            { showCreateExpenseForm &&
+                <CreateExpenseForm
+                    date={selectedDate}
+                    setShowCreateExpenseForm={setShowCreateExpenseForm}
+                    includeStartDateInput={false}
+                />
+            }
+            { showViewExpensesModal.isShowing &&
+                <ViewExpensesModal
+                    expenses={showViewExpensesModal.expenses}
+                    handleAddExpense={handleViewExpensesModalAddExpense}
+                    date={selectedDate}
+                    setShowViewExpensesModal={setShowViewExpensesModal}
+                    isLoading={showViewExpensesModal.isLoading}
+                />
+            }
         </>
     );
 }

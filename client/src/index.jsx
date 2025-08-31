@@ -8,9 +8,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import {BuilderContextProvider} from "./providers/builderContextProvider.jsx";
 
 createRoot(document.getElementById('main')).render(
-  <StrictMode>
-      <BuilderContextProvider>
+    <BuilderContextProvider>
         <App />
-      </BuilderContextProvider>
-  </StrictMode>
+    </BuilderContextProvider>
 )
