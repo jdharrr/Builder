@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import { FaUser } from 'react-icons/fa';
 import {NavLink} from "react-router-dom";
-import {UserModal} from "../components/userModal.jsx";
+import {UserModal} from "../components/UserModal.jsx";
 
 import '../css/navBar.css';
 

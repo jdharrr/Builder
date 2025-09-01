@@ -21,9 +21,9 @@ Route::middleware('auth:sanctum')->prefix('user')->group(function() {
 
 Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
     Route::get('/expensesForDashboardCalendar', [ExpenseController::class, 'getExpensesForDashboardCalendar']);
-    Route::get('/paymentsForDate', [ExpenseController::class, 'getPaymentsForDate']);
-    Route::get('/expensesForDate', [ExpenseController::class, 'getExpensesForDate']);
     Route::get('/lateExpenses', [ExpenseController::class, 'getLateExpenses']);
+    Route::get('/getUpcomingExpenses', [ExpenseController::class, 'getUpcomingExpenses']);
+    Route::get('/getAllExpenses', [ExpenseController::class, 'getAllExpenses']);
 
     Route::post('/createExpense', [ExpenseController::class, 'createExpense']);
 

@@ -1,6 +1,11 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useContext, useEffect, useRef} from 'react';
 
-export const ViewExpenseModal = ({setShowViewExpenseModal}) => {
+import {ViewExpenseModalContext} from "../../../providers/expenses/ViewExpenseModalContext.jsx";
+
+export const ViewExpenseModal = () => {
+    const {showViewExpenseModal, setShowViewExpenseModal} = useContext(ViewExpenseModalContext);
+    const {expense} = showViewExpenseModal;
+
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -34,7 +39,7 @@ export const ViewExpenseModal = ({setShowViewExpenseModal}) => {
                     </div>
                     <div className="modal-body">
                         <div>
-                            Expense Details
+                            {expense.name}
                         </div>
                     </div>
                     <div className="modal-footer">

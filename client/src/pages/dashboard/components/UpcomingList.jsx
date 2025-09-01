@@ -6,7 +6,7 @@ import {updateExpensePaidStatus} from "../../../api.jsx";
 import '../css/upcomingList.css';
 import '../../../css/global.css';
 
-export const UpcomingList = ({ filteredExpenses, setFilteredExpenses }) => {
+export const UpcomingList = ({ upcomingExpenses, setUpcomingExpenses }) => {
     const navigate = useNavigate();
 
     const weekDays = ['Sun', 'Mon', 'Tues', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -14,7 +14,7 @@ export const UpcomingList = ({ filteredExpenses, setFilteredExpenses }) => {
 
     const handlePaidStatusChange = async (e, date, expense) => {
         const dueDatePaid = e.target.checked ? date : null;
-        setFilteredExpenses(prev => {
+        setUpcomingExpenses(prev => {
             return prev.map(([d, exps]) => [
                 d,
                 d === date
@@ -29,7 +29,7 @@ export const UpcomingList = ({ filteredExpenses, setFilteredExpenses }) => {
             if (err.status === 401) {
                 navigate('/login');
             }
-            setFilteredExpenses(prev => {
+            setUpcomingExpenses(prev => {
                 return prev.map(([d, exps]) => [
                     d,
                     d === date
@@ -42,8 +42,8 @@ export const UpcomingList = ({ filteredExpenses, setFilteredExpenses }) => {
 
     return (
         <div className="upcomingList list-group list-group-flush">
-          {filteredExpenses.map(([date, expensesForDate], idx) => (
-              <div className="list-group-item row" key={date}>
+          {Object.entries(upcomingExpenses).map(([date, expensesForDate], idx) => (
+              <div className="list-group-item" key={date}>
                   <div className="col-auto fw-medium">
                       {weekDays.at((currentWeekDay + idx) % 7)} {Number(date.slice(-2))}
                   </div>

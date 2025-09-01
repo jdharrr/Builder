@@ -15,7 +15,7 @@ export const MonthYearSelector = ({ selectedYear, selectedMonth, setSelectedMont
     return (
         <div className="monthYearSelector">
             <div className="dateSelector">
-                <select value={selectedMonth} onChange={handleMonthChange}>
+                <select className={'form-select'} value={selectedMonth} onChange={handleMonthChange}>
                     {months.map((month, i) => (
                         <option key={i} value={i}>
                             {month}
@@ -24,7 +24,7 @@ export const MonthYearSelector = ({ selectedYear, selectedMonth, setSelectedMont
                 </select>
             </div>
             <div className="dateSelector">
-                <select value={selectedYear} onChange={handleYearChange}>
+                <select className={"form-select"} value={selectedYear} onChange={handleYearChange}>
                     {surroundingYears.map((year, i) => (
                         <option key={i} value={year}>
                             {year}

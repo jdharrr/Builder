@@ -1,40 +1,54 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React from 'react';
 import {useNavigate} from "react-router-dom";
+import {useQuery} from "@tanstack/react-query";
 
-import {UpcomingList} from "../components/upcomingList.jsx";
-import {LateExpenses} from "../components/lateExpenses.jsx";
-import {ExpenseContext} from "../../../providers/expenses/expenseContext.jsx";
-import {fetchLateExpenses} from "../../../api.jsx";
+import {UpcomingList} from "../components/UpcomingList.jsx";
+import {LateExpenses} from "../components/LateExpenses.jsx";
+import {fetchLateExpenses, getUpcomingExpenses} from "../../../api.jsx";
 
 export const UpcomingExpensesSection = () => {
     const navigate = useNavigate();
-    const { expenses } = useContext(ExpenseContext);
 
-    const [filteredExpenses, setFilteredExpenses] = useState([]);
-    const [lateExpenses, setLateExpenses] = useState([]);
+    const { data: upcomingExpenses = [] } = useQuery({
+        queryKey: ['upcomingExpenses'],
+        queryFn: async () => {
+            return await getUpcomingExpenses();
+        },
+        suspense: true,
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (error?.status === 401) return false;
 
-    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-    const currentDate = new Date().getDate();
-
-    useEffect(() => {
-        async function loadExpenses() {
-            try {
-                const lateExpenses = await fetchLateExpenses();
-                setLateExpenses(lateExpenses);
-            } catch (err) {
-                if (err.status === 401) {
-                    navigate('/login');
-                }
+            return failureCount < 2;
+        },
+        throwOnError: (error) => {
+            if (error.status === 401) {
+                navigate('/login');
             }
+
+            return false;
         }
+    })
 
-        loadExpenses();
-    }, [navigate]);
+    const { data: lateExpenses = [] } = useQuery({
+        queryKey: ['lateExpenses'],
+        queryFn: async () => {
+            return await fetchLateExpenses();
+        },
+        suspense: true,
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (error?.status === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => {
+            if (error.status === 401) {
+                navigate('/login');
+            }
 
-    useEffect(() => {
-        const filtered = Object.entries(JSON.parse(JSON.stringify(expenses))).slice(currentDate - 1, currentDate + 7 - 1);
-        setFilteredExpenses(filtered);
-    }, [currentDate, expenses])
+            return false;
+        }
+    })
 
     return (
         <>
@@ -56,7 +70,7 @@ export const UpcomingExpensesSection = () => {
 
                 <div className={'tab-content'}>
                     <div className={'tab-pane fade show active'} role={'tabpanel'} id={'upcoming-tab-content'}>
-                        <UpcomingList filteredExpenses={filteredExpenses} setFilteredExpenses={setFilteredExpenses} />
+                        <UpcomingList upcomingExpenses={upcomingExpenses} />
                     </div>
                     <div className={'tab-pane fade'} role={'tabpanel'} id={'late-tab-content'}>
                         <LateExpenses lateExpenses={lateExpenses} />

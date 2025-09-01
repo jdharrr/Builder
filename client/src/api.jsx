@@ -1,6 +1,7 @@
 import axios from "axios";
+import Cookies from "js-cookie";
 
-import {getAccessToken} from "./utils.jsx";
+const getAccessToken = () => Cookies.get("access_token");
 
 // User
 export const validateToken = async () => {
@@ -159,25 +160,6 @@ export const getPaymentsForDate = async (date, expenses) => {
     return result.data;
 }
 
-export const getExpensesForDate = async (date) => {
-    if (!date) return [];
-
-    const token = getAccessToken();
-    const result = await axios.get('http://localhost:8000/api/expenses/expensesForDate', {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        params: {
-            'date': date,
-        }
-    });
-
-    return result.data;
-}
-
 export const fetchLateExpenses = async () => {
     const token = getAccessToken();
 
@@ -189,6 +171,36 @@ export const fetchLateExpenses = async () => {
             'Accept': 'application/json',
         }
     });
+
+    return result.data;
+}
+
+export const getUpcomingExpenses = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/getUpcomingExpenses', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    })
+
+    return result.data;
+}
+
+export const getAllExpenses = async () =>  {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/getAllExpenses', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    })
 
     return result.data;
 }

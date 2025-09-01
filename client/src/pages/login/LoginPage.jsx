@@ -6,7 +6,7 @@ import {login} from "../../api.jsx";
 
 import './css/login.css';
 
-export const Login = ({setAuthenticated}) =>  {
+export const LoginPage = ({setAuthenticated}) =>  {
     const navigate = useNavigate();
 
     const [username, setUsername] = useState('');

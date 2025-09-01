@@ -34,8 +34,8 @@ class ExpenseService {
         return $expense;
     }
 
-    public function getExpensesByUserId($userId): Collection {
-        return Expense::query()->where('user_id', $userId)->get();
+    public function getAllExpensesByUserId($userId): Collection {
+        return Expense::query()->where('user_id', $userId)->orderBy('created_at')->get();
     }
 
     public function getExpensesForDashboardCalendar($userId, $month, $year): array {
@@ -43,7 +43,6 @@ class ExpenseService {
         $daysInMonth = $firstDate->format('t');
         $lastDate = new DateTime($year . '-' . $month . '-' . $daysInMonth);
 
-        $mappedExpenses = [];
         $expenses =  Expense::query()
             ->select('expenses.*', DB::raw('IF(DATE(next_due_date) < CURDATE(), TRUE, FALSE) as is_late'))
             ->where('user_id', $userId)
@@ -59,6 +58,7 @@ class ExpenseService {
             })
             ->get();
 
+        $mappedExpenses = [];
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT). '-' . str_pad($i, 2, '0', STR_PAD_LEFT);
             $dateObj = new DateTime($date);
@@ -74,36 +74,84 @@ class ExpenseService {
         return $mappedExpenses;
     }
 
-    public function getExpensesForDate($userId, $date): array {
+    public function getUpcomingExpenses($userId): array {
+        $startDateObj = new DateTime();
+        $startDateString = $startDateObj->format('Y-m-d');
+        $startDateYear = (int)$startDateObj->format('Y');
+        $startDateMonth = (int)$startDateObj->format('m');
+        $startDateDay = (int)$startDateObj->format('j');
+        $daysInCurrentMonth = (int)$startDateObj->format('t');
+
+        $endDateYear = $startDateYear;
+        $endDateMonth = $startDateObj->format('m');
+        $endDateDay = $startDateDay + 7;
+        // List overflows into following month
+        if ($endDateDay > $daysInCurrentMonth) {
+            $endDateDay -= $daysInCurrentMonth;
+            $endDateMonth += 1;
+        }
+        // List overflows into following year
+        if ($endDateMonth === 13) {
+            $endDateYear += 1;
+            $endDateMonth = 1;
+        }
+
+        $endDate = "{$endDateYear}-{$endDateMonth}-{$endDateDay}";
         $expenses = Expense::query()
-            ->select('expenses.*', DB::raw('IF(DATE(next_due_date) < CURDATE(), TRUE, FALSE) AS is_late'))
+            ->select('expenses.*', DB::raw('IF(DATE(next_due_date) < CURDATE(), TRUE, FALSE) as is_late'))
             ->where('user_id', $userId)
             ->where('active', true)
-            ->whereDate('start_date', '<=', $date)
-            ->where(function ($query) use ($date) {
+            ->whereDate('start_date', '<=', $endDate)
+            ->where(function ($query) use ($startDateString) {
                 $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $date);
+                    ->orWhereDate('end_date', '>=', $startDateString);
             })
-            ->where(function ($query) use ($date) {
-                $query->whereDate('next_due_date', $date)
+            ->where(function ($query) use ($startDateString, $endDate) {
+                $query->whereBetween('next_due_date', [$startDateString, $endDate])
                     ->orWhereIn('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly']);
             })
             ->get();
 
-        $expensesForDate = [];
-        $dateObj = new DateTime($date);
-        foreach ($expenses as $expense) {
-            $dueDateObj = new DateTime($expense->next_due_date);
-            if ($this->expenseIsForDate($expense, $dateObj, $dueDateObj)) {
-                $expensesForDate[] = $expense;
+        $mappedExpenses = [];
+        for ($i = $startDateDay; $i < $startDateDay + 7; $i++) {
+            $year = $startDateYear;
+            $month = $startDateMonth;
+            $day = $i;
+            if ($daysInCurrentMonth < $day) {
+                $month += 1;
+                $day -= $daysInCurrentMonth;
+            }
+
+            if ($month === 13) {
+                $year += 1;
+                $month = 1;
+            }
+
+            $date = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT). '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
+            $dateObj = new DateTime($date);
+            $mappedExpenses[$date] = [];
+            foreach ($expenses as $expense) {
+                $dueDateObj = new DateTime($expense->next_due_date);
+                if (!$this->expenseIsForDate($expense, $dateObj, $dueDateObj)) {
+                    continue;
+                }
+
+                $mappedExpenses[$date][] = $expense;
+                $paymentsForDate = $this->getPaymentsForDate($date, $userId);
+                $paymentsMap = array_column($paymentsForDate->toArray(), 'due_date_paid', 'expense_id');
+                if (isset($paymentsMap[$expense->id])) {
+                    $expense->due_date_paid = $paymentsMap[$expense->id];
+                }
             }
         }
 
-        return $expensesForDate;
+        return $mappedExpenses;
     }
 
     public function expenseIsForDate($expense, $dateObj, $dueDateObj): bool {
-        if ($expense->start_date > $dateObj || $expense->end_date && $expense->end_date < $dateObj) {
+        $startDateObj = new DateTime($expense->start_date);
+        $endDateObj = $expense->end_date ? new DateTime($expense->end_date) : null;
+        if ($startDateObj > $dateObj || (isset($endDateObj) && $endDateObj < $dateObj)) {
             return false;
         }
 
@@ -206,10 +254,9 @@ class ExpenseService {
         }
     }
 
-    public function getPaymentsForDate($date, $userId, $expenseIds) : Collection {
+    private function getPaymentsForDate($date, $userId) : Collection {
         return Payment::query()
             ->where('user_id', $userId)
-            ->whereIn('expense_id', $expenseIds)
             ->whereDate('due_date_paid', $date)
             ->get();
     }

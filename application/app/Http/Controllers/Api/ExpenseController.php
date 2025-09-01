@@ -6,12 +6,10 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-use App\Models\User;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\GetExpensesForDashboardCalendarRequest;
 use App\Models\Expense;
 use App\Services\ExpenseService;
-use App\Services\UserService;
 use App\Http\Requests\UpdateExpensePaidStatusRequest;
 use App\Http\Requests\GetExpensesForDateRequest;
 use App\Http\Requests\GetPaymentsForDateRequest;
@@ -78,28 +76,29 @@ class ExpenseController extends Controller
         ]);
     }
 
-    public function getPaymentsForDate(GetPaymentsForDateRequest $request): Collection
-    {
-        try {
-            return $this->service->getPaymentsForDate($request->input('date'), $request->user()->id, $request->input('expense_ids'));
-        } catch (\Exception) {
-            throw new \Exception('Failed to get expenses paid.', 500);
-        }
-    }
-
-    public function getExpensesForDate(GetExpensesForDateRequest $request): array {
-        try {
-            return $this->service->getExpensesForDate($request->user()->id, $request->input('date'));
-        } catch (\Exception) {
-            throw new \Exception('Failed to get expenses paid.', 500);
-        }
-    }
-
     public function getLateExpenses(Request $request): Collection {
         try {
             return $this->service->getLateExpenses($request->user()->id);
         } catch (\Exception) {
             throw new \Exception('Failed to get expenses paid.', 500);
+        }
+    }
+
+    public function getUpcomingExpenses(Request $request): array
+    {
+        try {
+            return $this->service->getUpcomingExpenses($request->user()->id);
+        } catch (\Exception) {
+            throw new \Exception('Failed to get upcoming expenses.', 500);
+        }
+    }
+
+    public function getAllExpenses(Request $request): Collection
+    {
+        try {
+            return $this->service->getAllExpensesByUserId($request->user()->id);
+        } catch(\Exception $e) {
+            throw new \Exception('Failed to get expenses.', 500);
         }
     }
 }

@@ -1,0 +1,11 @@
+.viewExpenseItem:hover {
+    cursor: pointer;
+}
+
+.viewExpenseItem:active {
+    background-color: lightgray;
+}
+
+.viewExpenseItem:has(.viewExpenseEditBtn:active) {
+    background-color: inherit !important;
+}

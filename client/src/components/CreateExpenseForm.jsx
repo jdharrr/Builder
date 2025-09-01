@@ -1,14 +1,18 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
+import {useQueryClient} from "@tanstack/react-query";
 
 import {postExpense} from "../api.jsx";
-import {RefreshExpenseContext} from "../providers/expenses/refreshExpensesContext.jsx";
+import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormContext.jsx";
 
 import '../css/createExpenseForm.css';
 
-export const CreateExpenseForm = ({ setShowCreateExpenseForm, date = null, includeStartDateInput}) => {
-    const { setRefreshExpenses } = useContext(RefreshExpenseContext);
+export const CreateExpenseForm = ({includeStartDateInput}) => {
     const navigate = useNavigate();
+    const qc = useQueryClient();
+
+    const {showCreateExpenseForm, setShowCreateExpenseForm} = useContext(CreateExpenseFormContext);
+    const { date } = showCreateExpenseForm;
 
     const [expenseProps, setExpenseProps] = useState({
         name: '',
@@ -25,7 +29,12 @@ export const CreateExpenseForm = ({ setShowCreateExpenseForm, date = null, inclu
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setShowCreateExpenseForm(false);
+                setShowCreateExpenseForm((prevState) => ({
+                    ...prevState,
+                    isShowing: false,
+                    date: null,
+                    isFab: false,
+                }));
             }
         };
 
@@ -48,12 +57,32 @@ export const CreateExpenseForm = ({ setShowCreateExpenseForm, date = null, inclu
         }
 
         isCreated ? alert('Expense successfully created.'): alert('Failed to create Expense.');
-        setRefreshExpenses((prevState) => !prevState);
-        setShowCreateExpenseForm(!isCreated);
+        if (isCreated) {
+            // An expense has been added, refresh any stale lists
+            handleExpenseRefresh();
+            setShowCreateExpenseForm((prevState) => ({
+                ...prevState,
+                isShowing: false,
+                date: null,
+                isFab: false
+            }));
+        }
     }
 
     const handleCloseForm = () => {
-        setShowCreateExpenseForm(false);
+        setShowCreateExpenseForm((prevState) => ({
+            ...prevState,
+            isShowing: false,
+            date: null,
+            isFab: false
+        }));
+    }
+
+    const handleExpenseRefresh = () => {
+        qc.invalidateQueries({ queryKey: ['expenseTrackerExpenses'], type: 'all' });
+        qc.invalidateQueries({ queryKey: ['upcomingExpenses'], type: 'all' });
+        qc.invalidateQueries({ queryKey: ['lateExpenses'], type: 'all' });
+        qc.invalidateQueries({ queryKey: ['allExpenses'], type: 'all' });
     }
 
     return (
@@ -61,7 +90,7 @@ export const CreateExpenseForm = ({ setShowCreateExpenseForm, date = null, inclu
             <div className='modal-dialog'>
                 <div className='modal-content' ref={wrapperRef}>
                     <div className='modal-header'>
-                        <h5 className="modal-title">Create Expense</h5>
+                        <h5 className="modal-title">{date === null ? 'Create Expense' : 'Create Expense For ' + date.substring(0,10)}</h5>
                     </div>
                     <div className='modal-body'>
                         <form>

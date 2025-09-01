@@ -1,7 +1,3 @@
 .expensesTable {
-    width: 30rem;
-}
-
-.expenseAttribute {
-    width: 30rem;
+    max-width: 30rem;
 }

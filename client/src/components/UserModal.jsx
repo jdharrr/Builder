@@ -1,6 +1,6 @@
 import React, {useContext, useEffect, useRef} from 'react';
 
-import {UserContext} from "../providers/user/userContext.jsx";
+import {UserContext} from "../providers/user/UserContext.jsx";
 
 import '../css/userModal.css';
 import {updateDarkMode} from "../api.jsx";

@@ -1,10 +1,3 @@
-.calendarWrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
 .calendarHeader {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
