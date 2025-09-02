@@ -11,14 +11,14 @@ use DateTime;
 use Illuminate\Support\Facades\DB;
 
 class ExpenseService {
-    public function createExpense($name, $cost, $description, $recurrenceRate, $category, $userId, $nextDueDate, $startDate, $endDate): Expense {
+    public function createExpense($name, $cost, $description, $recurrenceRate, $categoryId, $userId, $nextDueDate, $startDate, $endDate): Expense {
         $nextDueDate = new DateTime($nextDueDate);
         $expense = new Expense([
             'name' => $name,
             'cost' => $cost,
             'description' => $description,
             'recurrence_rate' => $recurrenceRate,
-            'category' => $category,
+            'category_id' => $categoryId,
             'user_id' => $userId,
             'next_due_date' => $nextDueDate,
             'start_date' => $startDate,
@@ -35,7 +35,11 @@ class ExpenseService {
     }
 
     public function getAllExpensesByUserId($userId): Collection {
-        return Expense::query()->where('user_id', $userId)->orderBy('created_at')->get();
+        return Expense::query()
+            ->where('user_id', $userId)
+            ->with('category')
+            ->orderBy('created_at')
+            ->get();
     }
 
     public function getExpensesForDashboardCalendar($userId, $month, $year): array {
@@ -56,6 +60,7 @@ class ExpenseService {
                 $query->whereBetween('next_due_date', [$firstDate, $lastDate])
                     ->orWhereIn('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly']);
             })
+            ->with('category')
             ->get();
 
         $mappedExpenses = [];
@@ -110,6 +115,7 @@ class ExpenseService {
                 $query->whereBetween('next_due_date', [$startDateString, $endDate])
                     ->orWhereIn('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly']);
             })
+            ->with('category')
             ->get();
 
         $mappedExpenses = [];
@@ -266,6 +272,7 @@ class ExpenseService {
             ->where('user_id', $userId)
             ->where('active', true)
             ->whereDate('next_due_date', '<', new DateTime())
+            ->with('category')
             ->get();
     }
 }

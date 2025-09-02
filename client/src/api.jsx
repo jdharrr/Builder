@@ -92,7 +92,7 @@ export const postExpense = async (expenseProps) => {
         cost,
         recurrence_rate,
         next_due_date,
-        category,
+        category_id,
         description,
         start_date,
         end_date,
@@ -105,7 +105,7 @@ export const postExpense = async (expenseProps) => {
         cost: cost,
         recurrence_rate: recurrence_rate,
         next_due_date: next_due_date,
-        category: category,
+        category_id: category_id,
         description: description,
         start_date: start_date,
         end_date: end_date,
@@ -194,6 +194,38 @@ export const getAllExpenses = async () =>  {
     const token = getAccessToken();
 
     const result = await axios.get('http://localhost:8000/api/expenses/getAllExpenses', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    })
+
+    return result.data;
+}
+
+export const createExpenseCategory = async (name) =>  {
+    const token = getAccessToken();
+
+    const result = await axios.post('http://localhost:8000/api/expenses/categories/create', {
+        name: name
+    }, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const getAllExpenseCategories = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/categories', {
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,

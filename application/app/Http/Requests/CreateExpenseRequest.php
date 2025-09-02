@@ -22,11 +22,11 @@ class  CreateExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'             => 'required|string|max:255',
-            'cost'             => ['required', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'description'      => 'nullable|string|max:255',
+            'name'             => 'required|string|max:255|regex:/^[\pL\s\'.-]+$/u',
+            'cost'             => 'required|numeric|regex:/^\d+(\.\d{1,2})?$/',
+            'description'      => 'nullable|string|max:255|regex:/^[\pL\pN\s.,!?\-\'"]+$/u',
             'recurrence_rate'  => 'required|string|in:once,daily,weekly,monthly,yearly',
-            'category'         => 'nullable|string',
+            'category_id'      => 'nullable|integer',
             'next_due_date'    => 'required|date_format:Y-m-d',
             'start_date'       => 'required|date_format:Y-m-d',
             'end_date'         => 'nullable|date_format:Y-m-d',

@@ -20,6 +20,7 @@ Route::middleware('auth:sanctum')->prefix('user')->group(function() {
 });
 
 Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
+    // Expenses
     Route::get('/expensesForDashboardCalendar', [ExpenseController::class, 'getExpensesForDashboardCalendar']);
     Route::get('/lateExpenses', [ExpenseController::class, 'getLateExpenses']);
     Route::get('/getUpcomingExpenses', [ExpenseController::class, 'getUpcomingExpenses']);
@@ -30,4 +31,9 @@ Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
     Route::patch('/update/paidStatus', [ExpenseController::class, 'updateExpensePaidStatus']);
 
     Route::delete('/deleteExpense/{id}', [ExpenseController::class, 'deleteExpense']);
+
+    // Expense Categories
+    Route::get('categories', [ExpenseController::class, 'getAllExpenseCategories']);
+
+    Route::post('categories/create', [ExpenseController::class, 'createExpenseCategory']);
 });
