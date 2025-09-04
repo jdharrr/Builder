@@ -7,16 +7,23 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthenticationController;
 
 Route::prefix('auth')->group(function() {
+    Route::get('/validateAccessToken', function() {
+        // If user can access this endpoint, access token is valid
+        return response()->json(['valid' => true]);
+    })->middleware('auth:sanctum');
+
     Route::post('/createUser', [AuthenticationController::class, 'createUser']);
     Route::post('/login', [AuthenticationController::class, 'login']);
 
-    Route::delete('/deleteUser/{id}', [AuthenticationController::class, 'deleteUser'])->middleware('auth:sanctum');
+    Route::delete('/deleteUser/{id}', [AuthenticationController::class, 'deleteUser'])
+        ->where('id', '[0-9]+')
+        ->middleware('auth:sanctum');
 });
 
 
 Route::middleware('auth:sanctum')->prefix('user')->group(function() {
     Route::get('/', [UserController::class, 'getUserById']);
-    Route::patch('/update/settings', [UserController::class, 'updateSettings']);
+    Route::patch('/update/settings/darkMode', [UserController::class, 'updateDarkMode']);
 });
 
 Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
@@ -30,10 +37,19 @@ Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
 
     Route::patch('/update/paidStatus', [ExpenseController::class, 'updateExpensePaidStatus']);
 
-    Route::delete('/deleteExpense/{id}', [ExpenseController::class, 'deleteExpense']);
+    Route::delete('/deleteExpense/{id}', [ExpenseController::class, 'deleteExpense'])
+        ->where('id', '[0-9]+');
 
     // Expense Categories
-    Route::get('categories', [ExpenseController::class, 'getAllExpenseCategories']);
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [ExpenseController::class, 'getAllExpenseCategories']);
 
-    Route::post('categories/create', [ExpenseController::class, 'createExpenseCategory']);
+        Route::post('/create', [ExpenseController::class, 'createExpenseCategory']);
+    });
+
+    // Payments
+    Route::prefix('expensePayments')->group(function () {
+        Route::get('/{date}', [ExpenseController::class, 'getPaymentsForDate'])
+            ->where('date', '^\d{4}-\d{2}-\d{2}$');
+    });
 });

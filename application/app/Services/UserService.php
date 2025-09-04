@@ -2,22 +2,32 @@
 
 namespace App\Services;
 
+use App\Models\EloquentUser;
 use App\Models\User;
 use App\Models\UserSettings;
 
 class UserService {
-    public function getUserById($id): User {
-        return User::query()->find($id)->with(['settings'])->first();
-    }
+    private User $users;
 
-    public function updateSettings($userId, $darkMode): bool
+    private UserSettings $userSettings;
+
+    public function __construct(User $users, UserSettings $userSettings)
     {
-        $settings = UserSettings::query()->where('user_id', $userId)->first();
-        return $this->safeUpdate($settings, ['dark_mode' => $darkMode]);
+        $this->users = $users;
+        $this->userSettings = $userSettings;
     }
 
-    private function safeUpdate($settings, $cols): bool {
-        $clean = array_filter($cols, fn ($val) => !is_null($val));
-        return $settings->update($clean);
+    public function getUserById($id): array
+    {
+        return $this->users->getUserById($id);
+    }
+
+    public function updateDarkMode($requestData): bool
+    {
+        $updatedColumnData = [
+            'dark_mode' => $requestData['darkMode'] ? 1 : 0
+        ];
+
+        return $this->userSettings->updateUserSettings($updatedColumnData, $requestData['userId']);
     }
 }

@@ -6,30 +6,25 @@ use App\Models\ExpenseCategory;
 use Illuminate\Database\Eloquent\Collection;
 
 class ExpenseCategoryService {
-    public function createExpenseCategory($userId, $categoryName): ExpenseCategory {
-        $expenseCategory = ExpenseCategory::query()
-            ->where('user_id', $userId)
-            ->where('name', $categoryName)
-            ->first();
+    private ExpenseCategory $expenseCategories;
 
-        if (!is_null($expenseCategory)) {
-            throw new \Exception('Expense Category already exists.', 500);
-        }
-
-        $category = new ExpenseCategory([
-            'user_id' => $userId,
-            'name' => $categoryName
-        ]);
-
-        if (!$category->save()) {
-            throw new \Exception("An error occurred while trying to save the category");
-        }
-
-        return $category;
+    public function __construct(ExpenseCategory $expenseCategories)
+    {
+        $this->expenseCategories = $expenseCategories;
     }
 
-    public function getAllExpenseCategoriesById($userId): Collection
+    public function createExpenseCategory($requestData): bool
     {
-        return ExpenseCategory::query()->where('user_id', $userId)->get();
+        $categoryData =[
+            'name' => $requestData['name'],
+            'userId' => $requestData['userId']
+        ];
+
+        return $this->expenseCategories->createExpenseCategory($categoryData);
+    }
+
+    public function getAllExpenseCategoriesById($userId): array
+    {
+        return $this->expenseCategories->getExpenseCategoriessByUserId($userId);
     }
 }

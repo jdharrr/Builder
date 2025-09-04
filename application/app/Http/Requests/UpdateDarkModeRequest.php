@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateUserSettingsRequest extends FormRequest
+class UpdateDarkModeRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,7 +22,7 @@ class UpdateUserSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dark_mode' => 'nullable|boolean',
+            'darkMode' => 'required|boolean',
         ];
     }
 }

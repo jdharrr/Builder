@@ -25,11 +25,12 @@ class  CreateExpenseRequest extends FormRequest
             'name'             => 'required|string|max:255|regex:/^[\pL\s\'.-]+$/u',
             'cost'             => 'required|numeric|regex:/^\d+(\.\d{1,2})?$/',
             'description'      => 'nullable|string|max:255|regex:/^[\pL\pN\s.,!?\-\'"]+$/u',
-            'recurrence_rate'  => 'required|string|in:once,daily,weekly,monthly,yearly',
-            'category_id'      => 'nullable|integer',
-            'next_due_date'    => 'required|date_format:Y-m-d',
-            'start_date'       => 'required|date_format:Y-m-d',
-            'end_date'         => 'nullable|date_format:Y-m-d',
+            'recurrenceRate'  => 'required|string|in:once,daily,weekly,monthly,yearly',
+            'categoryId'      => 'nullable|integer',
+            'nextDueDate'    => 'required|date_format:Y-m-d',
+            'startDate'       => 'required|date_format:Y-m-d',
+            'endDate'         => 'nullable|date_format:Y-m-d',
+            'paidOnCreation' => 'required|boolean',
         ];
     }
 }

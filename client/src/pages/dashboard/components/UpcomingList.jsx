@@ -1,43 +1,26 @@
 import React from 'react';
 import {useNavigate} from "react-router-dom";
+import {useMutation, useQueryClient} from "@tanstack/react-query";
 
 import {updateExpensePaidStatus} from "../../../api.jsx";
 
 import '../css/upcomingList.css';
 import '../../../css/global.css';
 
-export const UpcomingList = ({ upcomingExpenses, setUpcomingExpenses }) => {
+// TODO: Checkbox is not working correctly, the api call works however
+export const UpcomingList = ({ upcomingExpenses }) => {
     const navigate = useNavigate();
 
     const weekDays = ['Sun', 'Mon', 'Tues', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentWeekDay = new Date().getDay();
 
+    const togglePaid = useTogglePaid(navigate);
     const handlePaidStatusChange = async (e, date, expense) => {
-        const dueDatePaid = e.target.checked ? date : null;
-        setUpcomingExpenses(prev => {
-            return prev.map(([d, exps]) => [
-                d,
-                d === date
-                    ? exps.map(x => x.id === expense.id ? { ...x, due_date_paid: dueDatePaid } : x)
-                    : exps
-            ]);
-        });
-
-        try {
-            await updateExpensePaidStatus(expense.id, e.target.checked, date);
-        } catch (err) {
-            if (err.status === 401) {
-                navigate('/login');
-            }
-            setUpcomingExpenses(prev => {
-                return prev.map(([d, exps]) => [
-                    d,
-                    d === date
-                        ? exps.map(x => x.id === expense.id ? { ...x, due_date_paid: dueDatePaid } : x)
-                        : exps
-                ]);
-            });
-        }
+         togglePaid.mutate({
+             expenseId: expense.id,
+             date: date,
+             checked: e.target.checked,
+         });
     }
 
     return (
@@ -64,6 +47,7 @@ export const UpcomingList = ({ upcomingExpenses, setUpcomingExpenses }) => {
                                   <input
                                       className="form-check-input"
                                       type="checkbox"
+                                      disabled={togglePaid.isPending}
                                       checked={!!expense.due_date_paid}
                                       onChange={(e) => handlePaidStatusChange(e, date, expense)}
                                   />
@@ -75,4 +59,51 @@ export const UpcomingList = ({ upcomingExpenses, setUpcomingExpenses }) => {
           ))}
       </div>
     );
+}
+
+const useTogglePaid = (navigate) => {
+    const qc = useQueryClient();
+    const queryKey = ['upcomingExpenses'];
+
+    return useMutation({
+        mutationFn: ({ expenseId, checked, date }) =>
+            updateExpensePaidStatus(expenseId, checked, date),
+
+        // optimistic update
+        onMutate: async ({ expenseId, checked, date }) => {
+            await qc.cancelQueries({ queryKey: queryKey });
+
+            const previous = qc.getQueryData(queryKey);
+
+            qc.setQueryData(queryKey, (old) => {
+                if (!old) return old;
+                const dueDatePaid = checked ? date : null;
+
+                const updatedExpenses = Object.entries(old).map(([d, exps]) => [
+                    d,
+                    d === date
+                        ? exps.map((x) =>
+                            x.id === expenseId ? { ...x, due_date_paid: dueDatePaid } : x
+                        )
+                        : exps,
+                ]);
+
+                return Object.fromEntries(updatedExpenses);
+            });
+
+            // pass previous data to onError for rollback
+            return { previous };
+        },
+
+        onError: (err, _vars, ctx) => {
+            if (err?.status === 401) navigate('/login');
+            if (ctx?.previous) {
+                qc.setQueryData(queryKey, ctx.previous);
+            }
+        },
+
+        onSettled: () => {
+            qc.refetchQueries({ queryKey: queryKey });
+        },
+    });
 }

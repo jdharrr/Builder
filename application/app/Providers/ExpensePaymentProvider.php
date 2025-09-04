@@ -2,18 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\ExpensePayment;
 use Illuminate\Support\ServiceProvider;
 
-use App\Services\UserService;
-
-class UserServiceProvider extends ServiceProvider
+class ExpensePaymentProvider extends ServiceProvider
 {
     /**
      * Register services.
      */
     public function register(): void
     {
-        $this->app->scoped(UserService::class);
+        $this->app->scoped(ExpensePayment::class, function ($app) {
+            return new ExpensePayment();
+        });
     }
 
     /**

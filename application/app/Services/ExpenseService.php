@@ -2,66 +2,42 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Collection;
-
 use App\Models\Expense;
-use App\Models\Payment;
+use App\Models\ExpensePayment;
 use DateInterval;
 use DateTime;
-use Illuminate\Support\Facades\DB;
 
 class ExpenseService {
-    public function createExpense($name, $cost, $description, $recurrenceRate, $categoryId, $userId, $nextDueDate, $startDate, $endDate): Expense {
-        $nextDueDate = new DateTime($nextDueDate);
-        $expense = new Expense([
-            'name' => $name,
-            'cost' => $cost,
-            'description' => $description,
-            'recurrence_rate' => $recurrenceRate,
-            'category_id' => $categoryId,
-            'user_id' => $userId,
-            'next_due_date' => $nextDueDate,
-            'start_date' => $startDate,
-        ]);
-        if ($endDate) {
-            $expense->end_date = $endDate;
-        }
+    private Expense $expenses;
+    private ExpensePayment $payments;
 
-        if (!$expense->save()) {
-            throw new \Exception("An error occurred while trying to save the expense");
-        }
-
-        return $expense;
+    public function __construct(Expense $expenses, ExpensePayment $payments) {
+        $this->expenses = $expenses;
+        $this->payments = $payments;
     }
 
-    public function getAllExpensesByUserId($userId): Collection {
-        return Expense::query()
-            ->where('user_id', $userId)
-            ->with('category')
-            ->orderBy('created_at')
-            ->get();
+    public function createExpense(array $expenseData): bool {
+        return $this->expenses->createExpense($expenseData);
     }
 
-    public function getExpensesForDashboardCalendar($userId, $month, $year): array {
+    public function getAllExpensesByUserId(string $userId): array {
+        return $this->expenses->getAllExpensesByUserId($userId);
+    }
+
+    public function getExpensesForDashboardCalendar(array $requestData): array {
+        $year = $requestData['year'];
+        $month = $requestData['month'];
+
         $firstDate = new DateTime($year . '-' . $month . '-01');
         $daysInMonth = $firstDate->format('t');
-        $lastDate = new DateTime($year . '-' . $month . '-' . $daysInMonth);
 
-        $expenses =  Expense::query()
-            ->select('expenses.*', DB::raw('IF(DATE(next_due_date) < CURDATE(), TRUE, FALSE) as is_late'))
-            ->where('user_id', $userId)
-            ->where('active', true)
-            ->whereDate('start_date', '<=', $lastDate)
-            ->where(function ($query) use ($firstDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $firstDate);
-            })
-            ->where(function ($query) use ($firstDate, $lastDate) {
-                $query->whereBetween('next_due_date', [$firstDate, $lastDate])
-                    ->orWhereIn('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly']);
-            })
-            ->with('category')
-            ->get();
+        $data = [
+            'userId' => $requestData['userId'],
+            'firstDate' => $year . '-' . $month . '-01',
+            'lastDate' => $year . '-' . $month . '-' . $daysInMonth,
+        ];
+
+        $expenses = $this->expenses->getExpensesForDashboard($data);
 
         $mappedExpenses = [];
         for ($i = 1; $i <= $daysInMonth; $i++) {
@@ -69,7 +45,7 @@ class ExpenseService {
             $dateObj = new DateTime($date);
             $mappedExpenses[$date] = [];
             foreach ($expenses as $expense) {
-                $dueDateObj = new DateTime($expense->next_due_date);
+                $dueDateObj = new DateTime($expense['next_due_date']);
                 if ($this->expenseIsForDate($expense, $dateObj, $dueDateObj)) {
                     $mappedExpenses[$date][] = $expense;
                 }
@@ -81,7 +57,6 @@ class ExpenseService {
 
     public function getUpcomingExpenses($userId): array {
         $startDateObj = new DateTime();
-        $startDateString = $startDateObj->format('Y-m-d');
         $startDateYear = (int)$startDateObj->format('Y');
         $startDateMonth = (int)$startDateObj->format('m');
         $startDateDay = (int)$startDateObj->format('j');
@@ -101,22 +76,13 @@ class ExpenseService {
             $endDateMonth = 1;
         }
 
-        $endDate = "{$endDateYear}-{$endDateMonth}-{$endDateDay}";
-        $expenses = Expense::query()
-            ->select('expenses.*', DB::raw('IF(DATE(next_due_date) < CURDATE(), TRUE, FALSE) as is_late'))
-            ->where('user_id', $userId)
-            ->where('active', true)
-            ->whereDate('start_date', '<=', $endDate)
-            ->where(function ($query) use ($startDateString) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $startDateString);
-            })
-            ->where(function ($query) use ($startDateString, $endDate) {
-                $query->whereBetween('next_due_date', [$startDateString, $endDate])
-                    ->orWhereIn('recurrence_rate', ['daily', 'weekly', 'monthly', 'yearly']);
-            })
-            ->with('category')
-            ->get();
+        $data = [
+            'userId' => $userId,
+            'firstDate' => $startDateObj->format('Y-m-d'),
+            'lastDate' => "{$endDateYear}-{$endDateMonth}-{$endDateDay}",
+        ];
+
+        $expenses = $this->expenses->getExpensesForDashboard($data);
 
         $mappedExpenses = [];
         for ($i = $startDateDay; $i < $startDateDay + 7; $i++) {
@@ -137,16 +103,16 @@ class ExpenseService {
             $dateObj = new DateTime($date);
             $mappedExpenses[$date] = [];
             foreach ($expenses as $expense) {
-                $dueDateObj = new DateTime($expense->next_due_date);
+                $dueDateObj = new DateTime($expense['next_due_date']);
                 if (!$this->expenseIsForDate($expense, $dateObj, $dueDateObj)) {
                     continue;
                 }
 
                 $mappedExpenses[$date][] = $expense;
-                $paymentsForDate = $this->getPaymentsForDate($date, $userId);
-                $paymentsMap = array_column($paymentsForDate->toArray(), 'due_date_paid', 'expense_id');
-                if (isset($paymentsMap[$expense->id])) {
-                    $expense->due_date_paid = $paymentsMap[$expense->id];
+                $paymentsForDate = $this->getPaymentsForDate(['dueDatePaid' => $date, 'userId' => $userId]);
+                $paymentsMap = array_column($paymentsForDate, 'due_date_paid', 'expense_id');
+                if (isset($paymentsMap[$expense['id']])) {
+                    $expense['due_date_paid'] = $paymentsMap[$expense['id']];
                 }
             }
         }
@@ -154,17 +120,17 @@ class ExpenseService {
         return $mappedExpenses;
     }
 
-    public function expenseIsForDate($expense, $dateObj, $dueDateObj): bool {
-        $startDateObj = new DateTime($expense->start_date);
-        $endDateObj = $expense->end_date ? new DateTime($expense->end_date) : null;
+    public function expenseIsForDate(array $expense, DateTime $dateObj, DateTime $dueDateObj): bool {
+        $startDateObj = new DateTime($expense['start_date']);
+        $endDateObj = $expense['end_date'] ? new DateTime($expense['end_date']) : null;
         if ($startDateObj > $dateObj || (isset($endDateObj) && $endDateObj < $dateObj)) {
             return false;
         }
 
         $diffDays = $dateObj->diff($dueDateObj)->days;
-        switch ($expense->recurrence_rate) {
+        switch ($expense['recurrence_rate']) {
             case 'once':
-                if ($expense->next_due_date == $dateObj) {
+                if (substr($expense['next_due_date'], 0, 10) == $dateObj->format('Y-m-d')) {
                     return true;
                 }
                 break;
@@ -190,51 +156,47 @@ class ExpenseService {
         return false;
     }
 
-    public function deleteExpense($expenseId): bool {
-        if (Expense::destroy($expenseId)) {
-            return true;
-        }
-
-        return false;
+    public function deleteExpense(int $expenseId, int $userId): bool {
+        return $this->expenses->deleteExpense($expenseId, $userId);
     }
 
-    public function updateExpensePaidStatus($expenseId, $isPaid, $dueDate): void {
-        $expense = Expense::query()->find($expenseId)->firstOrFail();
-        if ($isPaid) {
-            $payment = new Payment(
-                [
-                    'expense_id' => $expenseId,
-                    'user_id' => $expense->user->id,
-                    'cost' => $expense->cost,
-                    'due_date_paid' => $dueDate,
-                    'payment_date' => new Datetime(),
-                ]
-            );
-            try {
-                $payment->save();
-            } catch (\Exception $e) {
-                echo $e->getMessage();
-            }
-        } else {
-            try {
-                $payment = Payment::query()
-                    ->where('expense_id', $expenseId)
-                    ->whereDate('due_date_paid', $dueDate)
-                    ->select('id')
-                    ->firstOrFail();
-            } catch (\Exception $e) {
-                echo $e->getMessage();
-            }
+    public function updateExpensePaidStatus(array $requestData): void {
+        $expenseId = $requestData['expenseId'];
+        $isPaid = $requestData['isPaid'];
+        $dueDate = $requestData['dueDate'];
+        $userId = $requestData['userId'];
 
-            Payment::destroy($payment->id);
+        $expense = $this->expenses->getExpenseById($expenseId, $userId);
+        if (!$expense) {
+            throw new \Exception("Expense not found");
         }
 
-        if (new DateTime($dueDate) == new DateTime($expense->next_due_date)) {
+        if ($isPaid) {
+            $paymentData = [
+                'expenseId' => $expense['id'],
+                'userId' => $expense['user_id'],
+                'cost' => $expense['cost'],
+                'dueDatePaid' => $dueDate,
+                'paymentDate' => new Datetime(),
+            ];
+
+            $this->payments->createPayment($paymentData);
+        } else {
+            $paymentData = [
+                'expenseId' => $expense['id'],
+                'dueDate' => $dueDate,
+                'userId' => $expense['user_id'],
+            ];
+
+            $this->payments->deletePaymentForDueDate($paymentData);
+        }
+
+        if (new DateTime($dueDate) == (new DateTime($expense['next_due_date']))->format('Y-m-d')) {
             $this->updateNextDueDate($expense, $isPaid);
         }
     }
 
-    private function updateNextDueDate($expense, $isFuture): void {
+    private function updateNextDueDate(array $expense, bool $isFuture): void {
         $intervalMap = [
             'daily' => '1D',
             'weekly' => '1W',
@@ -242,37 +204,29 @@ class ExpenseService {
             'yearly' => '1Y',
         ];
 
-        $rate = $expense->recurrence_rate;
+        $rate = $expense['recurrence_rate'];
         $interval = $intervalMap[$rate] ?? null;
 
         if ($interval) {
-            $currDate = $expense->next_due_date->copy();
+            $currDate = $expense['next_due_date']->copy();
             $dateInterval = new DateInterval("P{$interval}");
 
             $nextDate = $isFuture ? $currDate->add($dateInterval) : $currDate->sub($dateInterval);
-            if ($expense->end_date && $nextDate > $expense->end_date) {
-                $expense->update(['active' => false]);
+            if ($expense['end_date'] && $nextDate > $expense['end_date']) {
+                $this->expenses->updateExpense(['active' => false], $expense['id'], $expense['user_id']);
             } else {
-                $expense->update(['next_due_date' => $nextDate]);
+                $this->expenses->updateExpense(['next_due_date' => $nextDate], $expense['id'], $expense['user_id']);
             }
         } else {
-            $expense->update(['active' => false]);
+            $this->expenses->updateExpense(['active' => false], $expense['id'], $expense['user_id']);
         }
     }
 
-    private function getPaymentsForDate($date, $userId) : Collection {
-        return Payment::query()
-            ->where('user_id', $userId)
-            ->whereDate('due_date_paid', $date)
-            ->get();
+    private function getPaymentsForDate(array $requestData): array {
+        return $this->payments->getPaymentsForDate($requestData);
     }
 
-    public function getLateExpenses($userId): Collection {
-        return Expense::query()
-            ->where('user_id', $userId)
-            ->where('active', true)
-            ->whereDate('next_due_date', '<', new DateTime())
-            ->with('category')
-            ->get();
+    public function getLateExpenses(int $userId): array {
+        return $this->expenses->getLateExpenses($userId);
     }
 }

@@ -22,7 +22,7 @@ class  CreateExpenseCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'             => 'required|string|max:50|regex:/^[\pL\s\'-]+$/u',
+            'name' => 'required|string|max:50|regex:/^[\pL\s\'-]+$/u',
         ];
     }
 }

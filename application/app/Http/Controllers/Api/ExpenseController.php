@@ -20,47 +20,55 @@ class ExpenseController extends Controller
     private ExpenseService $expenseService;
     private ExpenseCategoryService $expenseCategoryService;
 
-    public function __construct(ExpenseService $expenseService, ExpenseCategoryService $expenseCategoryService) {
+    public function __construct(ExpenseService $expenseService, ExpenseCategoryService $expenseCategoryService)
+    {
         $this->expenseService = $expenseService;
         $this->expenseCategoryService = $expenseCategoryService;
     }
 
     public function index(): void {}
 
-    public function createExpense(CreateExpenseRequest $request): Expense {
+    public function createExpense(CreateExpenseRequest $request): bool
+    {
+        $expenseData = [
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'categoryId' => $request->input('categoryId'),
+            'cost' => $request->input('cost'),
+            'recurrenceRate' => $request->input('recurrenceRate'),
+            'userId' => $request->user()->id,
+            'nextDueDate' => $request->input('nextDueDate'),
+            'startDate' => $request->input('startDate'),
+            'endDate' => $request->input('endDate'),
+            'paidOnCreation' => $request->input('paidOnCreation'),
+        ];
+
         try {
-            return $this->expenseService->createExpense(
-                $request->input('name'),
-                $request->input('cost'),
-                $request->input('description'),
-                $request->input('recurrence_rate'),
-                $request->input('category_id'),
-                $request->user()->id,
-                $request->input('next_due_date'),
-                $request->input('start_date'),
-                $request->input('end_date')
-            );
+            return $this->expenseService->createExpense($expenseData);
         } catch (\Exception $e) {
             throw new \Exception('Failed to create expense.', 500);
         }
     }
 
-    public function getExpensesForDashboardCalendar(GetExpensesForDashboardCalendarRequest $request): array {
-        $userId = $request->user()->id;
+    public function getExpensesForDashboardCalendar(GetExpensesForDashboardCalendarRequest $request): array
+    {
+        $requestData = [
+            'userId' => $request->user()->id,
+            'year' => $request->input('year'),
+            'month' => $request->input('month'),
+        ];
+
         try {
-            return $this->expenseService->getExpensesForDashboardCalendar(
-                $userId,
-                $request->input('month'),
-                $request->input('year')
-            );
-        } catch (\Exception) {
+            return $this->expenseService->getExpensesForDashboardCalendar($requestData);
+        } catch (\Exception $e) {
             throw new \Exception('Failed to get expenses in the range.', 500);
         }
     }
 
-    public function deleteExpense($expenseId): bool {
+    public function deleteExpense(Request $request, $expenseId): bool
+    {
         try {
-            return $this->expenseService->deleteExpense($expenseId);
+            return $this->expenseService->deleteExpense($expenseId, $request->user()->id);
         } catch (\Exception) {
             throw new \Exception('Failed to delete expense.', 500);
         }
@@ -68,9 +76,16 @@ class ExpenseController extends Controller
 
     public function updateExpensePaidStatus(UpdateExpensePaidStatusRequest $request): JsonResponse
     {
+        $requestData = [
+            'expenseId' => $request->input('expenseId'),
+            'isPaid' => $request->input('isPaid'),
+            'dueDate' => $request->input('dueDate'),
+            'userId' => $request->user()->id,
+        ];
+
         try {
-            $this->expenseService->updateExpensePaidStatus($request->input('expense_id'), $request->input('is_paid'), $request->input('due_date'));
-        } catch (\Exception) {
+            $this->expenseService->updateExpensePaidStatus($requestData);
+        } catch (\Exception $e) {
             throw new \Exception('Failed to update expense paid.', 500);
         }
 
@@ -79,7 +94,8 @@ class ExpenseController extends Controller
         ]);
     }
 
-    public function getLateExpenses(Request $request): Collection {
+    public function getLateExpenses(Request $request): array
+    {
         try {
             return $this->expenseService->getLateExpenses($request->user()->id);
         } catch (\Exception) {
@@ -96,7 +112,7 @@ class ExpenseController extends Controller
         }
     }
 
-    public function getAllExpenses(Request $request): Collection
+    public function getAllExpenses(Request $request): array
     {
         try {
             return $this->expenseService->getAllExpensesByUserId($request->user()->id);
@@ -105,16 +121,16 @@ class ExpenseController extends Controller
         }
     }
 
-    public function createExpenseCategory(CreateExpenseCategoryRequest $request): ExpenseCategory
+    public function createExpenseCategory(CreateExpenseCategoryRequest $request): bool
     {
         try {
-            return $this->expenseCategoryService->createExpenseCategory($request->user()->id, $request->input('name'));
+            return $this->expenseCategoryService->createExpenseCategory(['userId' => $request->user()->id, 'name' => $request->input('name')]);
         } catch (\Exception) {
             throw new \Exception('Failed to create expense category.', 500);
         }
     }
 
-    public function getAllExpenseCategories(Request $request): Collection
+    public function getAllExpenseCategories(Request $request): array
     {
         try {
             return $this->expenseCategoryService->getAllExpenseCategoriesById($request->user()->id);

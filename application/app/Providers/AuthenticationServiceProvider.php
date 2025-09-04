@@ -13,9 +13,7 @@ class AuthenticationServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->scoped(AuthenticationService::class, function ($app) {
-            return new AuthenticationService();
-        });
+        $this->app->scoped(AuthenticationService::class);
     }
 
     /**

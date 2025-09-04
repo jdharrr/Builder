@@ -2,44 +2,46 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\Hash;
 
-use App\Models\User;
+use App\Models\EloquentUser;
 
 class AuthenticationService {
-    public function createUser($username, $email, $password): User {
-        $usernameExists = User::query()->where('username', $username)->first();
-        if ($usernameExists) {
-            throw new Exception('Username already exists');
-        }
+    private User $users;
 
-        $password_hash = Hash::make($password);
-        $user =  new User(['username' => $username, 'email' => $email, 'password_hash' => $password_hash]);
-        if (!$user->save()) {
-            throw new Exception('Failed to create user.');
-        }
-
-        $user->settings()->create();
-
-        return $user->fresh('settings');
+    public function __construct(User $users)
+    {
+        $this->users = $users;
     }
 
-    public function deleteUser($userId): bool {
-        if (User::destroy($userId)) {
+    public function createUser($requestData): string
+    {
+        $userData = [
+            'username' => $requestData['username'],
+            'email' => $requestData['email'],
+            'password' => $requestData['password'],
+        ];
+        $userId = $this->users->createUser($userData);
+        $user = $this->users->getEloquentUserById($userId);
+
+        return $user->createToken('accessToken')->accessToken;
+    }
+
+    public function deleteUser($userId): bool
+    {
+        if (EloquentUser::destroy($userId)) {
             return true;
         }
 
         return false;
     }
 
-    public function login($username, $password): string
+    public function login($requestData): string
     {
-        $user = User::query()->where('username', $username)->first();
-        if (!$user) {
-            throw new Exception('Username and password do not match.');
-        }
-        if (!Hash::check($password, $user->password_hash)) {
+        $user = $this->users->getEloquentUserByUsername($requestData['username']);
+        if (!Hash::check($requestData['password'], $user->password_hash)) {
             throw new Exception('Username and password do not match.');
         }
 

@@ -10,9 +10,9 @@ export const UpcomingExpensesSection = () => {
     const navigate = useNavigate();
 
     const { data: upcomingExpenses = [] } = useQuery({
-        queryKey: ['upcomingExpenses'],
+        queryKey: ['upcomingExpenses', ],
         queryFn: async () => {
-            return await getUpcomingExpenses();
+            return await getUpcomingExpenses() ?? [];
         },
         suspense: true,
         staleTime: 60_000,
@@ -33,7 +33,7 @@ export const UpcomingExpensesSection = () => {
     const { data: lateExpenses = [] } = useQuery({
         queryKey: ['lateExpenses'],
         queryFn: async () => {
-            return await fetchLateExpenses();
+            return await fetchLateExpenses() ?? [];
         },
         suspense: true,
         staleTime: 60_000,

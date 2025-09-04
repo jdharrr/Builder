@@ -2,18 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 
-use App\Services\UserService;
-
-class UserServiceProvider extends ServiceProvider
+class UserProvider extends ServiceProvider
 {
     /**
      * Register services.
      */
     public function register(): void
     {
-        $this->app->scoped(UserService::class);
+        $this->app->scoped(User::class, function ($app) {
+            return new User();
+        });
     }
 
     /**

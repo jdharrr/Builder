@@ -22,9 +22,9 @@ class UpdateExpensePaidStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'expense_id' => 'required|integer',
-            'is_paid' => 'required|boolean',
-            'due_date' => 'required|date:Y-m-d',
+            'expenseId' => 'required|integer',
+            'isPaid' => 'required|boolean',
+            'dueDate' => 'required|date:Y-m-d',
         ];
     }
 }

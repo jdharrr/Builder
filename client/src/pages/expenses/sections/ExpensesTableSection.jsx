@@ -14,7 +14,7 @@ export const ExpensesTableSection = () => {
     const { data: expenses = [] } = useQuery({
         queryKey: ['allExpenses'],
         queryFn: async () => {
-            return await getAllExpenses();
+            return await getAllExpenses() ?? [];
         },
         suspense: true,
         staleTime: 60_000,

@@ -2,28 +2,33 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\UpdateDarkModeRequest;
 use Illuminate\Http\Request;
 
-use App\Http\Requests\UpdateUserSettingsRequest;
-use App\Models\User;
 use App\Services\UserService;
 
 class UserController extends Controller
 {
     private UserService $service;
 
-    public function __construct(UserService $userService) {
+    public function __construct(UserService $userService)
+    {
         $this->service = $userService;
     }
 
-    public function getUserById(Request $request): User {
-        return $this->service->getUserById($request->user()->id);
-    }
-
-    public function updateSettings(UpdateUserSettingsRequest $request): bool
+    public function getUserById(Request $request): array
     {
         try {
-            return $this->service->updateSettings($request->user()->id, $request->input('dark_mode'));
+            return $this->service->getUserById($request->user()->id);
+        } catch (\Exception $e) {
+            throw new \Exception("Failed to get user");
+        }
+    }
+
+    public function updateDarkMode(UpdateDarkModeRequest $request): bool
+    {
+        try {
+            return $this->service->updateDarkMode(['userId' => $request->user()->id, 'darkMode' => $request->input('darkMode')]);
         } catch(\Exception $e) {
             throw new \Exception('Failed to update dark mode', 500);
         }

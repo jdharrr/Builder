@@ -1,12 +1,38 @@
-import React, {useContext, useEffect, useRef} from 'react';
-
-import {UserContext} from "../providers/user/UserContext.jsx";
+import React, {useEffect, useRef, useState} from 'react';
 
 import '../css/userModal.css';
-import {updateDarkMode} from "../api.jsx";
+import {fetchUser, updateDarkMode} from "../api.jsx";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useNavigate} from "react-router-dom";
 
+// TODO: dark mode switch is not turning off/on. The api call works however
 export const UserModal = ({handleClose}) => {
-    const { user, setUser } = useContext(UserContext);
+    const navigate = useNavigate();
+
+    const { data: user = {} } = useQuery({
+        queryKey: ['user'],
+        queryFn: async () => {
+            return await fetchUser();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (error?.status === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => {
+            if (error?.status === 401) {
+                navigate('/login');
+            }
+        }
+    });
+
+    const [isLoading, setIsLoading] = useState(false);
+    useEffect(() => {
+        if (!user) {
+            setIsLoading(true);
+        }
+    }, [user])
 
     const wrapperRef = useRef(null);
     useEffect(() => {
@@ -20,26 +46,11 @@ export const UserModal = ({handleClose}) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [handleClose]);
 
-    const handleDarkModeChange = async (isChecked) => {
-        setUser((prevUser) => ({
-            ...prevUser,
-            settings: {
-                ...prevUser.settings,
-                dark_mode: isChecked
-            }
-        }))
-
-        try {
-            await updateDarkMode(isChecked);
-        } catch {
-            setUser(prev => ({
-                ...prev,
-                settings: {
-                    ...prev.settings,
-                    dark_mode: !isChecked,
-                },
-            }));
-        }
+    const toggleDarkMode = useToggleDarkMode(navigate);
+    const handleDarkModeChange = (isChecked) => {
+        toggleDarkMode.mutate({
+            isChecked: isChecked
+        });
     }
 
     return (
@@ -71,28 +82,40 @@ export const UserModal = ({handleClose}) => {
                             <div className="col-9">
                                 <div className={'tab-content'} >
                                     <div className="tab-pane show active" id={'general-tab-content'} role={'tabpanel'}>
-                                        <div className={'list-group'}>
-                                            <div className={'list-group-item'}>
-                                                {`Username: ${user.username}`}
-                                            </div >
-                                            <div className={'list-group-item'}>
-                                                {`Email: ${user.email}`}
-                                            </div>
-                                            <div className={'list-group-item'}>
-                                                {`Created: ${user.created_at.substring(0, 10)}`}
-                                            </div>
-                                            <div className={'list-group-item'}>
-                                                {`Last Updated: ${user.updated_at.substring(0,10)}`}
-                                            </div>
-                                        </div>
+                                        { !isLoading ?
+                                            (
+                                                <div className={'list-group'}>
+                                                    <div className={'list-group-item'}>
+                                                        {`Username: ${user.username}`}
+                                                    </div >
+                                                    <div className={'list-group-item'}>
+                                                        {`Email: ${user.email}`}
+                                                    </div>
+                                                    <div className={'list-group-item'}>
+                                                        {`Created: ${user.created_at.substring(0, 10)}`}
+                                                    </div>
+                                                    <div className={'list-group-item'}>
+                                                        {`Last Updated: ${user.updated_at.substring(0,10)}`}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p>Loading...</p>
+                                            )
+                                        }
                                     </div>
                                     <div className="tab-pane" id={'settings-tab-content'} role={'tabpanel'}>
-                                        <div className={'form-check form-switch'}>
-                                            <input className={'form-check-input'} type='checkbox' role={'switch'} checked={!!user?.settings?.dark_mode} onChange={(e) => handleDarkModeChange(e.target.checked)}/>
-                                            <label className="form-check-label">
-                                                Dark Mode
-                                            </label>
-                                        </div>
+                                        { !isLoading ?
+                                            (
+                                                <div className={'form-check form-switch'}>
+                                                    <input className={'form-check-input'} type='checkbox' role={'switch'} checked={user.dark_mode} onChange={(e) => handleDarkModeChange(e.target.checked)}/>
+                                                    <label className="form-check-label">
+                                                        Dark Mode
+                                                    </label>
+                                                </div>
+                                            ) : (
+                                                <p>Loading...</p>
+                                            )
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -105,4 +128,40 @@ export const UserModal = ({handleClose}) => {
             </div>
         </div>
     );
+}
+
+const useToggleDarkMode = (navigate) => {
+    const qc = useQueryClient();
+    const queryKey = ['user'];
+
+    return useMutation({
+        mutationFn: (isChecked) => updateDarkMode(isChecked),
+        onMutate: async (isChecked) => {
+            await qc.cancelQueries({ queryKey: queryKey });
+
+            const previous = qc.getQueryData(queryKey);
+
+            qc.setQueryData(queryKey, (old) =>
+                old
+                    ? {
+                        ...old,
+                        dark_mode: isChecked
+                    }
+                    : old
+            );
+            return { previous };
+        },
+        onError: (_err, _isChecked, context) => {
+            if (_err.status === 401) {
+                navigate('/login');
+            }
+
+            if (context?.previous) {
+                qc.setQueryData(queryKey, context.previous);
+            }
+        },
+        onSettled: () => {
+            qc.refetchQueries({ queryKey: queryKey });
+        },
+    });
 }

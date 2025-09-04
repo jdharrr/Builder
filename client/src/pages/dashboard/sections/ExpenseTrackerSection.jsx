@@ -19,7 +19,7 @@ export const ExpenseTrackerSection = () => {
     const { data: expenses = [] } = useQuery({
         queryKey: ['expenseTrackerExpenses', selectedMonth, selectedYear],
         queryFn: async () => {
-            return await fetchExpensesForCalendar(selectedMonth + 1, selectedYear);
+            return await fetchExpensesForCalendar(selectedMonth + 1, selectedYear) ?? [];
         },
         suspense: true,
         staleTime: 60_000,

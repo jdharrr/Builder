@@ -13,9 +13,7 @@ class ExpenseServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->scoped(ExpenseService::class, function ($app) {
-            return new ExpenseService();
-        });
+        $this->app->scoped(ExpenseService::class);
     }
 
     /**

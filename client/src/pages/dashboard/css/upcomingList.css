@@ -1,5 +1,6 @@
 .upcomingList {
-    height: 28rem;
+    min-height: 25rem;
+    max-height: 28rem;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-gutter: stable;
