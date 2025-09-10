@@ -1,18 +1,37 @@
 import React from 'react';
 import {useNavigate} from "react-router-dom";
-import {useMutation, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 
-import {updateExpensePaidStatus} from "../../../api.jsx";
+import {getUpcomingExpenses, updateExpensePaidStatus} from "../../../api.jsx";
 
 import '../css/upcomingList.css';
 import '../../../css/global.css';
+import {getStatus} from "../../../util.jsx";
 
-// TODO: Checkbox is not working correctly, the api call works however
-export const UpcomingList = ({ upcomingExpenses }) => {
+export const UpcomingList = () => {
     const navigate = useNavigate();
 
     const weekDays = ['Sun', 'Mon', 'Tues', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentWeekDay = new Date().getDay();
+
+    const { data: upcomingExpenses = [] } = useSuspenseQuery({
+        queryKey: ['upcomingExpenses', ],
+        queryFn: async () => {
+            return await getUpcomingExpenses() ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
+                navigate('/login');
+            }
+        }
+    })
 
     const togglePaid = useTogglePaid(navigate);
     const handlePaidStatusChange = async (e, date, expense) => {
@@ -96,7 +115,7 @@ const useTogglePaid = (navigate) => {
         },
 
         onError: (err, _vars, ctx) => {
-            if (err?.status === 401) navigate('/login');
+            if (getStatus(err) === 401) navigate('/login');
             if (ctx?.previous) {
                 qc.setQueryData(queryKey, ctx.previous);
             }

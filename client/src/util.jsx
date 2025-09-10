@@ -1,0 +1,2 @@
+export const getStatus = (e) =>
+    e?.response?.status ?? e?.status ?? e?.cause?.status ?? null;

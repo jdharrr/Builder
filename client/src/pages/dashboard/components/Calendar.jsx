@@ -1,12 +1,18 @@
 import React, {useState, useEffect, useContext} from 'react';
+import {useNavigate} from "react-router-dom";
 
 import { Selector } from "./Selector.jsx"
 import {CreateExpenseFormContext} from "../../../providers/expenses/CreateExpenseFormContext.jsx";
 import {ViewExpensesModalContext} from "../../../providers/expenses/ViewExpensesModalContext.jsx";
+import {useSuspenseQuery} from "@tanstack/react-query";
+import {fetchExpensesForCalendar} from "../../../api.jsx";
+import {getStatus} from "../../../util.jsx";
 
 import '../css/calendar.css';
 
-export const Calendar = ({expenses, selectedYear, selectedMonth}) => {
+export const Calendar = ({selectedYear, selectedMonth}) => {
+    const navigate = useNavigate();
+
     const { setShowCreateExpenseForm } = useContext(CreateExpenseFormContext);
     const { setShowViewExpensesModal } = useContext(ViewExpensesModalContext);
 
@@ -14,8 +20,26 @@ export const Calendar = ({expenses, selectedYear, selectedMonth}) => {
     const [showActionSelector, setShowActionSelector] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
 
-    const [emptyDaysInMonth, setEmptyDaysInMonth] = useState([]);
+    const { data: expenses = [] } = useSuspenseQuery({
+        queryKey: ['expenseTrackerExpenses', selectedMonth, selectedYear],
+        queryFn: async () => {
+            return await fetchExpensesForCalendar(selectedMonth + 1, selectedYear) ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
 
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
+                navigate('/login');
+            }
+        },
+    });
+
+    const [emptyDaysInMonth, setEmptyDaysInMonth] = useState([]);
     useEffect(() => {
         const emptyDays = [];
         const firstDayOfFirstWeek = new Date(selectedYear, selectedMonth, 1).getDay();

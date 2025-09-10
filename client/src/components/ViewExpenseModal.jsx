@@ -1,6 +1,6 @@
 import React, {useContext, useEffect, useRef} from 'react';
 
-import {ViewExpenseModalContext} from "../../../providers/expenses/ViewExpenseModalContext.jsx";
+import {ViewExpenseModalContext} from "../providers/expenses/ViewExpenseModalContext.jsx";
 
 export const ViewExpenseModal = () => {
     const {showViewExpenseModal, setShowViewExpenseModal} = useContext(ViewExpenseModalContext);

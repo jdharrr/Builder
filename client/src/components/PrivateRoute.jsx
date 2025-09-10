@@ -1,22 +1,7 @@
-import { useNavigate } from "react-router-dom";
-import {useEffect} from "react";
+import {Navigate, Outlet} from "react-router-dom";
 
-export const PrivateRoute = ({children, authenticated}) => {
-    const navigate = useNavigate();
+export const PrivateRoute = ({authenticated}) => {
+    if (authenticated == null) return;
 
-    useEffect(() => {
-        if (authenticated === null) {
-            return;
-        }
-
-        if (!authenticated) {
-            navigate('/login');
-        }
-    }, [navigate, authenticated]);
-
-    return (
-        <>
-            {children}
-        </>
-    );
+    return authenticated ? <Outlet /> : <Navigate to="/login" replace />;
 }

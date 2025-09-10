@@ -8,6 +8,7 @@ import {fetchUser, validateToken} from "./api.jsx";
 import {BuilderLayout} from "./layouts/BuilderLayout.jsx";
 
 import './css/app.css';
+import {getStatus} from "./util.jsx";
 
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage.jsx"));
 const ExpensesPage = lazy(() => import("./pages/expenses/ExpensesPage.jsx"));
@@ -31,12 +32,14 @@ export const BuilderApp = () => {
         queryFn: async () => {
             return await fetchUser();
         },
+        enabled: authenticated ?? false,
         staleTime: 60_000,
+        throwOnError: false,
         retry: (failureCount, error) => {
-            if (error?.status === 401) return false;
+            if (getStatus(error) === 401) return false;
 
             return failureCount < 2;
-        },
+        }
     });
 
     return (
@@ -50,34 +53,30 @@ export const BuilderApp = () => {
                                    <LoginPage setAuthenticated={setAuthenticated} />
                                }
                         />
-                        <Route
-                            exact path="/dashboard"
-                            element={
-                                <PrivateRoute authenticated={authenticated} >
+                        <Route element={<PrivateRoute authenticated={authenticated} />} >
+                            <Route
+                                exact path="/dashboard"
+                                element={
                                     <BuilderLayout>
                                         <DashboardPage />
                                     </BuilderLayout>
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route path="/expenses"
-                               element={
-                                   <PrivateRoute authenticated={authenticated} >
+                                }
+                            />
+                            <Route path="/expenses"
+                                   element={
                                        <BuilderLayout>
                                            <ExpensesPage />
                                        </BuilderLayout>
-                                   </PrivateRoute>
-                               }
-                        />
-                        <Route path="/totals"
-                               element={
-                                   <PrivateRoute authenticated={authenticated} >
+                                   }
+                            />
+                            <Route path="/totals"
+                                   element={
                                        <BuilderLayout>
                                            <TotalsPage />
                                        </BuilderLayout>
-                                   </PrivateRoute>
-                               }
-                        />
+                                   }
+                            />
+                        </Route>
                     </Routes>
                 </Suspense>
             </div>

@@ -1,7 +1,7 @@
 import React, {useContext} from 'react';
 
 import {ExpensesTableSection} from "./sections/ExpensesTableSection.jsx";
-import {ViewExpenseModal} from "./components/ViewExpenseModal.jsx";
+import {ViewExpenseModal} from "../../components/ViewExpenseModal.jsx";
 import {ViewExpenseModalContext} from "../../providers/expenses/ViewExpenseModalContext.jsx";
 
 import './css/expensesPage.css';

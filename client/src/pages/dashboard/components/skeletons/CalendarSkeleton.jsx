@@ -19,7 +19,6 @@ export const CalendarSkeleton = () => {
                         <span className="placeholder col-6" />
                     </div>
                 ))}
-                <span className="visually-hidden">Loading calendar…</span>
             </div>
         </div>
     );

@@ -1,33 +1,35 @@
 import React, {useContext} from 'react';
 import {useNavigate} from "react-router-dom";
-import {useQuery} from "@tanstack/react-query";
+import {useSuspenseQuery} from "@tanstack/react-query";
 
 import {getAllExpenses} from '../../../api.jsx';
 import {ViewExpenseModalContext} from "../../../providers/expenses/ViewExpenseModalContext.jsx";
 
 import '../css/expensesTableSection.css';
+import {getStatus} from "../../../util.jsx";
 
+//TODO: Fix exception handling on 401 after token expires
+// Currently it causes the components to error out
 export const ExpensesTableSection = () => {
     const navigate = useNavigate();
     const { setShowViewExpenseModal } = useContext(ViewExpenseModalContext);
 
-    const { data: expenses = [] } = useQuery({
+    const { data: expenses = [] } = useSuspenseQuery({
         queryKey: ['allExpenses'],
         queryFn: async () => {
             return await getAllExpenses() ?? [];
         },
-        suspense: true,
         staleTime: 60_000,
         retry: (failureCount, error) => {
-            if (error?.status === 401) return false;
+            if (getStatus(error) === 401) return false;
 
             return failureCount < 2;
         },
-        throwOnError: (error) => {
-            if (error?.status === 401) {
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
                 navigate('/login');
             }
-            return false;
         },
     });
     

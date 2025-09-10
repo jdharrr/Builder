@@ -1,38 +1,32 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef} from 'react';
 
 import '../css/userModal.css';
 import {fetchUser, updateDarkMode} from "../api.jsx";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
+import {getStatus} from "../util.jsx";
 
-// TODO: dark mode switch is not turning off/on. The api call works however
 export const UserModal = ({handleClose}) => {
     const navigate = useNavigate();
 
-    const { data: user = {} } = useQuery({
+    const { data: user = {}, isLoading } = useQuery({
         queryKey: ['user'],
         queryFn: async () => {
             return await fetchUser();
         },
         staleTime: 60_000,
         retry: (failureCount, error) => {
-            if (error?.status === 401) return false;
+            if (getStatus(error) === 401) return false;
 
             return failureCount < 2;
         },
-        throwOnError: (error) => {
-            if (error?.status === 401) {
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
                 navigate('/login');
             }
         }
     });
-
-    const [isLoading, setIsLoading] = useState(false);
-    useEffect(() => {
-        if (!user) {
-            setIsLoading(true);
-        }
-    }, [user])
 
     const wrapperRef = useRef(null);
     useEffect(() => {
@@ -48,9 +42,7 @@ export const UserModal = ({handleClose}) => {
 
     const toggleDarkMode = useToggleDarkMode(navigate);
     const handleDarkModeChange = (isChecked) => {
-        toggleDarkMode.mutate({
-            isChecked: isChecked
-        });
+        toggleDarkMode.mutate(isChecked);
     }
 
     return (
@@ -152,7 +144,7 @@ const useToggleDarkMode = (navigate) => {
             return { previous };
         },
         onError: (_err, _isChecked, context) => {
-            if (_err.status === 401) {
+            if (getStatus(_err) === 401) {
                 navigate('/login');
             }
 

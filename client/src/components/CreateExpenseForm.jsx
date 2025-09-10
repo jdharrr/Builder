@@ -7,6 +7,7 @@ import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormC
 
 import '../css/createExpenseForm.css';
 import {FaPlus} from "react-icons/fa";
+import {getStatus} from "../util.jsx";
 
 export const CreateExpenseForm = ({includeStartDateInput}) => {
     const recurrenceRates = {
@@ -66,11 +67,9 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                 const categories = await getAllExpenseCategories();
                 setCategories(categories ?? []);
             } catch (err) {
-                if (err.status === 401) {
+                if (getStatus(err) === 401) {
                     navigate('/login')
                 }
-
-
             }
         }
         
@@ -90,7 +89,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
 
             isCreated = await postExpense(payload);
         } catch (err) {
-            if (err.status === 401) {
+            if (getStatus(err) === 401) {
                 navigate('/login');
                 return;
             }
@@ -140,7 +139,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
         try {
             await createExpenseCategory(newCategoryName);
         } catch (err) {
-            if (err.status === 401) {
+            if (getStatus(err) === 401) {
                 navigate('/login');
             }
 

@@ -1,55 +1,9 @@
 import React from 'react';
-import {useNavigate} from "react-router-dom";
-import {useQuery} from "@tanstack/react-query";
 
 import {UpcomingList} from "../components/UpcomingList.jsx";
 import {LateExpenses} from "../components/LateExpenses.jsx";
-import {fetchLateExpenses, getUpcomingExpenses} from "../../../api.jsx";
 
 export const UpcomingExpensesSection = () => {
-    const navigate = useNavigate();
-
-    const { data: upcomingExpenses = [] } = useQuery({
-        queryKey: ['upcomingExpenses', ],
-        queryFn: async () => {
-            return await getUpcomingExpenses() ?? [];
-        },
-        suspense: true,
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (error?.status === 401) return false;
-
-            return failureCount < 2;
-        },
-        throwOnError: (error) => {
-            if (error.status === 401) {
-                navigate('/login');
-            }
-
-            return false;
-        }
-    })
-
-    const { data: lateExpenses = [] } = useQuery({
-        queryKey: ['lateExpenses'],
-        queryFn: async () => {
-            return await fetchLateExpenses() ?? [];
-        },
-        suspense: true,
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (error?.status === 401) return false;
-            return failureCount < 2;
-        },
-        throwOnError: (error) => {
-            if (error.status === 401) {
-                navigate('/login');
-            }
-
-            return false;
-        }
-    })
-
     return (
         <>
             <div className={'border border-dark mt-3'}>
@@ -70,10 +24,10 @@ export const UpcomingExpensesSection = () => {
 
                 <div className={'tab-content'}>
                     <div className={'tab-pane fade show active'} role={'tabpanel'} id={'upcoming-tab-content'}>
-                        <UpcomingList upcomingExpenses={upcomingExpenses} />
+                        <UpcomingList />
                     </div>
                     <div className={'tab-pane fade'} role={'tabpanel'} id={'late-tab-content'}>
-                        <LateExpenses lateExpenses={lateExpenses} />
+                        <LateExpenses />
                     </div>
                 </div>
             </div>

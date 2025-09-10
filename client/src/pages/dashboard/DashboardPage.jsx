@@ -1,4 +1,5 @@
 import React, {Suspense, useContext} from 'react';
+import {ErrorBoundary} from "react-error-boundary";
 
 import { Card } from "./components/DashboardCard.jsx";
 import { UpcomingExpensesSection } from "./sections/UpcomingExpensesSection.jsx";
@@ -7,7 +8,7 @@ import {ExpenseTrackerSectionSkeleton} from "./components/skeletons/ExpenseTrack
 import {UpcomingExpensesSectionSkeleton} from "./components/skeletons/UpcomingExpensesSectionSkeleton.jsx";
 import {CreateExpenseForm} from "../../components/CreateExpenseForm.jsx";
 import {ViewExpensesModal} from "./components/ViewExpensesModal.jsx";
-import {ViewExpenseModal} from "../expenses/components/ViewExpenseModal.jsx";
+import {ViewExpenseModal} from "../../components/ViewExpenseModal.jsx";
 import {CreateExpenseFormContext} from "../../providers/expenses/CreateExpenseFormContext.jsx";
 import {ViewExpensesModalContext} from "../../providers/expenses/ViewExpensesModalContext.jsx";
 import {ViewExpenseModalContext} from "../../providers/expenses/ViewExpenseModalContext.jsx";
@@ -24,12 +25,16 @@ export default function DashboardPage() {
             <div className="d-flex justify-content-center align-items-center">
                     <Card title='Expense Tracker' >
                         <Suspense fallback={<ExpenseTrackerSectionSkeleton />}>
-                            <ExpenseTrackerSection />
+                            <ErrorBoundary FallbackComponent={ExpenseTrackerSectionSkeleton} >
+                                <ExpenseTrackerSection />
+                            </ErrorBoundary>
                         </Suspense>
                     </Card>
                 <Card title='Upcoming Expenses' >
                     <Suspense fallback={<UpcomingExpensesSectionSkeleton />}>
-                        <UpcomingExpensesSection />
+                        <ErrorBoundary FallbackComponent={UpcomingExpensesSectionSkeleton} >
+                            <UpcomingExpensesSection />
+                        </ErrorBoundary>
                     </Suspense>
                 </Card>
             </div>
