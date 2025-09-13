@@ -47,6 +47,11 @@ Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
         Route::post('/create', [ExpenseController::class, 'createExpenseCategory']);
     });
 
+    // Expense page options
+    Route::prefix('page')->group(function () {
+       Route::get('/sortOptions', [ExpenseController::class, 'getExpenseSortOptions']);
+    });
+
     // Payments
     Route::prefix('expensePayments')->group(function () {
         Route::get('/{date}', [ExpenseController::class, 'getPaymentsForDate'])

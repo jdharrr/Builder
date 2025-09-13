@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\CreateExpenseCategoryRequest;
+use App\Http\Requests\GetAllExpensesRequest;
 use App\Models\ExpenseCategory;
 use App\Services\ExpenseCategoryService;
 use Illuminate\Database\Eloquent\Collection;
@@ -112,10 +113,18 @@ class ExpenseController extends Controller
         }
     }
 
-    public function getAllExpenses(Request $request): array
+    public function getAllExpenses(GetAllExpensesRequest $request): array
     {
+        $requestData = [
+            'userId' => $request->user()->id,
+            'sort' => $request->input('sort'),
+            'sortDir' => $request->input('sortDir'),
+            'searchColumn' => $request->input('searchColumn'),
+            'searchValue' => $request->input('searchValue'),
+        ];
+
         try {
-            return $this->expenseService->getAllExpensesByUserId($request->user()->id);
+            return $this->expenseService->getAllExpensesByUserId($requestData);
         } catch(\Exception $e) {
             throw new \Exception('Failed to get expenses.', 500);
         }
@@ -136,6 +145,14 @@ class ExpenseController extends Controller
             return $this->expenseCategoryService->getAllExpenseCategoriesById($request->user()->id);
         } catch (\Exception) {
             throw new \Exception('Failed to get expense categories.', 500);
+        }
+    }
+
+    public function getExpenseSortOptions(): array {
+        try {
+            return $this->expenseService->getSortOptions();
+        } catch(\Exception) {
+            throw new \Exception('Failed to get sort options.', 500);
         }
     }
 }

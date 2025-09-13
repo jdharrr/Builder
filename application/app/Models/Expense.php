@@ -62,14 +62,32 @@ class Expense extends BaseModel
         return $this->delete($sql, $params);
     }
 
-    public function getAllExpensesByUserId(int $userId): array {
-        $sql = "SELECT e.*, c.name as category_name, c.id as category_id FROM expenses e
-                LEFT JOIN expense_categories c ON e.category_id = c.id
-                WHERE e.user_id = :userId
-                ORDER BY created_at DESC";
+    public function getAllExpensesByUserId(array $data): array {
         $params = [
-            ':userId' => $userId
+            ':userId' => $data['userId'],
         ];
+
+        $sort = $data['sort'] === 'category' ? "c.name" : "e." . $data['sort'];
+        $sortDir = $data['sortDir'] === 'asc' ? "ASC" : "DESC";
+
+        $selectFrom = "SELECT e.*, c.name as category_name, c.id as category_id FROM expenses e";
+
+        $join = " LEFT JOIN expense_categories c ON e.category_id = c.id";
+
+        $where = " WHERE e.user_id = :userId";
+
+        // Column searching
+        if (array_key_exists('searchValue', $data) && array_key_exists('searchColumn', $data)) {
+            $col = $data['searchColumn'] === 'category' ? "c.name" : "e." . $data['searchColumn'];
+            $where .= " AND $col LIKE :searchValue";
+
+            $escaped = str_replace(['\\','%','_'], ['\\\\','\\%','\\_'], $data['searchValue']);
+            $params[':searchValue'] = "%{$escaped}%";
+        }
+
+        $orderBy = " ORDER BY $sort $sortDir, e.id DESC";
+
+        $sql = $selectFrom . $join . $where . $orderBy;
 
         return $this->fetchAll($sql, $params);
     }

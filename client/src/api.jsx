@@ -188,13 +188,23 @@ export const getUpcomingExpenses = async () => {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
-    })
+    });
 
     return result.data;
 }
 
-export const getAllExpenses = async () =>  {
+export const getAllExpenses = async (sortOption, sortDirection, searchFilter) =>  {
     const token = getAccessToken();
+
+    const params = {
+        sort: sortOption,
+        sortDir: sortDirection,
+    };
+
+    if (searchFilter !== undefined) {
+        params.searchValue = searchFilter.searchValue;
+        params.searchColumn = searchFilter.searchColumn;
+    }
 
     const result = await axios.get('http://localhost:8000/api/expenses/getAllExpenses', {
         withCredentials: true,
@@ -202,8 +212,9 @@ export const getAllExpenses = async () =>  {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-        }
-    })
+        },
+        params: params
+    });
 
     return result.data;
 }
@@ -235,7 +246,22 @@ export const getAllExpenseCategories = async () => {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
-    })
+    });
+
+    return result.data;
+}
+
+export const getExpenseSortOptions = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/page/sortOptions', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
 
     return result.data;
 }

@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\Expenses\ExpenseSearchColumns;
+use App\Enums\Expenses\ExpenseSortOptions;
+use App\Enums\Expenses\ExpenseSortOptionsHelper;
 use App\Models\Expense;
 use App\Models\ExpensePayment;
 use DateInterval;
@@ -20,8 +23,30 @@ class ExpenseService {
         return $this->expenses->createExpense($expenseData);
     }
 
-    public function getAllExpensesByUserId(string $userId): array {
-        return $this->expenses->getAllExpensesByUserId($userId);
+    public function getAllExpensesByUserId(array $requestData): array {
+        $sortEnum = ExpenseSortOptions::fromName($requestData['sort']);
+        if ($sortEnum === null) {
+            throw new \Exception('Invalid Sort Option');
+        }
+
+        $data = [
+            'userId' => $requestData['userId'],
+            'sort' => $sortEnum->column(),
+            'sortDir' => $requestData['sortDir'],
+        ];
+
+        if ($requestData['searchColumn'] !== null) {
+            $searchColumn = ExpenseSearchColumns::fromName($requestData['searchColumn']);
+            if ($searchColumn === null) {
+                throw new \Exception('Invalid Search Column');
+            }
+
+            $data['searchColumn'] = $searchColumn->column();
+            $data['searchValue'] = $requestData['searchValue'];
+        }
+
+
+        return $this->expenses->getAllExpensesByUserId($data);
     }
 
     public function getExpensesForDashboardCalendar(array $requestData): array {
@@ -101,6 +126,7 @@ class ExpenseService {
 
             $date = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT). '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
             $dateObj = new DateTime($date);
+            $paymentsForDate = $this->getPaymentsForDate(['dueDatePaid' => $date, 'userId' => $userId]);
             $mappedExpenses[$date] = [];
             foreach ($expenses as $expense) {
                 $dueDateObj = new DateTime($expense['next_due_date']);
@@ -108,12 +134,12 @@ class ExpenseService {
                     continue;
                 }
 
-                $mappedExpenses[$date][] = $expense;
-                $paymentsForDate = $this->getPaymentsForDate(['dueDatePaid' => $date, 'userId' => $userId]);
                 $paymentsMap = array_column($paymentsForDate, 'due_date_paid', 'expense_id');
                 if (isset($paymentsMap[$expense['id']])) {
                     $expense['due_date_paid'] = $paymentsMap[$expense['id']];
                 }
+
+                $mappedExpenses[$date][] = $expense;
             }
         }
 
@@ -228,5 +254,15 @@ class ExpenseService {
 
     public function getLateExpenses(int $userId): array {
         return $this->expenses->getLateExpenses($userId);
+    }
+
+    public function getSortOptions(): array {
+        $sortOptions = ExpenseSortOptions::cases();
+        $optionsMap = [];
+        foreach ($sortOptions as $sortOption) {
+            $optionsMap[$sortOption->name] = $sortOption->value;
+        }
+
+        return $optionsMap;
     }
 }
