@@ -20,6 +20,7 @@ obj/
 .env
 .env.local
 .env.*.local
+**/appsettings*.json
 
 # Editor directories and files
 .vscode/*
