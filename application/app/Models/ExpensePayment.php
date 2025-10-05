@@ -7,6 +7,7 @@ use DateTime;
 
 class ExpensePayment extends BaseModel
 {
+    // TODO: Go through all sql stmts and user explicit select commands instead of * and alias to camel case
     public function createPayment(array $paymentData): bool {
         $sql = "INSERT INTO expense_payments (
                     expense_id,
@@ -26,7 +27,7 @@ class ExpensePayment extends BaseModel
             ':userId' => $paymentData['userId'],
             ':cost' => $paymentData['cost'],
             ':dueDatePaid' => $paymentData['dueDatePaid'],
-            ':paymentDate' => $paymentData['paymentDate']->format('Y-m-d')
+            ':paymentDate' => $paymentData['paymentDate']
         ];
 
         return $this->insert($sql, $params);
@@ -56,6 +57,30 @@ class ExpensePayment extends BaseModel
         $params = [
             ':userId' => $userId,
             ':dueDatePaid' => $dueDatePaid
+        ];
+
+        return $this->fetchAll($sql, $params);
+    }
+
+    public function getExpensePaymentForDueDate($expenseData): array|null {
+        $sql = "SELECT id FROM expense_payments
+                WHERE user_id = :userId
+                  AND due_date_paid = :dueDate
+                  AND expense_id = :expenseId";
+        $params = [
+            ':userId' => $expenseData['userId'],
+            ':expenseId' => $expenseData['expenseId'],
+            ':dueDate' => $expenseData['dueDate']
+        ];
+
+        return $this->fetchOne($sql, $params);
+    }
+
+    public function getPaymentsForExpenseId($data): array {
+        $sql = "SELECT * FROM expense_payments WHERE user_id = :userId AND expense_id = :expenseId";
+        $params = [
+            ':userId' => $data['userId'],
+            ':expenseId' => $data['expenseId']
         ];
 
         return $this->fetchAll($sql, $params);

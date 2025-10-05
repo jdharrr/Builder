@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\CreateExpenseCategoryRequest;
+use App\Http\Requests\DeleteExpenseRequest;
 use App\Http\Requests\GetAllExpensesRequest;
+use App\Http\Requests\GetPaymentsForExpenseRequest;
+use App\Http\Requests\UpdateExpenseActiveStatusRequest;
 use App\Models\ExpenseCategory;
 use App\Services\ExpenseCategoryService;
 use Illuminate\Database\Eloquent\Collection;
@@ -29,7 +32,7 @@ class ExpenseController extends Controller
 
     public function index(): void {}
 
-    public function createExpense(CreateExpenseRequest $request): bool
+    public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
         $expenseData = [
             'name' => $request->input('name'),
@@ -38,17 +41,22 @@ class ExpenseController extends Controller
             'cost' => $request->input('cost'),
             'recurrenceRate' => $request->input('recurrenceRate'),
             'userId' => $request->user()->id,
-            'nextDueDate' => $request->input('nextDueDate'),
             'startDate' => $request->input('startDate'),
             'endDate' => $request->input('endDate'),
             'paidOnCreation' => $request->input('paidOnCreation'),
+            'initialDatePaid' => $request->input('initialDatePaid'),
+            'dueLastDayOfMonth' => $request->input('dueLastDayOfMonth'),
         ];
 
         try {
-            return $this->expenseService->createExpense($expenseData);
+            $this->expenseService->createExpense($expenseData);
         } catch (\Exception $e) {
-            throw new \Exception('Failed to create expense.', 500);
+            throw new \Exception($e->getMessage(), 500);
         }
+
+        return response()->json([
+            'success' => true
+        ]);
     }
 
     public function getExpensesForDashboardCalendar(GetExpensesForDashboardCalendarRequest $request): array
@@ -66,10 +74,10 @@ class ExpenseController extends Controller
         }
     }
 
-    public function deleteExpense(Request $request, $expenseId): bool
+    public function deleteExpense(DeleteExpenseRequest $request): bool
     {
         try {
-            return $this->expenseService->deleteExpense($expenseId, $request->user()->id);
+            return $this->expenseService->deleteExpense($request->input('expenseId'), $request->user()->id);
         } catch (\Exception) {
             throw new \Exception('Failed to delete expense.', 500);
         }
@@ -82,6 +90,7 @@ class ExpenseController extends Controller
             'isPaid' => $request->input('isPaid'),
             'dueDate' => $request->input('dueDate'),
             'userId' => $request->user()->id,
+            'datePaid' => $request->input('datePaid'),
         ];
 
         try {
@@ -121,6 +130,7 @@ class ExpenseController extends Controller
             'sortDir' => $request->input('sortDir'),
             'searchColumn' => $request->input('searchColumn'),
             'searchValue' => $request->input('searchValue'),
+            'showInactiveExpenses' => $request->input('showInactiveExpenses'),
         ];
 
         try {
@@ -148,11 +158,57 @@ class ExpenseController extends Controller
         }
     }
 
-    public function getExpenseSortOptions(): array {
+    public function getExpenseSortOptions(): array
+    {
         try {
             return $this->expenseService->getSortOptions();
         } catch(\Exception) {
             throw new \Exception('Failed to get sort options.', 500);
+        }
+    }
+
+    public function getExpenseSearchableColumns(): array
+    {
+        try {
+            return $this->expenseService->getSearchableColumns();
+        } catch(\Exception) {
+            throw new \Exception('Failed to get expense columns.', 500);
+        }
+    }
+
+    public function getExpenseTableActions(): array
+    {
+        try {
+            return $this->expenseService->getExpenseTableActions();
+        } catch (\Exception) {
+            throw new \Exception('Failed to get expense table actions.', 500);
+        }
+    }
+
+    public function updateExpenseActiveStatus(UpdateExpenseActiveStatusRequest $request): bool {
+        $requestData = [
+            'expenseId' => $request->input('expenseId'),
+            'isActive' => $request->input('isActive'),
+            'userId' => $request->user()->id,
+        ];
+
+        try {
+            return $this->expenseService->updateActiveStatus($requestData);
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to update expense active status.', 500);
+        }
+    }
+
+    public function getPaymentsForExpense(GetPaymentsForExpenseRequest $request): array {
+        $requestData = [
+            'userId' => $request->user()->id,
+            'expenseId' => $request->input('expenseId'),
+        ];
+
+        try {
+            return $this->expenseService->getPaymentsForExpense($requestData);
+        } catch (\Exception) {
+            throw new \Exception('Failed to get expense payments.', 500);
         }
     }
 }

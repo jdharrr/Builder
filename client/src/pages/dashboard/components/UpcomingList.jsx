@@ -1,12 +1,13 @@
 import React from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
+import {OverlayTrigger, Tooltip} from "react-bootstrap";
 
 import {getUpcomingExpenses, updateExpensePaidStatus} from "../../../api.jsx";
+import {getStatus} from "../../../util.jsx";
 
 import '../css/upcomingList.css';
 import '../../../css/global.css';
-import {getStatus} from "../../../util.jsx";
 
 export const UpcomingList = () => {
     const navigate = useNavigate();
@@ -15,7 +16,7 @@ export const UpcomingList = () => {
     const currentWeekDay = new Date().getDay();
 
     const { data: upcomingExpenses = [] } = useSuspenseQuery({
-        queryKey: ['upcomingExpenses', ],
+        queryKey: ['upcomingExpenses'],
         queryFn: async () => {
             return await getUpcomingExpenses() ?? [];
         },
@@ -43,40 +44,60 @@ export const UpcomingList = () => {
     }
 
     return (
-        <div className="upcomingList list-group list-group-flush">
-          {Object.entries(upcomingExpenses).map(([date, expensesForDate], idx) => (
-              <div className="list-group-item" key={date}>
-                  <div className="col-auto fw-medium">
-                      {weekDays.at((currentWeekDay + idx) % 7)} {Number(date.slice(-2))}
-                  </div>
-                  <div className="col-auto">
-                      {expensesForDate.length === 0 && (
-                          <div className="text-muted small">No expenses</div>
-                      )}
-                      {expensesForDate.map((expense) => (
-                          <div className="row px-2 g-3" key={`${date}-${expense.id}`}>
-                              <div className={'col-1'}>•</div>
-                              <div className="col-6 text-truncate">
-                                  {expense.name}
-                              </div>
-                              <div className="col-4">
-                                  ${Number(expense.cost).toFixed(2)}
-                              </div>
-                              <div className="col-1">
-                                  <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      disabled={togglePaid.isPending}
-                                      checked={!!expense.due_date_paid}
-                                      onChange={(e) => handlePaidStatusChange(e, date, expense)}
-                                  />
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-          ))}
-      </div>
+        <div className="upcomingList list-group list-group-flush" style={{width: '25rem'}}>
+            {Object.entries(upcomingExpenses).map(([date, expensesForDate], idx) => (
+                <div className="list-group-item" key={date}>
+                    <div className="fw-medium">
+                        {weekDays.at((currentWeekDay + idx) % 7)} {Number(date.slice(-2))}
+                    </div>
+                    <div>
+                    {expensesForDate.length === 0 && (
+                        <div className="text-muted small">No expenses</div>
+                    )}
+                    {expensesForDate.map((expense) => (
+                        <div
+                            className="px-2 py-1"
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "auto 1fr 6rem 6rem",
+                                alignItems: "center",
+                                columnGap: "0.5rem",
+                            }}
+                            key={`${date}-${expense.id}`}
+                        >
+                            <div>•</div>
+                            <OverlayTrigger
+                                placement="bottom"
+                                delay={{ show: 500, hide: 100 }}
+                                style={{
+                                    backgroundColor: "#f8f9fa",
+                                    color: "#212529",
+                                    border: "1px solid #dee2e6",
+                                    fontSize: "0.85rem",
+                                }}
+                                overlay={<Tooltip>{expense.name}</Tooltip>}
+                            >
+                                <div className="flex-grow-1 text-truncate me-2" style={{minWidth: '8rem'}}>{expense.name}</div>
+                            </OverlayTrigger>
+                            <div>
+                                ${Number(expense.cost).toFixed(2)}
+                            </div>
+                            <div className="d-flex justify-content-end align-items-center">
+                                <span className="form-text me-2">Paid today?</span>
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    disabled={togglePaid.isPending}
+                                    checked={!!expense.due_date_paid}
+                                    onChange={(e) => handlePaidStatusChange(e, date, expense)}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+            ))}
+        </div>
     );
 }
 
@@ -85,12 +106,12 @@ const useTogglePaid = (navigate) => {
     const queryKey = ['upcomingExpenses'];
 
     return useMutation({
-        mutationFn: ({ expenseId, checked, date }) =>
+        mutationFn: ({expenseId, checked, date}) =>
             updateExpensePaidStatus(expenseId, checked, date),
 
         // optimistic update
-        onMutate: async ({ expenseId, checked, date }) => {
-            await qc.cancelQueries({ queryKey: queryKey });
+        onMutate: async ({expenseId, checked, date}) => {
+            await qc.cancelQueries({queryKey: queryKey});
 
             const previous = qc.getQueryData(queryKey);
 

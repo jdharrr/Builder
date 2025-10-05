@@ -26,6 +26,7 @@ class GetAllExpensesRequest extends FormRequest
             'sortDir' => 'required|string|in:asc,desc',
             'searchColumn' => 'nullable|string',
             'searchValue' => 'nullable|string',
+            'showInactiveExpenses' => 'required|in:true,false',
         ];
     }
 }

@@ -92,12 +92,13 @@ export const postExpense = async (expenseProps) => {
         name,
         cost,
         recurrenceRate,
-        nextDueDate,
         categoryId,
         description,
         startDate,
         endDate,
-        paidOnCreation
+        paidOnCreation,
+        dueLastDayOfMonth,
+        initialDatePaid
     } = expenseProps;
 
     const token = getAccessToken();
@@ -106,12 +107,13 @@ export const postExpense = async (expenseProps) => {
         name: name,
         cost: cost,
         recurrenceRate: recurrenceRate,
-        nextDueDate: nextDueDate,
         categoryId: categoryId,
         description: description,
         startDate: startDate,
         endDate: endDate,
-        paidOnCreation: paidOnCreation
+        paidOnCreation: paidOnCreation,
+        dueLastDayOfMonth: dueLastDayOfMonth,
+        initialDatePaid: initialDatePaid,
     }, {
         withCredentials: true,
         headers: {
@@ -124,13 +126,20 @@ export const postExpense = async (expenseProps) => {
     return result.data;
 }
 
-export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate) => {
+export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePaid) => {
     const token = getAccessToken();
-    const result = await axios.patch('http://localhost:8000/api/expenses/update/paidStatus', {
+
+    const body = {
         expenseId: expenseId,
         isPaid: isPaid,
         dueDate: dueDate
-    }, {
+    };
+
+    if (datePaid !== undefined) {
+        body.datePaid = datePaid;
+    }
+
+    const result = await axios.patch('http://localhost:8000/api/expenses/update/paidStatus', body, {
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -193,12 +202,13 @@ export const getUpcomingExpenses = async () => {
     return result.data;
 }
 
-export const getAllExpenses = async (sortOption, sortDirection, searchFilter) =>  {
+export const getAllExpenses = async (sortOption, sortDirection, showInactiveExpenses, searchFilter) =>  {
     const token = getAccessToken();
 
     const params = {
         sort: sortOption,
         sortDir: sortDirection,
+        showInactiveExpenses: showInactiveExpenses,
     };
 
     if (searchFilter !== undefined) {
@@ -260,6 +270,88 @@ export const getExpenseSortOptions = async () => {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const getExpenseSearchableColumns = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/page/searchableColumns', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const getExpenseTableActions = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/page/tableActions', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const updateExpenseActiveStatus  = async (isActive, expenseId) => {
+    const token = getAccessToken();
+
+    const result = await axios.patch('http://localhost:8000/api/expenses/update/activeStatus', {
+        expenseId: expenseId,
+        isActive: isActive,
+    }, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const deleteExpense = async (expenseId) => {
+    const token = getAccessToken();
+
+    const result = await axios.delete('http://localhost:8000/api/expenses/deleteExpense', {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+        params: {
+            expenseId: expenseId,
+        }
+    });
+
+    return result.data;
+}
+
+export const getPaymentsForExpense = async (expenseId) => {
+    const token = getAccessToken();
+
+    const result = await axios.get('http://localhost:8000/api/expenses/expensePayments/paymentsForExpense',{
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        params: {
+            expenseId: expenseId,
         }
     });
 

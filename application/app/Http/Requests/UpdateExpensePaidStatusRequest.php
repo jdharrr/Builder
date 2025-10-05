@@ -25,6 +25,7 @@ class UpdateExpensePaidStatusRequest extends FormRequest
             'expenseId' => 'required|integer',
             'isPaid' => 'required|boolean',
             'dueDate' => 'required|date:Y-m-d',
+            'datePaid' => 'nullable|date:Y-m-d'
         ];
     }
 }

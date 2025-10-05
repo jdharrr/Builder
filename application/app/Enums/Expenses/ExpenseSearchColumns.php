@@ -12,7 +12,6 @@ enum ExpenseSearchColumns: string
     case  UpdatedDate = 'Updated Date';
     case RecurrenceRate = 'Recurrence Rate';
     case StartDate = 'Start Date';
-    case Active = 'Active';
     case Name = 'Name';
 
     public function column(): string {
@@ -24,7 +23,6 @@ enum ExpenseSearchColumns: string
             self::EndDate => 'end_date',
             self::RecurrenceRate => 'recurrence_rate',
             self::StartDate => 'start_date',
-            self::Active => 'active',
             self::Name => 'name',
             self::UpdatedDate => 'updated_at',
         };

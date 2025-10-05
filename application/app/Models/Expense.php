@@ -6,8 +6,7 @@ use DateTime;
 
 class Expense extends BaseModel
 {
-    public function createExpense(array $expenseData): bool {
-        // TODO: Handle paid on creation logic
+    public function createExpense(array $expenseData): int {
         $nameCheckSql = "SELECT id FROM expenses WHERE name = :name AND user_id = :user_id";
         $nameCheckParams = ['name' => $expenseData['name'], 'user_id' => $expenseData['userId']];
         if ($this->fetchOne($nameCheckSql, $nameCheckParams)) {
@@ -23,7 +22,8 @@ class Expense extends BaseModel
                     user_id,
                     start_date,
                     end_date,
-                    category_id
+                    category_id,
+                    due_end_of_month
                 ) VALUES (
                     :name,
                     :cost,
@@ -33,7 +33,8 @@ class Expense extends BaseModel
                     :userId,
                     :startDate,
                     :endDate,
-                    :categoryId
+                    :categoryId,
+                    :dueLastDayOfMonth
                 )";
         $params = [
             ':name' => $expenseData['name'],
@@ -42,12 +43,15 @@ class Expense extends BaseModel
             ':recurrenceRate' => $expenseData['recurrenceRate'],
             ':categoryId' => $expenseData['categoryId'],
             ':userId' => $expenseData['userId'],
-            ':nextDueDate' => $expenseData['nextDueDate'],
+            ':nextDueDate' => $expenseData['startDate'],
             ':startDate' => $expenseData['startDate'],
             ':endDate' => $expenseData['endDate'],
+            ':dueLastDayOfMonth' => (int)$expenseData['dueLastDayOfMonth']
         ];
 
-        return $this->insert($sql, $params);
+        $insertResult = $this->insert($sql, $params);
+
+        return $insertResult ? $this->getLastInsertId() : 0;
     }
 
     public function deleteExpense(int $expenseId, int $userId): bool {
@@ -75,6 +79,10 @@ class Expense extends BaseModel
         $join = " LEFT JOIN expense_categories c ON e.category_id = c.id";
 
         $where = " WHERE e.user_id = :userId";
+
+        if ($data['showInactiveExpenses'] === 'false') {
+            $where .= " AND e.active = 1";
+        }
 
         // Column searching
         if (array_key_exists('searchValue', $data) && array_key_exists('searchColumn', $data)) {

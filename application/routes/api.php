@@ -35,10 +35,12 @@ Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
 
     Route::post('/createExpense', [ExpenseController::class, 'createExpense']);
 
-    Route::patch('/update/paidStatus', [ExpenseController::class, 'updateExpensePaidStatus']);
+    Route::prefix('update')->group(function() {
+        Route::patch('/paidStatus', [ExpenseController::class, 'updateExpensePaidStatus']);
+        Route::patch('/activeStatus', [ExpenseController::class, 'updateExpenseActiveStatus']);
+    });
 
-    Route::delete('/deleteExpense/{id}', [ExpenseController::class, 'deleteExpense'])
-        ->where('id', '[0-9]+');
+    Route::delete('/deleteExpense', [ExpenseController::class, 'deleteExpense']);
 
     // Expense Categories
     Route::prefix('categories')->group(function () {
@@ -50,11 +52,14 @@ Route::middleware('auth:sanctum')->prefix('expenses')->group(function() {
     // Expense page options
     Route::prefix('page')->group(function () {
        Route::get('/sortOptions', [ExpenseController::class, 'getExpenseSortOptions']);
+       Route::get('/searchableColumns', [ExpenseController::class, 'getExpenseSearchableColumns']);
+       Route::get('/tableActions', [ExpenseController::class, 'getExpenseTableActions']);
     });
 
     // Payments
     Route::prefix('expensePayments')->group(function () {
         Route::get('/{date}', [ExpenseController::class, 'getPaymentsForDate'])
             ->where('date', '^\d{4}-\d{2}-\d{2}$');
+        Route::get('/paymentsForExpense', [ExpenseController::class, 'getPaymentsForExpense']);
     });
 });

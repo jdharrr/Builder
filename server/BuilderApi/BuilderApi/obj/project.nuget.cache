@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "3ABECon1/XI=",
+  "success": true,
+  "projectFilePath": "C:\\code\\builder\\BuilderApi\\BuilderApi\\BuilderApi.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\jdhar\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.3\\microsoft.aspnetcore.openapi.9.0.3.nupkg.sha512",
+    "C:\\Users\\jdhar\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}

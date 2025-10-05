@@ -28,9 +28,9 @@ export const LateExpenses = () => {
     })
 
     return (
-        <div className={'lateExpensesList list-group list-group-flush overflow-y-auto overflow-y-auto'}>
+        <div className={'lateExpensesList list-group list-group-flush'} style={{width: '25rem'}}>
             {lateExpenses.map((expense, idx) => (
-                <div className="list-group-item row" key={idx}>
+                <div className="list-group-item" key={idx}>
                     <div>
                         {expense.name}
                     </div>

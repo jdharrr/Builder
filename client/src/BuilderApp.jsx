@@ -9,6 +9,7 @@ import {BuilderLayout} from "./layouts/BuilderLayout.jsx";
 
 import './css/app.css';
 import {getStatus} from "./util.jsx";
+import ExpensesPageSkeleton from "./pages/expenses/skeletons/ExpensesPageSkeleton.jsx";
 
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage.jsx"));
 const ExpensesPage = lazy(() => import("./pages/expenses/ExpensesPage.jsx"));
@@ -65,7 +66,9 @@ export const BuilderApp = () => {
                             <Route path="/expenses"
                                    element={
                                        <BuilderLayout>
-                                           <ExpensesPage />
+                                           <Suspense fallback={<ExpensesPageSkeleton />}>
+                                               <ExpensesPage />
+                                           </Suspense>
                                        </BuilderLayout>
                                    }
                             />

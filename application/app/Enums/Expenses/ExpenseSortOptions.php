@@ -12,8 +12,8 @@ enum ExpenseSortOptions: string
     case  UpdatedDate = 'Updated Date';
     case RecurrenceRate = 'Recurrence Rate';
     case StartDate = 'Start Date';
-    case Active = 'Active';
     case Name = 'Name';
+    case Active = 'Active';
 
     public function column(): string {
         return match($this) {

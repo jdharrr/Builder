@@ -23,12 +23,13 @@ export default function ExpensesPage() {
         searchColumn: '',
         searchValue: '',
     });
+    const [showInactiveExpenses, setShowInactiveExpenses] = useState(false);
 
     const { data: expenses = [] } = useSuspenseQuery({
-        queryKey: ['allExpenses', selectedSort, sortDirection, searchFilter],
+        queryKey: ['allExpenses', selectedSort, sortDirection, searchFilter, showInactiveExpenses],
         queryFn: async () => {
-            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, searchFilter)
-                                 : await getAllExpenses(selectedSort, sortDirection))
+            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, searchFilter)
+                                 : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses))
                                  ?? [];
         },
         staleTime: 60_000,
@@ -39,7 +40,6 @@ export default function ExpensesPage() {
         },
         throwOnError: (error) => { return getStatus(error) !== 401 },
         onError: (error) => {
-            console.log(error.response.status)
             if (getStatus(error) === 401) {
                 queueMicrotask(() => navigate('/login', { replace: true }));
             }
@@ -67,8 +67,6 @@ export default function ExpensesPage() {
     }
 
     const handleEnableSearchChange = (e) => {
-        console.log(searchFilter);
-
         setEnableSearch(e.target.checked);
         if (!e.target.checked) {
             setSearchFilter({
@@ -80,26 +78,35 @@ export default function ExpensesPage() {
 
     return (
         <div className="d-flex justify-content-center align-items-center">
-            <div className="expensesCard card text-center m-5">
+            <div className="expensesCard card text-center m-5" >
                 <div className="card-body d-flex flex-column">
                     <div className={"d-flex align-items-center mb-2"}>
                         <div className="dropdown text-center me-2">
                             <button className="btn dropdown-toggle border-dark-subtle" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    data-bs-toggle="dropdown"
                             >
                                 Sort
                             </button>
-                            <ul className="dropdown-menu" aria-labelledby="dropdownMenuButton" >
+                            <ul className="dropdown-menu" >
                                 {Object.entries(sortOptions).map(([name, label], idx) => (
-                                    <li key={idx}>
-                                        <a className={"dropdown-item"} href={"#"} data-value={name} onClick={(e) => handleSortChange(e)}>
-                                            {label}
-                                        </a>
-                                    </li>
+                                    (name !== 'Active' || showInactiveExpenses) && (
+                                        <li key={idx}>
+                                            <a className={"dropdown-item"} href={"#"} data-value={name}
+                                               onClick={(e) => handleSortChange(e)}>
+                                                {label}
+                                            </a>
+                                        </li>
+                                    )
                                 ))}
                             </ul>
                         </div>
                         <div className="form-check form-switch d-flex align-items-center ms-auto">
+                            <label className="form-check-label me-5">
+                                Show Inactive
+                            </label>
+                            <input className="form-check-input" type="checkbox" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                        </div>
+                        <div className="form-check form-switch d-flex align-items-center">
                             <label className="form-check-label me-5">
                                 Search
                             </label>
@@ -112,6 +119,7 @@ export default function ExpensesPage() {
                         setSelectedSort={setSelectedSort}
                         setSearchFilter={setSearchFilter}
                         enableSearch={enableSearch}
+                        showInactiveExpenses={showInactiveExpenses}
                     />
                 </div>
             </div>
