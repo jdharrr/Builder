@@ -14,8 +14,8 @@ export const LoginPage = ({setAuthenticated}) =>  {
 
     const handleSubmitClick = async () => {
         try {
-            const token = await login(username, password);
-            Cookies.set('access_token', token);
+            const data = await login(username, password);
+            Cookies.set('access_token', data.token);
             setAuthenticated(true);
             navigate('/dashboard');
         } catch (err) {
