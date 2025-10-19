@@ -5,7 +5,6 @@ using System.Text;
 using AuthenticationServices.Requests;
 using AuthenticationServices.Responses;
 using BuilderRepositories;
-using BuilderRepositories.UserRepository;
 using DatabaseServices.Models;
 using EmailServices;
 using EmailServices.Requests;
@@ -33,9 +32,7 @@ public class AuthenticationService
 
     public async Task<bool> CreateNewUserAsync(NewUserRequest request)
     {
-        await _userRepo.CheckUserExistsAsync(request.Email, request.Username);
-        
-        var userDto = new User
+        var userDto = new UserDto
         {
             Email = request.Email,
             Username = request.Username

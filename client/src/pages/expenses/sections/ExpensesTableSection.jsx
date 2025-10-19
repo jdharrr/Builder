@@ -56,21 +56,21 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
     });
 
     // Needed?
-    const [tableActions, setTableActions] = useState([]);
-    useEffect(() => {
-       async function loadAllTableActions() {
-           try {
-               const actions = await  getExpenseTableActions();
-               setTableActions(actions);
-           } catch (err) {
-               if (err.status === 401) {
-                   navigate('/login');
-               }
-           }
-       }
-
-       loadAllTableActions();
-    }, [navigate]);
+    // const [tableActions, setTableActions] = useState([]);
+    // useEffect(() => {
+    //    async function loadAllTableActions() {
+    //        try {
+    //            const actions = await  getExpenseTableActions();
+    //            setTableActions(actions);
+    //        } catch (err) {
+    //            if (err.status === 401) {
+    //                navigate('/login');
+    //            }
+    //        }
+    //    }
+    //
+    //    loadAllTableActions();
+    // }, [navigate]);
 
     const handleRowClick = (expense) => {
         setShowViewExpenseModal((prevState) => ({

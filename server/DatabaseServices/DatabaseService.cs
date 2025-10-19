@@ -45,7 +45,7 @@ public class DatabaseService : IDisposable
         }
     }
 
-    public async Task<ExecuteResponse> ExecuteAsync(string sql, Dictionary<string, object>? parameters = null)
+    public async Task<ExecuteResponse> ExecuteAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters != null)
@@ -59,7 +59,7 @@ public class DatabaseService : IDisposable
         };
     }
 
-    public async Task<object?> ExecuteScalarAsync(string sql, Dictionary<string, object>? parameters = null)
+    public async Task<object?> ExecuteScalarAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters != null)
@@ -68,7 +68,7 @@ public class DatabaseService : IDisposable
         return await cmd.ExecuteScalarAsync().ConfigureAwait(false);
     }
 
-    public async Task<DataTable> QueryAsync(string sql, Dictionary<string, object>? parameters = null)
+    public async Task<DataTable> QueryAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters != null)
@@ -81,7 +81,7 @@ public class DatabaseService : IDisposable
         return table;
     }
 
-    private void AddParameters(MySqlCommand cmd, Dictionary<string, object> parameters)
+    private static void AddParameters(MySqlCommand cmd, Dictionary<string, object?> parameters)
     {
         foreach (var param in parameters)
         {

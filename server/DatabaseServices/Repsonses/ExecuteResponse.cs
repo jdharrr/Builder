@@ -4,7 +4,7 @@ namespace DatabaseServices.Repsonses;
 
 public class ExecuteResponse
 {
-    public required int RowsAffected { get; set; }
+    public int RowsAffected { get; set; } = 0;
 
-    public required long LastInsertedId { get; set; }
+    public long LastInsertedId { get; set; } = 0;
 }

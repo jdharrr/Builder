@@ -1,6 +1,6 @@
 namespace DatabaseServices.Models;
 
-public class User
+public class UserDto
 {
     public int? Id { get; set; }
 

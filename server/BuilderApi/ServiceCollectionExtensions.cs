@@ -3,9 +3,10 @@ using DatabaseServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AuthenticationServices;
 using EmailServices;
-using BuilderServices;
-using BuilderRepositories.UserRepository;
-using BuilderRepositories.ExpenseRepository;
+using BuilderServices.ExpenseService;
+using BuilderRepositories;
+using BuilderServices.ExpenseCategoryService;
+using BuilderServices.UserService;
 
 namespace BuilderApi;
 
@@ -42,6 +43,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<UserRepository>();
         services.AddScoped<ExpenseRepository>();
+        services.AddScoped<PaymentRepository>();
+        services.AddScoped<ExpenseCategoryRepository>();
+        services.AddScoped<UserSettingsRepository>();
 
         return services;
     }
@@ -50,6 +54,14 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<UserService>();
         services.AddScoped<ExpenseService>();
+        services.AddScoped<ExpenseCategoryService>();
+
+        return services;
+    }
+
+    public static IServiceCollection ConfigureUserContext(this IServiceCollection services)
+    {
+        services.AddSingleton<UserContext>();
 
         return services;
     }

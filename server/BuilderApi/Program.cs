@@ -1,4 +1,5 @@
 using BuilderApi;
+using BuilderApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
 
@@ -10,6 +11,7 @@ builder.Services.ConfigureAuthentication(builder.Configuration);
 builder.Services.ConfigureEmail(builder.Configuration);
 builder.Services.ConfigureBuilderRepositories();
 builder.Services.ConfigureBuilderServices();
+builder.Services.ConfigureUserContext();
 
 // Other Services
 builder.Services.AddControllers();
@@ -42,6 +44,18 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBuilderApp",
+        policy =>
+        {
+            policy.WithOrigins("http://127.0.0.1:5")
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -50,10 +64,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowBuilderApp");
 
 app.UseHttpsRedirection();
 
+// Authenticate User
 app.UseAuthentication();
+
+// Execute Middleware Pipeline
+app.UseMiddleware<UserContextMiddleware>();
+
+// Authorize Actions
 app.UseAuthorization();
 
 app.MapControllers();
