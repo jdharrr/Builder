@@ -2,6 +2,8 @@
 
 public class ExpensePaymentDto
 {
+    public int Id { get; set; } = 0;
+
     public int ExpenseId { get; set; } = 0;
 
     public int UserId { get; set; } = 0;

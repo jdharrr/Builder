@@ -14,10 +14,18 @@ public class UserController : ControllerBase
         _service = service;
     }
 
-    [HttpPatch("update/settings/darkMode")]
-    public async Task<IActionResult> UpdateDarkMode([FromQuery] bool darkMode)
+    [HttpGet("")]
+    public async Task<IActionResult> GetUser()
     {
-        await _service.UpdateDarkModeAsync(darkMode).ConfigureAwait(false);
+        var user = await _service.GetLimitedUserByIdAsync().ConfigureAwait(false);
+
+        return Ok(user);
+    }
+
+    [HttpPatch("update/settings/darkMode")]
+    public async Task<IActionResult> UpdateDarkMode([FromBody] bool isDarkMode)
+    {
+        await _service.UpdateDarkModeAsync(isDarkMode).ConfigureAwait(false);
 
         return Ok();
     }

@@ -1,7 +1,7 @@
 import React, {Suspense, useContext} from 'react';
 import {ErrorBoundary} from "react-error-boundary";
 
-import { Card } from "./components/DashboardCard.jsx";
+import { Card } from "../../components/Card.jsx";
 import { UpcomingExpensesSection } from "./sections/UpcomingExpensesSection.jsx";
 import {ExpenseTrackerSection} from "./sections/ExpenseTrackerSection.jsx";
 import {ExpenseTrackerSectionSkeleton} from "./sections/skeletons/ExpenseTrackerSectionSkeleton.jsx";

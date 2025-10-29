@@ -24,7 +24,7 @@ public static class ExpenseSortOptionsHelper
         {
             ExpenseSortOption.NextDueDate => "next_due_date",
             ExpenseSortOption.Cost => "cost",
-            ExpenseSortOption.Category => "category_id",
+            ExpenseSortOption.Category => "category_name",
             ExpenseSortOption.CreatedDate => "created_at",
             ExpenseSortOption.EndDate => "end_date",
             ExpenseSortOption.UpdatedDate => "updated_at",

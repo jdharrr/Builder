@@ -7,7 +7,7 @@ export const UpcomingExpensesSection = () => {
     return (
         <>
             <div className={'border border-dark mt-3'}>
-                <ul className={'nav nav-tabs border-0'} role={'tablist'}>
+                <ul className={'nav nav-tabs border-0 nav-fill'} role={'tablist'}>
                     <li className={'nav-item'} role={'presentation'}>
                         <button className={'nav-link active border-0'} data-bs-toggle={'tab'} id={'upcoming-tab'}
                                 data-bs-target={'#upcoming-tab-content'} type={'button'} role={'tab'}>

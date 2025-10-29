@@ -49,7 +49,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowBuilderApp",
         policy =>
         {
-            policy.WithOrigins("http://127.0.0.1:5")
+            policy.WithOrigins("http://localhost:5174", "http://localhost:5173")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
@@ -64,9 +64,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowBuilderApp");
-
 app.UseHttpsRedirection();
+
+app.UseCors("AllowBuilderApp");
 
 // Authenticate User
 app.UseAuthentication();

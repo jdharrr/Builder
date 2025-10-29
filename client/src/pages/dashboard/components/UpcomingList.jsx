@@ -36,6 +36,7 @@ export const UpcomingList = () => {
 
     const togglePaid = useTogglePaid(navigate);
     const handlePaidStatusChange = async (e, date, expense) => {
+        console.log(date)
          togglePaid.mutate({
              expenseId: expense.id,
              date: date,
@@ -88,7 +89,7 @@ export const UpcomingList = () => {
                                     className="form-check-input"
                                     type="checkbox"
                                     disabled={togglePaid.isPending}
-                                    checked={!!expense.due_date_paid}
+                                    checked={!!expense.dueDatePaid}
                                     onChange={(e) => handlePaidStatusChange(e, date, expense)}
                                 />
                             </div>
@@ -123,7 +124,7 @@ const useTogglePaid = (navigate) => {
                     d,
                     d === date
                         ? exps.map((x) =>
-                            x.id === expenseId ? { ...x, due_date_paid: dueDatePaid } : x
+                            x.id === expenseId ? { ...x, dueDatePaid: dueDatePaid } : x
                         )
                         : exps,
                 ]);

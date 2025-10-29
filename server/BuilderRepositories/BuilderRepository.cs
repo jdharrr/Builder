@@ -25,4 +25,19 @@ public class BuilderRepository
     {
         await _dbService.RollbackAsync().ConfigureAwait(false);
     }
+
+    public static string BuildInParams(List<object> inList, ref Dictionary<string, object?> parameters)
+    {
+        var sql = "(";
+        for (int i = 0; i < inList.Count; i++)
+        {
+            sql += $"@param{i}";
+            if (i < inList.Count - 1)
+                sql += ",";
+
+            parameters[$"param{i}"] = inList[i]; 
+        }
+
+        return sql += ")";
+    }
 }

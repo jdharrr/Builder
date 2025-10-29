@@ -1,5 +1,6 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
+using DatabaseServices.Models;
 
 namespace BuilderServices.UserService;
 
@@ -16,6 +17,11 @@ public class UserService
         _userRepo = userRepo;
         _userSettingsRepo = userSettingsRepo;
         _userContext = userContext;
+    }
+
+    public async Task<UserDto?> GetLimitedUserByIdAsync()
+    {
+        return await _userRepo.GetLimitedUserByIdAsync(_userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task UpdateDarkModeAsync(bool darkMode)

@@ -1,10 +1,11 @@
 import React from 'react';
 
-import '../css/lateExpenses.css';
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {fetchLateExpenses} from "../../../api.jsx";
 import {useNavigate} from "react-router-dom";
 import {getStatus} from "../../../util.jsx";
+
+import '../css/lateExpenses.css';
 
 export const LateExpenses = () => {
     const navigate = useNavigate();

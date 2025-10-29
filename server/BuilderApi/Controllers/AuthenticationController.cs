@@ -26,7 +26,7 @@ public class AuthenticationController : ControllerBase
     [HttpGet("validateAccessToken")]
     public IActionResult ValidateAccessToken()
     {
-        return Ok();
+        return Ok(true);
     }
 
     [HttpPost("createUser")]

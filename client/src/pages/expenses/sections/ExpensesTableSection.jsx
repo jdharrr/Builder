@@ -1,30 +1,28 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 
-import {ViewExpenseModalContext} from "../../../providers/expenses/ViewExpenseModalContext.jsx";
 import {
     deleteExpense,
     getExpenseSearchableColumns,
-    getExpenseTableActions, getPaymentsForExpense,
+    getPaymentsForExpense,
     updateExpenseActiveStatus,
     updateExpensePaidStatus
 } from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {ExpensePayDateInputModal} from "../components/ExpensePayDateInputModal.jsx";
-import {SelectFromListModal} from "../components/SelectFromListModal.jsx";
+import {Checkbox} from "../../../components/Checkbox.jsx";
 
 import '../css/expensesTableSection.css';
+import {SelectFromListModal} from "../components/SelectFromListModal.jsx";
 
 //TODO: Fix exception handling on 401 after token expires
 // Currently it causes the components to error out
 
 // TODO: error middleware (lol eventually) for toast pop up on api errors
-export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSort, setSearchFilter, enableSearch, showInactiveExpenses}) => {
+export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSort, setSearchFilter, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds}) => {
     const navigate = useNavigate();
     const qc = useQueryClient();
-
-    const { setShowViewExpenseModal } = useContext(ViewExpenseModalContext);
 
     const [viewSelectExpensesForActionModal, setViewSelectExpensesForActionModal] = useState({isShowing: false, payments: []});
     const [viewDateInputModal, setViewDateInputModal] = useState({isShowing: false, expense: {}});
@@ -55,30 +53,11 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
         },
     });
 
-    // Needed?
-    // const [tableActions, setTableActions] = useState([]);
-    // useEffect(() => {
-    //    async function loadAllTableActions() {
-    //        try {
-    //            const actions = await  getExpenseTableActions();
-    //            setTableActions(actions);
-    //        } catch (err) {
-    //            if (err.status === 401) {
-    //                navigate('/login');
-    //            }
-    //        }
-    //    }
-    //
-    //    loadAllTableActions();
-    // }, [navigate]);
-
-    const handleRowClick = (expense) => {
-        setShowViewExpenseModal((prevState) => ({
-            ...prevState,
-            isShowing: true,
-            expense: expense
-        }));
-    }
+    useEffect(() => {
+        if (selectActive) {
+            setSelectedIds([]);
+        }
+    }, [selectActive, setSelectedIds])
 
     const handleHeaderClick = (column) => {
         setSelectedSort(column);
@@ -176,81 +155,100 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
             if (err.status === 401) {
                 navigate('/login');
             }
+
+            // TODO: Pop up message if failed due to invalid due date
         }
         setViewDateInputModal({isShowing: true, expense: null});
         await qc.refetchQueries({ queryKey: ['allExpenses']});
     }
 
-    return (
-        <div className={'table-responsive'}>
-            <table className="expensesTable table table-hover table-striped table-bordered overflow-auto table-fixed w-100" style={{ cursor: "pointer"}}>
-                <thead>
-                <tr>
-                    {showInactiveExpenses && <th key={'active'} scope={'col'} onClick={() => handleHeaderClick('active')}>Active</th>}
-                    {Object.entries(searchableHeaders).map(([column, label], idx) => (
-                        <th key={idx} scope="col" onClick={() => handleHeaderClick(column)}>{label}</th>
-                    ))}
-                    <th key='actions' scope="col"></th>
-                </tr>
-                {enableSearch &&
-                    <tr>
-                        {Object.entries(searchableHeaders).map(([column], idx) => (
-                            <th key={idx}>
-                                <input
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    value={activeSearchFilter.searchColumn === column ? activeSearchFilter.searchValue : ''}
-                                    placeholder="Search..."
-                                    onChange={(e) => handleSearchInput(e, column)}
-                                    onKeyDown={(e) => handleSearchSubmit(e)}
-                                    onFocus={() => handleSearchFocus(column)}
-                                />
-                            </th>
-                        ))}
-                    </tr>
-                }
-                </thead>
-                <tbody className="table-group-divider" >
-                {expenses.map((exp, idx) => (
-                    <tr key={idx} onClick={() => handleRowClick(exp)}>
-                        {showInactiveExpenses && <td className={'text-nowrap'}>{exp.active}</td>}
-                        <td className={'text-nowrap'}>{exp.created_at.substring(0, 10)}</td>
-                        <td className={'text-nowrap'}>{exp.updated_at.substring(0, 10)}</td>
-                        <td>{exp.category_name}</td>
-                        <td className={"text-truncate"}>{exp.name}</td>
-                        <td>${exp.cost}</td>
-                        <td className={'text-nowrap'}>{exp.next_due_date.substring(0, 10)}</td>
-                        <td>{exp.recurrence_rate.charAt(0).toUpperCase() + exp.recurrence_rate.slice(1).toLowerCase()}</td>
-                        <td className={'text-nowrap'}>{exp.start_date.substring(0, 10)}</td>
-                        <td className={'text-nowrap'}>{exp.end_date ? exp.end_date.substring(0, 10) : ''}</td>
-                        <td>
-                            <div className="dropdown">
-                                <a className="btn btn-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"
-                                   onClick={(e) => {
-                                       e.preventDefault();
-                                       e.stopPropagation();
-                                       setClickedActionRowId(exp.id)
-                                   }}
-                                >
-                                    Actions
-                                </a>
+    const handleSelectChange = (checked, id) => {
+        setSelectedIds(prev =>
+            prev.includes(id)
+                ? prev.filter(x => x !== id)
+                : [...prev, id]
+        );
+    }
 
-                                <ul className={`dropdown-menu ${clickedActionRowId === exp.id ? "show" : ""}`} >
-                                    {Object.entries(exp.tableActions).map(([action, label], idx) => (
-                                        <li key={idx}><a className="dropdown-item" href="#" onClick={(e) => handleActionClick(e, action, exp.id)}>{label}</a></li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </td>
+    return (
+        <div>
+            <div className={"table-responsive"} style={{ maxWidth: '100%' }}>
+                <table className="table table-striped table-bordered" style={{cursor: "default"}}>
+                    <thead style={{cursor: 'pointer'}} >
+                    <tr>
+                        {selectActive && <th key={"select"} scope={'col'}></th>}
+                        {showInactiveExpenses && <th key={'active'} scope={'col'} onClick={() => handleHeaderClick('active')}>Active</th>}
+                        {Object.entries(searchableHeaders).map(([column, label], idx) => (
+                            <th className={"text-center"} key={idx} scope="col" onClick={() => handleHeaderClick(column)}>{label}</th>
+                        ))}
+                        <th key='actions' scope="col"></th>
                     </tr>
-                ))}
-                </tbody>
-            </table>
+                    {enableSearch &&
+                        <tr>
+                            {selectActive && <th></th>}
+                            {Object.entries(searchableHeaders).map(([column], idx) => (
+                                <th key={idx}>
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={activeSearchFilter.searchColumn === column ? activeSearchFilter.searchValue : ''}
+                                        placeholder="Search..."
+                                        onChange={(e) => handleSearchInput(e, column)}
+                                        onKeyDown={(e) => handleSearchSubmit(e)}
+                                        onFocus={() => handleSearchFocus(column)}
+                                    />
+                                </th>
+                            ))}
+                        </tr>
+                    }
+                    </thead>
+                    <tbody className="table-group-divider" >
+                    {expenses.map((exp, idx) => (
+                        <tr key={idx}>
+                            {selectActive &&
+                                <td>
+                                    <Checkbox isChecked={selectedIds.length > 0 && selectedIds.includes(exp.id)} handleCheckboxClick={handleSelectChange} itemId={exp.id} />
+                                </td>
+                            }
+                            {showInactiveExpenses && <td className={'text-nowrap'}>{exp.active}</td>}
+                            <td className={'text-nowrap'}>{exp.createdAt}</td>
+                            <td className={'text-nowrap'}>{exp.updatedAt}</td>
+                            <td>{exp.categoryName}</td>
+                            <td className={"text-truncate"}>{exp.name}</td>
+                            <td>${exp.cost}</td>
+                            <td className={'text-nowrap'}>{exp.nextDueDate}</td>
+                            <td>{exp.recurrenceRate.charAt(0).toUpperCase() + exp.recurrenceRate.slice(1).toLowerCase()}</td>
+                            <td className={'text-nowrap'}>{exp.startDate}</td>
+                            <td className={'text-nowrap'}>{exp.endDate ? exp.endDate : ''}</td>
+                            <td>
+                                <div className="dropdown">
+                                    <a className="btn btn-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                       onClick={(e) => {
+                                           e.preventDefault();
+                                           e.stopPropagation();
+                                           setClickedActionRowId(exp.id)
+                                       }}
+                                    >
+                                        Actions
+                                    </a>
+
+                                    <ul className={`dropdown-menu ${clickedActionRowId === exp.id ? "show" : ""}`} >
+                                        {Object.entries(exp.tableActions).map(([action, label], idx) => (
+                                            <li key={idx}><a className="dropdown-item" href="#" onClick={(e) => handleActionClick(e, action, exp.id)}>{label}</a></li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
 
             {viewSelectExpensesForActionModal.isShowing && viewSelectExpensesForActionModal.payments &&
                 <SelectFromListModal
                     handleSave={handleExpenseSelectSave}
-                    setViewSelectExpensesForActionModal={setViewSelectExpensesForActionModal}
+                    handleClose={() => setViewSelectExpensesForActionModal({isShowing: false, payments: []})}
                     title={'Select an expense to mark as unpaid'}
                     list={viewSelectExpensesForActionModal.payments}
                 />

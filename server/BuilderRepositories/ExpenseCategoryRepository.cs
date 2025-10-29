@@ -44,6 +44,10 @@ public class ExpenseCategoryRepository
 
             throw;
         }
+        catch (MySqlException ex) when (ex.Number == 45000)
+        {
+            throw new GenericException(ex.Message);
+        }
 
         return result.RowsAffected;
     }
@@ -54,10 +58,9 @@ public class ExpenseCategoryRepository
                         *
                     FROM
                         expense_categories
-                    WHERE
-                        user_id = @userId
-                    ORDER BY
-                        name ASC
+                    WHERE user_id = @userId
+                        AND active = 1
+                    ORDER BY name ASC
                   ";
         var parameters = new Dictionary<string, object?>()
         {
@@ -70,8 +73,49 @@ public class ExpenseCategoryRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? string.Empty,
-            CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-mm-dd") ?? string.Empty,
-            UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-mm-dd") ?? string.Empty
-        });
+            CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd") ?? string.Empty,
+            UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd") ?? string.Empty
+        }) ?? [];
+    }
+
+    public async Task<List<ExpenseCategoryDto>> GetExpenseCategoriesWithTotalSpentAsync(int userId, DateOnly? startOfRange = null, DateOnly? endOfRange = null)
+    {
+        var rangeSql = startOfRange != null && endOfRange != null
+            ? @"AND ep.payment_date >= @startOfRange
+                AND ep.payment_date <= @endOfRange
+               "
+            : "";
+        var sql = $@"SELECT ec.name, ec.id, COALESCE(SUM(ep.cost), 0.0) AS total_spent
+                    FROM expense_categories ec
+                    INNER JOIN expenses e
+                        ON e.category_id = ec.id
+                        AND e.user_id = @userId
+                    LEFT JOIN expense_payments ep
+                        ON ep.expense_id = e.id
+                    WHERE ec.user_id = @userIdCopy
+                        AND ec.active = 1
+                        {rangeSql}
+                    GROUP BY ec.id, ec.name
+                    ORDER BY ec.id";
+        var parameters = new Dictionary<string, object?>()
+        {
+            { "@userId", userId },
+            { "@userIdCopy", userId }
+        };
+
+        if (startOfRange != null & endOfRange != null)
+        {
+            parameters["@startOfRange"] = startOfRange?.ToString("yyyy-MM-dd");
+            parameters["@endOfRange"] = endOfRange?.ToString("yyyy-MM-dd");
+        }
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapList(row => new ExpenseCategoryDto
+        {
+            Id = row.Field<int>("id"),
+            Name = row.Field<string>("name") ?? string.Empty,
+            TotalSpent = (double)row.Field<decimal>("total_spent")
+        }) ?? [];
     }
 }

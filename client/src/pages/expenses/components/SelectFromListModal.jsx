@@ -1,6 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 
-export const SelectFromListModal = ({list, handleSave, setViewSelectExpensesForActionModal, title}) => {
+import {Checkbox} from "../../../components/Checkbox.jsx";
+
+export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
     const [selectedIds, setSelectedIds] = useState([]);
 
     const wrapperRef = useRef(null);
@@ -14,10 +16,6 @@ export const SelectFromListModal = ({list, handleSave, setViewSelectExpensesForA
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-    const handleClose = () => {
-        setViewSelectExpensesForActionModal(false);
-    }
 
     const handleSaveClick = () => {
         handleSave(selectedIds);
@@ -42,15 +40,11 @@ export const SelectFromListModal = ({list, handleSave, setViewSelectExpensesForA
                         <div className="upcomingList list-group list-group-flush">
                             {list && list.length > 0 ? (
                                 list.map((item, idx) => (
-                                    <div className={'d-flex'}>
-                                        <div className="list-group-item border-0" key={idx}>
+                                    <div key={idx} className={'d-flex'}>
+                                        <div className="list-group-item border-0 p-2">
                                             {'Payment Id: ' +  item.id}
                                         </div>
-                                        <div className="form-check pt-2">
-                                            <input className="form-check-input" type="checkbox" checked={selectedIds.includes(item.id)}
-                                               onChange={(e) => handleCheckboxClick(e.target.checked, item.id)}
-                                            />
-                                        </div>
+                                        <Checkbox isChecked={selectedIds.includes(item.id)} handleCheckboxClick={handleCheckboxClick} itemId={item.id} />
                                     </div>
                                 ))
                             ) : (

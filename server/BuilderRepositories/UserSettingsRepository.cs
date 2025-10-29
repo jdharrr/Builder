@@ -15,7 +15,7 @@ public class UserSettingsRepository
     {
         var allowedColumns = new HashSet<string>
         {
-            "DarkMode",
+            "dark_mode",
         };
 
         if (updateColumns.Where(x => !allowedColumns.Contains(x.Key)).Any())

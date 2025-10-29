@@ -103,4 +103,29 @@ public class UserRepository
             Salt = row.Field<string>("salt")
         });
     }
+
+    public async Task<UserDto?> GetLimitedUserByIdAsync(int userId)
+    {
+        var sql = @"SELECT u.*, us.dark_mode
+                    FROM users u
+                    LEFT JOIN user_settings us ON u.id = us.user_id
+                    WHERE u.id = @userId
+                  ";
+        var parameters = new Dictionary<string, object?>()
+        {
+            { "@userId", userId }
+        };
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapSingle(row => new UserDto
+        {
+            Id = userId,
+            Username = row.Field<string>("username"),
+            Email = row.Field<string>("email"),
+            Settings = new UserSettingsDto() { DarkMode = row.Field<bool>("dark_mode") },
+            CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
+            UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd")
+        });
+    }
 }

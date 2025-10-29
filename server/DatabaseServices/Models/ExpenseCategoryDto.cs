@@ -9,4 +9,6 @@ public class ExpenseCategoryDto
     public string CreatedAt { get; set; } = string.Empty;
 
     public string UpdatedAt { get; set; } = string.Empty;
+
+    public double TotalSpent { get; set; } = 0.0;
 }

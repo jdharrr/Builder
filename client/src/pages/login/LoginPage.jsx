@@ -9,12 +9,12 @@ import './css/login.css';
 export const LoginPage = ({setAuthenticated}) =>  {
     const navigate = useNavigate();
 
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const handleSubmitClick = async () => {
         try {
-            const data = await login(username, password);
+            const data = await login(email, password);
             Cookies.set('access_token', data.token);
             setAuthenticated(true);
             navigate('/dashboard');
@@ -27,7 +27,7 @@ export const LoginPage = ({setAuthenticated}) =>  {
       <div className="loginWrapper">
           <h1>Login</h1>
           <div className="loginForm">
-              <input className='loginInput' type="text" placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
+              <input className='loginInput' type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
               <input className='loginInput' type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button className="loginSubmit" type="submit" onClick={handleSubmitClick}>Login</button>

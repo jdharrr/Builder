@@ -1,7 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const apiEndpoint = 'http://localhost:5151';
+const apiEndpoint = 'https://localhost:7245';
 
 const getAccessToken = () => Cookies.get("access_token");
 
@@ -11,6 +11,7 @@ export const validateToken = async () => {
     if (!token) return false;
     try {
         const result = await axios.get(`${apiEndpoint}/api/auth/validateAccessToken`, {
+            withCredentials: true,
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': "application/json",
@@ -18,15 +19,15 @@ export const validateToken = async () => {
             }
         });
 
-        return result.data.valid;
+        return result.data;
     } catch {
         return false;
     }
 }
 
-export const login = async (username, password) => {
+export const login = async (email, password) => {
     const loginRes = await axios.post(`${apiEndpoint}/api/auth/login`, {
-        username: username,
+        email: email,
         password: password
     }, {
         withCredentials: true,
@@ -56,9 +57,9 @@ export const fetchUser = async () => {
 
 export const updateDarkMode = async (isDarkMode) => {
     const token = getAccessToken();
-    const result = await axios.patch(`${apiEndpoint}/api/user/update/settings/darkMode`, {
-        darkMode: isDarkMode,
-    }, {
+    const result = await axios.patch(`${apiEndpoint}/api/user/update/settings/darkMode`,
+        isDarkMode,
+    {
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -113,7 +114,7 @@ export const postExpense = async (expenseProps) => {
         description: description,
         startDate: startDate,
         endDate: endDate,
-        paidOnCreation: paidOnCreation,
+        isPaidOnCreation: paidOnCreation,
         dueLastDayOfMonth: dueLastDayOfMonth,
         initialDatePaid: initialDatePaid,
     }, {
@@ -137,8 +138,8 @@ export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePa
         dueDate: dueDate
     };
 
-    if (datePaid !== undefined) {
-        body.datePaid = datePaid;
+    if (datePaid === undefined) {
+        body.datePaid = new Date().toISOString().substring(0,10);
     }
 
     const result = await axios.patch(`${apiEndpoint}/api/expenses/update/paidStatus`, body, {
@@ -235,7 +236,7 @@ export const createExpenseCategory = async (name) =>  {
     const token = getAccessToken();
 
     const result = await axios.post(`${apiEndpoint}/api/expenses/categories/create`, {
-        name: name
+        categoryName: name
     }, {
         withCredentials: true,
         headers: {
@@ -257,6 +258,24 @@ export const getAllExpenseCategories = async () => {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+        }
+    });
+    console.log(result.data)
+    return result.data;
+}
+
+export const getExpenseCategoriesWithTotalSpent = async (categoryChartRangeOption) => {
+    const token = getAccessToken();
+
+    const result = await axios.get(`${apiEndpoint}/api/expenses/categories/categoriesTotalSpent`, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        params: {
+            rangeOption: categoryChartRangeOption
         }
     });
 
@@ -282,21 +301,6 @@ export const getExpenseSearchableColumns = async () => {
     const token = getAccessToken();
 
     const result = await axios.get(`${apiEndpoint}/api/expenses/table/searchableColumns`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
-    return result.data;
-}
-
-export const getExpenseTableActions = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/table/tableActions`, {
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -358,4 +362,69 @@ export const getPaymentsForExpense = async (expenseId) => {
     });
 
     return result.data;
+}
+
+export const getLateDatesForExpense = async (expenseId) => {
+    const token = getAccessToken();
+
+    const result = await axios.get(`${apiEndpoint}/api/expenses/lateDatesForExpense`, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        params: {
+            expenseId: expenseId,
+        }
+    });
+
+    return result.data;
+}
+
+export const getCategoryChartRangeOptions = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get(`${apiEndpoint}/api/expenses/categories/categoryChartRangeOptions`, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const getExpenseTableBatchActions = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get(`${apiEndpoint}/api/expenses/table/getBatchActions`, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
+}
+
+export const categoryBatchUpdate = async(expenseIds, categoryId) => {
+    const token = getAccessToken();
+
+    console.log(expenseIds, categoryId);
+    await axios.patch(`${apiEndpoint}/api/expenses/update/batchCategoryUpdate`, {
+        expenseIds: expenseIds,
+        categoryId: categoryId,
+    }, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    })
 }

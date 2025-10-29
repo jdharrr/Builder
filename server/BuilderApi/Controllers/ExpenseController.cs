@@ -6,6 +6,8 @@ using BuilderServices.ExpenseService.Requests;
 using DatabaseServices.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Ocsp;
+using System.Text.Json;
 
 namespace BuilderApi.Controllers;
 
@@ -62,17 +64,17 @@ public class ExpenseController : ControllerBase
         if (string.IsNullOrEmpty(request.Sort) || string.IsNullOrEmpty(request.SortDir))
             return BadRequest("Must provide sort column and sort direction.");
 
-        if (Enum.TryParse(typeof(ExpenseSortOption), request.Sort, true, out var sortOption))
+        if (!Enum.TryParse(typeof(ExpenseSortOption), request.Sort, true, out var sortOption))
             return BadRequest("Invalid sort option.");
 
         if (!_sortDirs.Contains(request.SortDir))
             return BadRequest("Invalid sort direction.");
 
         object? searchColumn = null;
-        if (!string.IsNullOrEmpty(request.SearchColumn) && Enum.TryParse(typeof(ExpenseSearchColumn), request.SearchColumn, true, out searchColumn))
+        if (!string.IsNullOrEmpty(request.SearchColumn) && !Enum.TryParse(typeof(ExpenseSearchColumn), request.SearchColumn, true, out searchColumn))
             return BadRequest("Invalid search column.");
 
-        var expenses = await _expenseService.GetAllExpensesAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn)searchColumn!).GetColumnName(), request.SearchValue, request.ShowInactiveExpenses).ConfigureAwait(false);
+        var expenses = await _expenseService.GetAllExpensesAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses).ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -119,7 +121,7 @@ public class ExpenseController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("getPaymentsForExpense")]
+    [HttpGet("expensePayments/paymentsForExpense")]
     public async Task<IActionResult> GetPaymentsForExpense([FromQuery] int expenseId)
     {
         var payments = await _expenseService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
@@ -156,5 +158,45 @@ public class ExpenseController : ControllerBase
         var expenses = await _expenseService.GetLateExpensesAsync().ConfigureAwait(false);
         
         return Ok(expenses);
+    }
+
+    [HttpGet("lateDatesForExpense")]
+    public async Task<IActionResult> GetLateDatesForExpense([FromQuery] int expenseId)
+    {
+        var lateDates = await _expenseService.GetLateDatesForExpense(expenseId).ConfigureAwait(false);
+
+        return Ok(lateDates);
+    }
+
+    [HttpGet("categories/categoriesTotalSpent")]
+    public async Task<IActionResult> GetExpenseCategoriesWithTotalSpent([FromQuery] string rangeOption)
+    {
+        var categories = await _categoryService.GetExpenseCategoriesWithTotalSpentAsync(rangeOption).ConfigureAwait(false);
+
+        return Ok(categories);
+    }
+
+    [HttpGet("categories/categoryChartRangeOptions")]
+    public IActionResult GetCategoryChartRangeOptions()
+    {
+        var options = ExpenseCategoryService.GetCategoryChartRangeOptions();
+
+        return Ok(options);
+    }
+
+    [HttpGet("table/getBatchActions")]
+    public IActionResult GetExpenseTableBatchActions()
+    {
+        var actions = ExpenseService.GetExpenseTableBatchActions();
+
+        return Ok(actions);
+    }
+
+    [HttpPatch("update/batchCategoryUpdate")]
+    public async Task<IActionResult> CategoryBatchUpdate([FromBody] CategoryBatchUpdateRequest request)
+    {
+        await _categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
+
+        return Ok();
     }
 }

@@ -23,7 +23,7 @@ public static class ExpenseSearchColumnHelper
         {
             ExpenseSearchColumn.NextDueDate => "next_due_date",
             ExpenseSearchColumn.Cost => "cost",
-            ExpenseSearchColumn.Category => "category_id",
+            ExpenseSearchColumn.Category => "category_name",
             ExpenseSearchColumn.CreatedDate => "created_at",
             ExpenseSearchColumn.EndDate => "end_date",
             ExpenseSearchColumn.UpdatedDate => "updated_at",

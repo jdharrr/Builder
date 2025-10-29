@@ -3,6 +3,7 @@ using DatabaseServices.Models;
 using DatabaseServices.Repsonses;
 using Microsoft.VisualBasic;
 using MySql.Data.MySqlClient;
+using System.Data;
 
 namespace BuilderRepositories;
 
@@ -74,7 +75,7 @@ public class PaymentRepository
 
     public async Task<ExpensePaymentDto?> GetExpensePaymentByDueDateAsync(ExpensePaymentDto dto)
     {
-        var sql = @"SELECT id FROM expense_payments
+        var sql = @"SELECT id, expense_id, cost, payment_date, due_date_paid FROM expense_payments
                     WHERE user_id = @userId
                         AND due_date_paid = @dueDate
                         AND expense_id = @expenseId";
@@ -89,19 +90,19 @@ public class PaymentRepository
 
         return dataTable.MapSingle(row => new ExpensePaymentDto
         {
-            ExpenseId = Convert.ToInt32(row["expense_id"]),
-            UserId = Convert.ToInt32(row["user_id"]),
-            Cost = Convert.ToDouble(row["cost"]),
-            PaymentDate = row["payment_date"].ToString() ?? string.Empty,
-            DueDatePaid = row["due_date_paid"].ToString() ?? string.Empty
+            Id = row.Field<int>("id"),
+            ExpenseId = row.Field<int>("expense_id"),
+            Cost = (double)row.Field<decimal>("cost"),
+            PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd") ?? string.Empty,
+            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd") ?? string.Empty
         });
     }
 
     public async Task<List<ExpensePaymentDto>> GetPaymentsForDateAsync(DateOnly dueDatePaid, int userId)
     {
         var sql = @"SELECT * FROM expense_payments
-                    WHERE user_id = :userId
-                    AND due_date_paid = :dueDatePaid";
+                    WHERE user_id = @userId
+                    AND due_date_paid = @dueDatePaid";
         var parameters = new Dictionary<string, object?>()
         {
             { "@userId", userId },
@@ -112,20 +113,19 @@ public class PaymentRepository
 
         return dataTable.MapList(row => new ExpensePaymentDto
         {
+            Id = row.Field<int>("id"),
             ExpenseId = Convert.ToInt32(row["expense_id"]),
-            UserId = Convert.ToInt32(row["user_id"]),
             Cost = Convert.ToDouble(row["cost"]),
-            PaymentDate = row["payment_date"].ToString() ?? string.Empty,
-            DueDatePaid = row["due_date_paid"].ToString() ?? string.Empty
-        });
+            PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
+            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd")
+        }) ?? [];
     }
 
     public async Task<List<ExpensePaymentDto>> GetPaymentsForExpenseAsync(int expenseId, int userId)
     {
-        var sql = @"SELECT id FROM expense_payments
-                    WHERE user_id = :userId
-                    AND due_date_paid = :dueDate
-                    AND expense_id = :expenseId
+        var sql = @"SELECT * FROM expense_payments
+                    WHERE user_id = @userId
+                    AND expense_id = @expenseId
                   ";
         var parameters = new Dictionary<string, object?>()
         {
@@ -137,11 +137,11 @@ public class PaymentRepository
         
         return dataTable.MapList(row => new ExpensePaymentDto
         {
+            Id = row.Field<int>("id"),
             ExpenseId = Convert.ToInt32(row["expense_id"]),
-            UserId = Convert.ToInt32(row["user_id"]),
             Cost = Convert.ToDouble(row["cost"]),
-            PaymentDate = row["payment_date"].ToString() ?? string.Empty,
-            DueDatePaid = row["due_date_paid"].ToString() ?? string.Empty
-        });
+            PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
+            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd")
+        }) ?? [];
     }
 }

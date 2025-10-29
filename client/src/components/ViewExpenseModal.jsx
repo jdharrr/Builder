@@ -41,7 +41,7 @@ export const ViewExpenseModal = () => {
                         <div className="row">
                             <p className={'col-auto'}>{expense.name}</p>
                             <p className={'col-auto'}>{expense.cost}</p>
-                            <p className={'col-auto'}>{expense.recurrence_rate.charAt(0).toUpperCase() + expense.recurrence_rate.slice(1).toLowerCase()}</p>
+                            <p className={'col-auto'}>{expense.recurrenceRate.charAt(0).toUpperCase() + expense.recurrenceRate.slice(1).toLowerCase()}</p>
                         </div>
                     </div>
                     <div className="modal-footer">

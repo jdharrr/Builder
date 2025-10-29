@@ -84,10 +84,10 @@ export const UserModal = ({handleClose}) => {
                                                         {`Email: ${user.email}`}
                                                     </div>
                                                     <div className={'list-group-item'}>
-                                                        {`Created: ${user.created_at.substring(0, 10)}`}
+                                                        {`Created: ${user.createdAt.substring(0, 10)}`}
                                                     </div>
                                                     <div className={'list-group-item'}>
-                                                        {`Last Updated: ${user.updated_at.substring(0,10)}`}
+                                                        {`Last Updated: ${user.updatedAt.substring(0,10)}`}
                                                     </div>
                                                 </div>
                                             ) : (
@@ -99,7 +99,7 @@ export const UserModal = ({handleClose}) => {
                                         { !isLoading ?
                                             (
                                                 <div className={'form-check form-switch'}>
-                                                    <input className={'form-check-input'} type='checkbox' role={'switch'} checked={user.dark_mode} onChange={(e) => handleDarkModeChange(e.target.checked)}/>
+                                                    <input className={'form-check-input'} type='checkbox' role={'switch'} checked={user.settings.darkMode} onChange={(e) => handleDarkModeChange(e.target.checked)}/>
                                                     <label className="form-check-label">
                                                         Dark Mode
                                                     </label>
@@ -137,7 +137,10 @@ const useToggleDarkMode = (navigate) => {
                 old
                     ? {
                         ...old,
-                        dark_mode: isChecked
+                        settings: {
+                            ...old.settings,
+                            darkMode: isChecked,
+                        }
                     }
                     : old
             );

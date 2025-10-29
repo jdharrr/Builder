@@ -8,5 +8,5 @@ public class UpdateExpensePaidStatusRequest
 
     public required bool IsPaid { get; set; }
 
-    public required string DatePaid { get; set; }
+    public string? DatePaid { get; set; }
 }

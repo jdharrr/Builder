@@ -15,7 +15,7 @@ export const NavBarSection = () => {
     return (
         <>
             <nav className="navBarSection navbar px-4 sticky-top">
-                <a className="navbar-brand" href="#">Budget & Expenses</a>
+                <a className="navbar-brand" href="/dashboard">Budget & Expenses</a>
 
                 <div className="navItemGroup ms-auto align-items-center gap-5">
                     <div className={'navItem px-3'}>

@@ -15,4 +15,10 @@ public class UserDto
     public string? PasswordResetToken { get; set; }
 
     public DateTime? PasswordResetExpiration { get; set; }
+
+    public UserSettingsDto Settings { get; set; } = new UserSettingsDto();
+
+    public string CreatedAt { get; set; } = string.Empty;
+
+    public string UpdatedAt { get; set; } = string.Empty;
 }

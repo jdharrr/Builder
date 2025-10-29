@@ -113,17 +113,17 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = row.Field<double>("cost"),
+            Cost = (double)row.Field<decimal>("cost"),
             Description = row.Field<string?>("description") ?? string.Empty,
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = row.Field<double?>("last_cost"),
+            LastCost = (double?)row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
             NextDueDate = row.Field<DateTime?>("next_due_date")?.ToString("yyyy-MM-dd"),
             Active = row.Field<bool>("active"),
             StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
-            EndDate = row.Field<string?>("end_date"),
+            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
             CategoryId = row.Field<int?>("category_id")
         });
     }
@@ -158,7 +158,7 @@ public class ExpenseRepository : BuilderRepository
         sql = sql.TrimEnd(',');
         sql += " WHERE id = @expenseId AND user_id = @userId";
 
-        var parameters = new Dictionary<string, object?>(updateColumns)
+        var parameters = new Dictionary<string, object?>()
         {
             { "@expenseId", expenseId },
             { "@userId", userId }
@@ -178,25 +178,25 @@ public class ExpenseRepository : BuilderRepository
     {
         var sql = @"SELECT 
                     e.*, 
-                    c.name as category_name, 
-                    IF(DATE(e.next_due_date) < CURDATE(), TRUE, FALSE) as is_late
+                    c.name AS category_name, 
+                    (DATE(e.next_due_date) < CURDATE()) as is_late
                     FROM expenses e
                     LEFT JOIN expense_categories c ON e.category_id = c.id
-                    WHERE e.user_id = :userId
-                        AND DATE(e.start_date) <= :lastDate
-                        AND (e.end_date IS NULL OR e.end_date >= :firstDate)
+                    WHERE e.user_id = @userId
+                        AND DATE(e.start_date) <= @lastDate
+                        AND (e.end_date IS NULL OR e.end_date >= @firstDate)
                         AND (
-                            DATE(e.next_due_date) BETWEEN :firstDateCopy AND :lastDateCopy
+                            DATE(e.next_due_date) BETWEEN @firstDateCopy AND @lastDateCopy
                             OR e.recurrence_rate IN ('daily', 'weekly', 'monthly', 'yearly')
                         )
                   ";
         var parameters = new Dictionary<string, object?>()
         {
-            { ":userId", userId },
-            { ":firstDate", firstDate.ToString("yyyy-MM-dd") },
-            { ":lastDate", lastDate.ToString("yyyy-MM-dd") },
-            { ":firstDateCopy", firstDate.ToString("yyyy-MM-dd") },
-            { ":lastDateCopy", lastDate.ToString("yyyy-MM-dd") }
+            { "@userId", userId },
+            { "@firstDate", firstDate.ToString("yyyy-MM-dd") },
+            { "@lastDate", lastDate.ToString("yyyy-MM-dd") },
+            { "@firstDateCopy", firstDate.ToString("yyyy-MM-dd") },
+            { "@lastDateCopy", lastDate.ToString("yyyy-MM-dd") }
         };
 
         var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
@@ -205,10 +205,10 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = row.Field<double>("cost"),
+            Cost = (double)row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = row.Field<double?>("last_cost"),
+            LastCost = (double?)row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
@@ -218,9 +218,9 @@ public class ExpenseRepository : BuilderRepository
             EndDate = row.Field<string?>("end_date"),
             CategoryId = row.Field<int?>("category_id"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month"),
-            IsLate = row.Field<bool>("is_late"),
+            IsLate = Convert.ToBoolean(Convert.ToInt32(row["is_late"])),
             CategoryName = row.Field<string>("category_name")
-        });
+        }) ?? [];
     }
 
     public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
@@ -230,7 +230,7 @@ public class ExpenseRepository : BuilderRepository
             { "@userId", userId }
         };
 
-        var sort = sortColumn == "category" ? "c.name" : $"e.{sortColumn}";
+        var sort = sortColumn == "category_name" ? "c.name" : $"e.{sortColumn}";
         var sortDirection = sortDir.ToLower() == "asc" ? "ASC" : "DESC";
 
         var selectFrom = "SELECT e.*, c.name as category_name FROM expenses e";
@@ -246,7 +246,7 @@ public class ExpenseRepository : BuilderRepository
         if (!string.IsNullOrEmpty(searchColumn) && !string.IsNullOrEmpty(searchValue))
         {
             // TODO: sanitize search value to prevent
-            var searchCol = searchColumn == "category" ? "c.name" : "e." + searchColumn;
+            var searchCol = searchColumn == "category_name" ? "c.name" : "e." + searchColumn;
             where += $" AND {searchCol} LIKE @searchValue";
 
             var escapedSearchValue = searchValue.Replace("%", "\\%").Replace("_", "\\_");
@@ -263,21 +263,21 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = row.Field<double>("cost"),
+            Cost = (double)row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = row.Field<double?>("last_cost"),
+            LastCost = (double?)row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
             NextDueDate = row.Field<DateTime?>("next_due_date")?.ToString("yyyy-MM-dd"),
             Active = row.Field<bool>("active"),
             StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
-            EndDate = row.Field<string?>("end_date"),
+            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
             CategoryId = row.Field<int?>("category_id"),
             CategoryName = row.Field<string>("category_name"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month")
-        });
+        }) ?? [];
     }
 
     public async Task<bool> DeleteExpenseAsync(int expenseId, int userId)
@@ -298,12 +298,12 @@ public class ExpenseRepository : BuilderRepository
 
     public async Task<List<ExpenseDto>> GetLateExpensesAsync(int userId)
     {
-        var dateNow = new DateOnly();
+        var dateNow = DateOnly.FromDateTime(DateTime.Today);
         var sql = @"SELECT e.*, c.name as category_name FROM expenses e
                     LEFT JOIN expense_categories c ON e.category_id = c.id
-                    WHERE e.user_id = :userId
+                    WHERE e.user_id = @userId
                         AND e.active = 1
-                        AND DATE(e.next_due_date) < :dateNow
+                        AND DATE(e.next_due_date) < @dateNow
                   ";
         var parameters = new Dictionary<string, object?>()
         {
@@ -317,20 +317,34 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = row.Field<double>("cost"),
+            Cost = (double)row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = row.Field<double?>("last_cost"),
+            LastCost = (double?)row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
             NextDueDate = row.Field<DateTime?>("next_due_date")?.ToString("yyyy-MM-dd"),
             Active = row.Field<bool>("active"),
             StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
-            EndDate = row.Field<string?>("end_date"),
+            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
             CategoryId = row.Field<int?>("category_id"),
             CategoryName = row.Field<string>("category_name"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month")
-        });
+        }) ?? [];
+    }
+
+    public async Task CategoryBatchUpdateAsync(List<object> expenseIds, int categoryId, int userId)
+    {
+        var parameters = new Dictionary<string, object?>();
+        var sql = $@"UPDATE expenses
+                    SET category_id = @categoryId
+                    WHERE id IN {BuildInParams(expenseIds, ref parameters)}
+                        AND user_id = @userId";
+
+        parameters["@categoryId"] = categoryId;
+        parameters["@userId"] = userId;
+
+        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
     }
 }
