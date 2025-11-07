@@ -11,13 +11,13 @@ public class ExpenseService
 {
     private readonly ExpenseRepository _expenseRepo;
 
-    private readonly PaymentRepository _paymentRepo;
+    private readonly ExpensePaymentRepository _paymentRepo;
 
     private readonly UserContext _userContext;
 
     private readonly int _upcomingDaysLimit = 7;
 
-    public ExpenseService(ExpenseRepository expenseRepo, PaymentRepository paymentRepo, UserContext userContext) 
+    public ExpenseService(ExpenseRepository expenseRepo, ExpensePaymentRepository paymentRepo, UserContext userContext) 
     {
         _expenseRepo = expenseRepo;
         _paymentRepo = paymentRepo;
@@ -216,7 +216,7 @@ public class ExpenseService
     public async Task<Dictionary<string, List<ExpenseDto>>> GetUpcomingExpensesAsync()
     {
         var startDate = DateOnly.FromDateTime(DateTime.Today);
-        var endDate = startDate.AddDays(7);
+        var endDate = startDate.AddDays(_upcomingDaysLimit);
 
         var expenses = await _expenseRepo.GetExpensesForDateRangeAsync(
             _userContext.UserId, 
@@ -336,11 +336,6 @@ public class ExpenseService
         };
 
         await _expenseRepo.UpdateExpenseAsync(updateDict, expenseId, _userContext.UserId).ConfigureAwait(false);
-    }
-
-    public async Task<List<ExpensePaymentDto>> GetPaymentsForExpenseAsync(int expenseId)
-    {
-        return await _paymentRepo.GetPaymentsForExpenseAsync(expenseId, _userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task DeleteExpenseAsync(int expenseId)

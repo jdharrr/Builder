@@ -1,5 +1,6 @@
 ﻿using BuilderServices.ExpenseCategoryService;
 using BuilderServices.ExpenseCategoryService.Request;
+using BuilderServices.ExpensePaymentService;
 using BuilderServices.ExpenseService;
 using BuilderServices.ExpenseService.Enums;
 using BuilderServices.ExpenseService.Requests;
@@ -20,12 +21,15 @@ public class ExpenseController : ControllerBase
 
     private readonly ExpenseCategoryService _categoryService;
 
+    private readonly ExpensePaymentService _paymentService;
+
     private readonly List<string> _sortDirs = ["asc", "desc"];
 
-    public ExpenseController(ExpenseService expenseService, ExpenseCategoryService categoryService)
+    public ExpenseController(ExpenseService expenseService, ExpenseCategoryService categoryService, ExpensePaymentService paymentService)
     {
         _expenseService = expenseService;
         _categoryService = categoryService;
+        _paymentService = paymentService;
     }
 
     [HttpPost("createExpense")]
@@ -121,10 +125,10 @@ public class ExpenseController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("expensePayments/paymentsForExpense")]
+    [HttpGet("payments/paymentsForExpense")]
     public async Task<IActionResult> GetPaymentsForExpense([FromQuery] int expenseId)
     {
-        var payments = await _expenseService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
+        var payments = await _paymentService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
         
         return Ok(payments);
     }
@@ -198,5 +202,13 @@ public class ExpenseController : ControllerBase
         await _categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
 
         return Ok();
+    }
+
+    [HttpGet("payments/totalSpent")]
+    public async Task<IActionResult> GetTotalSpent()
+    {
+        var totalSpent = await _paymentService.GetTotalSpentAsync().ConfigureAwait(false);
+        
+        return Ok(totalSpent);
     }
 }

@@ -2,10 +2,10 @@ import React, {useEffect, useRef, useState} from 'react';
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
 
-import {getLateDatesForExpense, getPaymentsForExpense} from "../../../api.jsx";
-import {getStatus} from "../../../util.jsx";
+import {getLateDatesForExpense, getPaymentsForExpense} from "../api.jsx";
+import {getStatus} from "../util.jsx";
 
-export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, expense}) => {
+export const ExpensePayDateInputModal = ({handleSave, handleClose, expense, preSelectedDueDate}) => {
     const navigate = useNavigate();
 
     const [selectedDatePaid, setSelectedDatePaid] = useState(new Date().toISOString().substring(0,10));
@@ -26,8 +26,9 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
     }, []);
 
     useEffect(() => {
-        if (expense.recurrenceRate !== 'once') 
+        if (expense.recurrenceRate !== 'once' && !preSelectedDueDate) {
             handleSelectedDueDatePaidChange(selectedDueDatePaid);
+        }
     }, [])
 
     const { data: lateDates = [] } = useQuery({
@@ -35,8 +36,8 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
         queryFn: async () => {
             return await getLateDatesForExpense(expense.id) ?? [];
         },
-        staleTime: 60_000,
-        enabled: expense.recurrenceRate !== 'once',
+        staleTime: 0,
+        enabled: expense.recurrenceRate !== 'once' && !preSelectedDueDate,
         retry: (failureCount, error) => {
             if (getStatus(error) === 401) return false;
 
@@ -56,7 +57,7 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
             return await getPaymentsForExpense(expense.id) ?? [];
         },
         staleTime: 0,
-        enabled: expense.recurrenceRate !== 'once',
+        enabled: expense.recurrenceRate !== 'once' && !preSelectedDueDate,
         retry: (failureCount, error) => {
             if (getStatus(error) === 401) return false;
 
@@ -70,20 +71,19 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
         },
     });
 
-    const handleClose = () => {
-        setViewDateInputModal({isShowing: false, expense: null});
-    }
-
     const handleSaveClick = () => {
         if (invalidDueDate) {
             alert('Please enter a valid due date');
             return;
         }
-        if (expense.recurrenceRate === 'once') {
-            setSelectedDueDatePaid(expense.startDate);
-        }
 
-        handleSave(selectedDatePaid, selectedDueDatePaid);
+        if (preSelectedDueDate) {
+            handleSave(selectedDatePaid, preSelectedDueDate);
+        } else if (expense.recurrenceRate !== 'once') {
+            handleSave(selectedDatePaid, expense.startDate);
+        } else {
+            handleSave(selectedDatePaid, selectedDueDatePaid);
+        }
     }
 
     const handleSelectedDueDatePaidChange = (selectedDate) => {
@@ -129,7 +129,6 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
         } else {
             setInvalidDueDate(true);
             setSelectedDueDatePaid(selectedDate);
-            return;
         }
     }
 
@@ -141,7 +140,7 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
                         <h5 className="modal-title">Payments started on {expense?.startDate?.substring(0,10)}, recurs {expense.dueEndOfMonth ? 'at the end of every month' : expense.recurrenceRate}</h5>
                     </div>
                     <div className="modal-body">
-                        {expense.recurrenceRate !== 'once' &&
+                        {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
                             <div className={"mb-2"}>
                                 <div>
                                     Late Due Dates: {lateDates.length <= 0 ? 'No late expenses!' : ''}
@@ -157,7 +156,7 @@ export const ExpensePayDateInputModal = ({handleSave, setViewDateInputModal, exp
                                 }
                             </div>
                         }
-                        {expense.recurrenceRate !== 'once' &&
+                        {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
                             <div>
                                 <label className={'form-label mt-1'}>Select a due date to mark as paid:</label>
                                 <input className={'form-control'} type={'date'} value={selectedDueDatePaid} onChange={(e) => handleSelectedDueDatePaidChange(e.target.value)} />

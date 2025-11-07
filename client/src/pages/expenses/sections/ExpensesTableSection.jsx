@@ -10,7 +10,7 @@ import {
     updateExpensePaidStatus
 } from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
-import {ExpensePayDateInputModal} from "../components/ExpensePayDateInputModal.jsx";
+import {ExpensePayDateInputModal} from "../../../components/ExpensePayDateInputModal.jsx";
 import {Checkbox} from "../../../components/Checkbox.jsx";
 
 import '../css/expensesTableSection.css';
@@ -116,6 +116,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                     break;
                 case 'Delete':
                     if (window.confirm("Are you sure you want to delete this expense?")) {
+                        qc.clear();
                         deleteExpenseMutation.mutate(expenseId);
                     }
                     break;
@@ -210,7 +211,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                                     <Checkbox isChecked={selectedIds.length > 0 && selectedIds.includes(exp.id)} handleCheckboxClick={handleSelectChange} itemId={exp.id} />
                                 </td>
                             }
-                            {showInactiveExpenses && <td className={'text-nowrap'}>{exp.active}</td>}
+                            {showInactiveExpenses && <td className={'text-nowrap text-center'}>{exp.active ? "Yes" : "No"}</td>}
                             <td className={'text-nowrap'}>{exp.createdAt}</td>
                             <td className={'text-nowrap'}>{exp.updatedAt}</td>
                             <td>{exp.categoryName}</td>
@@ -257,7 +258,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
             {viewDateInputModal.isShowing && viewDateInputModal.expense &&
                 <ExpensePayDateInputModal
                     handleSave={handleDateInputSave}
-                    setViewDateInputModal={setViewDateInputModal}
+                    handleClose={() => setViewDateInputModal({isShowing: false, expenses: {}})}
                     expense={viewDateInputModal.expense}
                 />
             }

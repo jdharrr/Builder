@@ -7,11 +7,11 @@ using System.Data;
 
 namespace BuilderRepositories;
 
-public class PaymentRepository
+public class ExpensePaymentRepository
 {
     private readonly DatabaseService _dbService;
 
-    public PaymentRepository(DatabaseService dbService)
+    public ExpensePaymentRepository(DatabaseService dbService)
     {
         _dbService = dbService;
     }
@@ -143,5 +143,28 @@ public class PaymentRepository
             PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
             DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd")
         }) ?? [];
+    }
+
+    public async Task<double> GetTotalSpentForRangeAsync(int userId, DateOnly? startDate = null, DateOnly? endDate = null)
+    {
+        var sql = @"SELECT COALESCE(SUM(cost), 0.0) AS total_spent 
+                    FROM expense_payments
+                    WHERE user_id = @userId";
+
+        var parameters = new Dictionary<string, object?>()
+        {
+            { "@userId", userId }
+        };
+
+        if (startDate != null && endDate != null)
+        {
+            sql += " AND payment_date >= @startDate AND payment_date <= @endDate";
+            parameters.Add("@startDate", startDate?.ToString("yyyy-MM-dd"));
+            parameters.Add("@endDate", endDate?.ToString("yyyy-MM-dd"));
+        }
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable?.MapSingle(row => (double)row.Field<decimal>("total_spent")) ?? 0.0;
     }
 }

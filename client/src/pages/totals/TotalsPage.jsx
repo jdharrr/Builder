@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 import { Doughnut } from 'react-chartjs-2';
 
 import {Card} from "../../components/Card.jsx";
-import {getCategoryChartRangeOptions, getExpenseCategoriesWithTotalSpent} from "../../api.jsx";
+import {getCategoryChartRangeOptions, getExpenseCategoriesWithTotalSpent, getTotalSpent} from "../../api.jsx";
 import {useQuery} from "@tanstack/react-query";
 import {getStatus} from "../../util.jsx";
 import {Dropdown} from '../../components/Dropdown.jsx'
@@ -19,6 +19,27 @@ export default function TotalsPage() {
         queryFn: async () => {
             const result = await getExpenseCategoriesWithTotalSpent(selectedCategoryChartRangeOption);
             return result ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
+                navigate('/login');
+            }
+        }
+    });
+
+    const { data: totalSpent = 0 } = useQuery({
+        queryKey: ['totalSpent'],
+        queryFn: async () => {
+            const result = await getTotalSpent();
+            const dollarString = toDollar(result)
+            return dollarString ?? 0;
         },
         staleTime: 60_000,
         retry: (failureCount, error) => {
@@ -93,12 +114,26 @@ export default function TotalsPage() {
         setSelectedCategoryChartRangeOption(name);
     }
 
+    function toDollar(amount) {
+        return amount.toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        });
+    }
+
     return (
-        <Card title={"Category Breakdown"}>
-            <Dropdown title={"Range"} options={Object.entries(categoryChartRangeOptions)} handleOptionChange={handleRangeChange} changeTitleOnOptionChange={true}/>
-            <div className={"d-flex align-items-center justify-content-center"}>
-                <Doughnut data={categoryPieData} style={{ maxWidth: '30rem', maxHeight: '30rem' }} />
-            </div>
-        </Card>
+        <>
+            <Card title={"Category Breakdown"}>
+                <Dropdown title={"Range"} options={Object.entries(categoryChartRangeOptions)} handleOptionChange={handleRangeChange} changeTitleOnOptionChange={true}/>
+                <div className={"d-flex align-items-center justify-content-center"}>
+                    <Doughnut data={categoryPieData} style={{ maxWidth: '30rem', maxHeight: '30rem' }} />
+                </div>
+            </Card>
+            <Card title={"Total Spent"}>
+                <div>
+                    <p>{totalSpent.toString()}</p>
+                </div>
+            </Card>
+        </>
     );
 }

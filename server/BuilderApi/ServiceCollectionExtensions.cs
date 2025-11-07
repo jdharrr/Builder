@@ -7,6 +7,7 @@ using BuilderServices.ExpenseService;
 using BuilderRepositories;
 using BuilderServices.ExpenseCategoryService;
 using BuilderServices.UserService;
+using BuilderServices.ExpensePaymentService;
 
 namespace BuilderApi;
 
@@ -43,7 +44,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<UserRepository>();
         services.AddScoped<ExpenseRepository>();
-        services.AddScoped<PaymentRepository>();
+        services.AddScoped<ExpensePaymentRepository>();
         services.AddScoped<ExpenseCategoryRepository>();
         services.AddScoped<UserSettingsRepository>();
 
@@ -55,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UserService>();
         services.AddScoped<ExpenseService>();
         services.AddScoped<ExpenseCategoryService>();
+        services.AddScoped<ExpensePaymentService>();
 
         return services;
     }

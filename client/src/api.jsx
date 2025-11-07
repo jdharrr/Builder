@@ -349,7 +349,7 @@ export const deleteExpense = async (expenseId) => {
 export const getPaymentsForExpense = async (expenseId) => {
     const token = getAccessToken();
 
-    const result = await axios.get(`${apiEndpoint}/api/expenses/expensePayments/paymentsForExpense`,{
+    const result = await axios.get(`${apiEndpoint}/api/expenses/payments/paymentsForExpense`,{
         withCredentials: true,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -427,4 +427,19 @@ export const categoryBatchUpdate = async(expenseIds, categoryId) => {
             'Accept': 'application/json',
         }
     })
+}
+
+export const getTotalSpent = async () => {
+    const token = getAccessToken();
+
+    const result = await axios.get(`${apiEndpoint}/api/expenses/payments/totalSpent`, {
+        withCredentials: true,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+    });
+
+    return result.data;
 }

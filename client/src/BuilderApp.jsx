@@ -22,7 +22,6 @@ export const BuilderApp = () => {
         async function validate() {
             const isValidated = await validateToken();
             setAuthenticated(isValidated);
-            console.log(isValidated);
         }
 
         validate();

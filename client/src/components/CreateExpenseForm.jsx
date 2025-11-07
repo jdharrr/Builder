@@ -111,7 +111,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
         isCreated ? alert('Expense successfully created.'): alert('Failed to create Expense.');
         if (isCreated) {
             // An expense has been added, refresh any stale lists
-            await handleExpenseRefresh();
+            qc.clear();
             setShowCreateExpenseForm((prevState) => ({
                 ...prevState,
                 isShowing: false,
@@ -128,13 +128,6 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
             date: null,
             isFab: false
         }));
-    }
-
-    const handleExpenseRefresh = async () => {
-        await qc.refetchQueries({ queryKey: ['expenseTrackerExpenses']});
-        await qc.refetchQueries({ queryKey: ['upcomingExpenses']});
-        await qc.refetchQueries({ queryKey: ['lateExpenses']});
-        await qc.refetchQueries({ queryKey: ['allExpenses']});
     }
 
     const handleAddCategoryClick = () => {
