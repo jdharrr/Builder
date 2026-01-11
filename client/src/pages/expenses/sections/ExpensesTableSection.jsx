@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, memo} from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 
@@ -7,30 +7,65 @@ import {
     getExpenseSearchableColumns,
     getPaymentsForExpense,
     updateExpenseActiveStatus,
-    updateExpensePaidStatus
+    updateExpensePaidStatus,
+    updateExpense,
+    deletePayment
 } from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {ExpensePayDateInputModal} from "../../../components/ExpensePayDateInputModal.jsx";
-import {Checkbox} from "../../../components/Checkbox.jsx";
 
 import '../css/expensesTableSection.css';
 import {SelectFromListModal} from "../components/SelectFromListModal.jsx";
+import {EditExpenseModal} from "../components/EditExpenseModal.jsx";
+import {showSuccess, showError} from "../../../utils/toast.js";
+import {useDebounce} from "../../../hooks/useDebounce.js";
 
 //TODO: Fix exception handling on 401 after token expires
 // Currently it causes the components to error out
 
 // TODO: error middleware (lol eventually) for toast pop up on api errors
+
+// Memoized search row component to prevent re-renders when table data changes
+const SearchRow = memo(({
+    searchableHeaders,
+    selectActive,
+    showInactiveExpenses,
+    activeSearchFilter,
+    handleSearchInput,
+    handleSearchSubmit,
+    handleSearchFocus
+}) => (
+    <tr>
+        {selectActive && <th></th>}
+        {showInactiveExpenses && <th></th>}
+        {Object.entries(searchableHeaders).map(([column], idx) => (
+            <th key={idx}>
+                <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={activeSearchFilter.searchColumn === column ? activeSearchFilter.searchValue : ''}
+                    placeholder="Search..."
+                    onChange={(e) => handleSearchInput(e, column)}
+                    onKeyDown={(e) => handleSearchSubmit(e)}
+                    onFocus={() => handleSearchFocus(column)}
+                />
+            </th>
+        ))}
+    </tr>
+));
 export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSort, setSearchFilter, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds}) => {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
     const [viewSelectExpensesForActionModal, setViewSelectExpensesForActionModal] = useState({isShowing: false, payments: []});
     const [viewDateInputModal, setViewDateInputModal] = useState({isShowing: false, expense: {}});
+    const [viewEditExpenseModal, setViewEditExpenseModal] = useState({isShowing: false, expense: null});
 
     const [activeSearchFilter, setActiveSearchFilter] = useState({
         searchColumn: '',
         searchValue: '',
     });
+    const debouncedSearchFilter = useDebounce(activeSearchFilter, 500);
 
     const [clickedActionRowId, setClickedActionRowId] = useState(null);
 
@@ -59,6 +94,13 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
         }
     }, [selectActive, setSelectedIds])
 
+    // Auto-search after debounce delay
+    useEffect(() => {
+        if (enableSearch && debouncedSearchFilter.searchValue) {
+            setSearchFilter(debouncedSearchFilter);
+        }
+    }, [debouncedSearchFilter, enableSearch, setSearchFilter]);
+
     const handleHeaderClick = (column) => {
         setSelectedSort(column);
 
@@ -69,10 +111,17 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
 
     const handleSearchInput = (e, col) => {
         e.preventDefault();
+        const value = e.target.value;
+
         setActiveSearchFilter({
-            searchValue: e.target.value,
+            searchValue: value,
             searchColumn: col,
         });
+
+        // Instantly clear if empty
+        if (value === '') {
+            setSearchFilter({ searchColumn: '', searchValue: '' });
+        }
     }
 
     const handleSearchSubmit = (e) => {
@@ -121,10 +170,11 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                     }
                     break;
                 case 'Edit':
-                    //TODO: Open edit modal
+                    const expenseToEdit = expenses.find(e => e.id === expenseId);
+                    setViewEditExpenseModal({ isShowing: true, expense: expenseToEdit });
                     break;
                 default:
-                    alert('Invalid Expense Action');
+                    showError('Invalid Expense Action');
             }
         } catch (err) {
             if (err.status === 401) {
@@ -143,21 +193,49 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
         }
     }
 
-    const handleExpenseSelectSave = () => {
+    const handleExpenseSelectSave = async (selectedIds) => {
+        try {
+            // Delete all selected payments
+            await Promise.all(selectedIds.map(paymentId => deletePayment(paymentId)));
 
+            showSuccess(`Successfully deleted ${selectedIds.length} payment(s)!`);
+            setViewSelectExpensesForActionModal({isShowing: false, payments: []});
+            await qc.refetchQueries({ queryKey: ['allExpenses']});
+        } catch (err) {
+            if (getStatus(err) === 401) {
+                navigate('/login');
+            } else {
+                showError('Failed to delete payment(s)');
+            }
+        }
     }
+
+    const handleEditExpenseSave = async (expenseId, expenseData) => {
+        try {
+            await updateExpense(expenseId, expenseData);
+            showSuccess('Expense updated successfully!');
+            setViewEditExpenseModal({ isShowing: false, expense: null });
+            await qc.refetchQueries({ queryKey: ['allExpenses'] });
+        } catch (err) {
+            if (getStatus(err) === 401) {
+                navigate('/login');
+            } else {
+                showError('Failed to update expense');
+            }
+        }
+    };
 
     const handleDateInputSave = async (paymentDate, dueDatePaid) => {
         const expense = viewDateInputModal.expense;
         try {
             await updateExpensePaidStatus(expense.id, true, dueDatePaid, paymentDate);
-            alert('Payment saved!');
+            showSuccess('Payment saved!');
         } catch (err) {
             if (err.status === 401) {
                 navigate('/login');
+            } else {
+                showError('Failed to save payment');
             }
-
-            // TODO: Pop up message if failed due to invalid due date
         }
         setViewDateInputModal({isShowing: true, expense: null});
         await qc.refetchQueries({ queryKey: ['allExpenses']});
@@ -174,7 +252,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
     return (
         <div>
             <div className={"table-responsive"} style={{ maxWidth: '100%' }}>
-                <table className="table table-striped table-bordered" style={{cursor: "default"}}>
+                <table className="table table-striped table-bordered" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
                     <thead style={{cursor: 'pointer'}} >
                     <tr>
                         {selectActive && <th key={"select"} scope={'col'}></th>}
@@ -185,22 +263,15 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                         <th key='actions' scope="col"></th>
                     </tr>
                     {enableSearch &&
-                        <tr>
-                            {selectActive && <th></th>}
-                            {Object.entries(searchableHeaders).map(([column], idx) => (
-                                <th key={idx}>
-                                    <input
-                                        type="text"
-                                        className="form-control form-control-sm"
-                                        value={activeSearchFilter.searchColumn === column ? activeSearchFilter.searchValue : ''}
-                                        placeholder="Search..."
-                                        onChange={(e) => handleSearchInput(e, column)}
-                                        onKeyDown={(e) => handleSearchSubmit(e)}
-                                        onFocus={() => handleSearchFocus(column)}
-                                    />
-                                </th>
-                            ))}
-                        </tr>
+                        <SearchRow
+                            searchableHeaders={searchableHeaders}
+                            selectActive={selectActive}
+                            showInactiveExpenses={showInactiveExpenses}
+                            activeSearchFilter={activeSearchFilter}
+                            handleSearchInput={handleSearchInput}
+                            handleSearchSubmit={handleSearchSubmit}
+                            handleSearchFocus={handleSearchFocus}
+                        />
                     }
                     </thead>
                     <tbody className="table-group-divider" >
@@ -208,7 +279,12 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                         <tr key={idx}>
                             {selectActive &&
                                 <td>
-                                    <Checkbox isChecked={selectedIds.length > 0 && selectedIds.includes(exp.id)} handleCheckboxClick={handleSelectChange} itemId={exp.id} />
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={selectedIds.includes(exp.id)}
+                                        onChange={(e) => handleSelectChange(e.target.checked, exp.id)}
+                                    />
                                 </td>
                             }
                             {showInactiveExpenses && <td className={'text-nowrap text-center'}>{exp.active ? "Yes" : "No"}</td>}
@@ -260,6 +336,14 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
                     handleSave={handleDateInputSave}
                     handleClose={() => setViewDateInputModal({isShowing: false, expenses: {}})}
                     expense={viewDateInputModal.expense}
+                />
+            }
+
+            {viewEditExpenseModal.isShowing && viewEditExpenseModal.expense &&
+                <EditExpenseModal
+                    expense={viewEditExpenseModal.expense}
+                    handleSave={handleEditExpenseSave}
+                    handleClose={() => setViewEditExpenseModal({ isShowing: false, expense: null })}
                 />
             }
         </div>

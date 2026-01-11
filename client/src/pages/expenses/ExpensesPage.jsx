@@ -15,6 +15,7 @@ import {Dropdown} from "../../components/Dropdown.jsx";
 
 import './css/expensesPage.css';
 import {UpdateCategoryModal} from "./components/UpdateCategoryModal.jsx";
+import {showSuccess, showWarning, showError} from "../../utils/toast.js";
 
 export default function ExpensesPage() {
     const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function ExpensesPage() {
                                  ?? [];
         },
         staleTime: 60_000,
+        placeholderData: (previousData) => previousData,
         retry: (failureCount, error) => {
             if (getStatus(error) === 401) return false;
 
@@ -102,7 +104,7 @@ export default function ExpensesPage() {
 
     const handleBatchAction = (e, action) => {
         if (!selectedIds || selectedIds.length === 0) {
-            alert("Please select at least one expense");
+            showWarning("Please select at least one expense");
             return;
         }
 
@@ -122,10 +124,12 @@ export default function ExpensesPage() {
 
         try {
             await categoryBatchUpdate(selectedIds, category);
-            alert("Successfully updated category");
+            showSuccess("Successfully updated category");
         } catch (err) {
             if (getStatus(err) === 401) {
                 navigate('/login');
+            } else {
+                showError("Failed to update category");
             }
         }
 
@@ -145,22 +149,22 @@ export default function ExpensesPage() {
                         </div>
                     }
                     <div className="form-check form-switch d-flex align-items-center ms-auto">
-                        <label className="form-check-label me-5">
+                        <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
+                        <label className="form-check-label ms-2" htmlFor="selectToggle">
                             Select
                         </label>
-                        <input className="form-check-input" type="checkbox" onChange={() => setSelectActive((prev) => !prev)} />
                     </div>
-                    <div className="form-check form-switch d-flex align-items-center">
-                        <label className="form-check-label me-5">
+                    <div className="form-check form-switch d-flex align-items-center ms-3">
+                        <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                        <label className="form-check-label ms-2" htmlFor="showInactiveToggle">
                             Show Inactive
                         </label>
-                        <input className="form-check-input" type="checkbox" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
                     </div>
-                    <div className="form-check form-switch d-flex align-items-center">
-                        <label className="form-check-label me-5">
+                    <div className="form-check form-switch d-flex align-items-center ms-3">
+                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={(e) => handleEnableSearchChange(e)} />
+                        <label className="form-check-label ms-2" htmlFor="searchToggle">
                             Search
                         </label>
-                        <input className="form-check-input" type="checkbox" onChange={(e) => handleEnableSearchChange(e)} />
                     </div>
                 </div>
                 <ExpensesTableSection

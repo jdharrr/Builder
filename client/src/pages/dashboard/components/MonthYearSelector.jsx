@@ -1,13 +1,10 @@
 import React from 'react';
 
+import {MONTHS, getYearRange} from "../../../constants/dateConstants.js";
 import '../css/monthYearSelector.css';
 
 export const MonthYearSelector = ({ selectedYear, selectedMonth, setSelectedMonth, setSelectedYear }) => {
-    const months = [
-        'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    const currentYear = new Date().getFullYear();
-    const surroundingYears = Array.from({ length: 50 }, (_, i) => currentYear - 25 + i);
+    const surroundingYears = getYearRange(50, 25);
 
     const handleYearChange = (e) => setSelectedYear(Number(e.target.value));
     const handleMonthChange = (e) => setSelectedMonth(Number(e.target.value));
@@ -16,7 +13,7 @@ export const MonthYearSelector = ({ selectedYear, selectedMonth, setSelectedMont
         <div className="monthYearSelector">
             <div className="dateSelector">
                 <select className={'form-select'} value={selectedMonth} onChange={handleMonthChange}>
-                    {months.map((month, i) => (
+                    {MONTHS.map((month, i) => (
                         <option key={i} value={i}>
                             {month}
                         </option>

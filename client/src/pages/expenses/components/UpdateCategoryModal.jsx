@@ -7,6 +7,7 @@ import {getStatus} from "../../../util.jsx";
 import {createExpenseCategory, getAllExpenseCategories} from "../../../api.jsx";
 import {NewCategoryInput} from "../../../components/NewCategoryInput.jsx";
 import {FaPlus} from "react-icons/fa";
+import {showSuccess, showError} from "../../../utils/toast.js";
 
 export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) => {
     const navigate = useNavigate();
@@ -55,13 +56,13 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) =>
     const handleNewCategorySave = async (categoryName) => {
         try {
             await createExpenseCategory(categoryName);
-            alert("Category created!");
+            showSuccess("Category created!");
         } catch (err) {
             if (getStatus(err) === 401) {
                 navigate('/login');
+            } else {
+                showError('Failed to create category.');
             }
-
-            alert('Failed to create category.');
         }
 
         setRefreshCategories((prevState) => !prevState);

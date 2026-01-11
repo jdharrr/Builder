@@ -1,7 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 
-import {Checkbox} from "../../../components/Checkbox.jsx";
-
 export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
     const [selectedIds, setSelectedIds] = useState([]);
 
@@ -40,11 +38,17 @@ export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
                         <div className="upcomingList list-group list-group-flush">
                             {list && list.length > 0 ? (
                                 list.map((item, idx) => (
-                                    <div key={idx} className={'d-flex'}>
-                                        <div className="list-group-item border-0 p-2">
-                                            {'Payment Id: ' +  item.id}
+                                    <div key={idx} className={'d-flex align-items-center'}>
+                                        <div className="list-group-item border-0 p-2 flex-grow-1">
+                                            <div><strong>Due Date:</strong> {item.dueDatePaid}</div>
+                                            <div><strong>Paid on:</strong> {item.paymentDate}</div>
                                         </div>
-                                        <Checkbox isChecked={selectedIds.includes(item.id)} handleCheckboxClick={handleCheckboxClick} itemId={item.id} />
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={selectedIds.includes(item.id)}
+                                            onChange={(e) => handleCheckboxClick(e.target.checked, item.id)}
+                                        />
                                     </div>
                                 ))
                             ) : (

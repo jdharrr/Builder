@@ -9,6 +9,7 @@ import {getStatus} from "../../../util.jsx";
 import '../css/upcomingList.css';
 import '../../../css/global.css';
 import {ExpensePayDateInputModal} from "../../../components/ExpensePayDateInputModal.jsx";
+import {showSuccess, showError} from "../../../utils/toast.js";
 
 export const UpcomingList = () => {
     const navigate = useNavigate();
@@ -44,13 +45,13 @@ export const UpcomingList = () => {
         console.log(checkedExpense);
         try {
             await updateExpensePaidStatus(checkedExpense.id, true, dueDatePaid, paymentDate);
-            alert('Payment saved!');
+            showSuccess('Payment saved!');
         } catch (err) {
             if (err.status === 401) {
                 navigate('/login');
+            } else {
+                showError('Failed to save payment');
             }
-
-            // TODO: Pop up message if failed due to invalid due date
         }
         setShowExpenseDatePaidModal({isShowing: false, expense: {}});
         await qc.refetchQueries({ queryKey: ['upcomingExpenses']});
@@ -97,10 +98,11 @@ export const UpcomingList = () => {
                                     ${Number(expense.cost).toFixed(2)}
                                 </div>
                                 <div className="d-flex justify-content-end align-items-center">
-                                    <span className="form-text me-2">Paid?</span>
+                                    <label className="form-label me-2" htmlFor={`paid-${expense.id}-${date}`}>Paid?</label>
                                     <input
                                         className="form-check-input"
                                         type="checkbox"
+                                        id={`paid-${expense.id}-${date}`}
                                         onChange={() => {
                                             setCheckedExpense(expense);
                                             setCheckedDueDate(date)

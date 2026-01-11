@@ -4,6 +4,7 @@ import { FaPen } from 'react-icons/fa';
 import {ViewExpensesModalContext} from "../../../providers/expenses/ViewExpensesModalContext.jsx";
 import {ViewExpenseModalContext} from "../../../providers/expenses/ViewExpenseModalContext.jsx";
 import {CreateExpenseFormContext} from "../../../providers/expenses/CreateExpenseFormContext.jsx";
+import {MONTHS} from "../../../constants/dateConstants.js";
 
 import '../css/viewExpensesModal.css'
 
@@ -73,8 +74,7 @@ export const ViewExpensesModal = () => {
         }));
     }
 
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const month = months[Number(date.substring(5, 7)) - 1];
+    const month = MONTHS[Number(date.substring(5, 7)) - 1];
     const year = Number(date.substring(0, 4));
     const day = Number(date.substring(8, 10));
 

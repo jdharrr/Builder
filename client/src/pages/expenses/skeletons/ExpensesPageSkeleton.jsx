@@ -33,6 +33,10 @@ export default function ExpensesPageSkeleton() {
                         </div>
                     </div>
                     <ExpensesTableSectionSkeleton
+                        selectActive={false}
+                        showInactiveExpenses={false}
+                        enableSearch={false}
+                        rowCount={10}
                     />
                 </div>
             </div>

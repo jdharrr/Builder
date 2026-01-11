@@ -1,24 +1,39 @@
 import axios from "axios";
 import Cookies from "js-cookie";
-
-const apiEndpoint = 'https://localhost:7245';
+import {API_BASE_URL} from "./constants/api.js";
 
 const getAccessToken = () => Cookies.get("access_token");
+
+// Create axios instance with default configuration
+const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    withCredentials: true,
+    headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+});
+
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = getAccessToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 // User
 export const validateToken = async () => {
     const token = getAccessToken();
     if (!token) return false;
     try {
-        const result = await axios.get(`${apiEndpoint}/api/auth/validateAccessToken`, {
-            withCredentials: true,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': "application/json",
-                'Content-Type': 'application/json'
-            }
-        });
-
+        const result = await apiClient.get('/api/auth/validateAccessToken');
         return result.data;
     } catch {
         return false;
@@ -26,64 +41,30 @@ export const validateToken = async () => {
 }
 
 export const login = async (email, password) => {
-    const loginRes = await axios.post(`${apiEndpoint}/api/auth/login`, {
+    const loginRes = await apiClient.post('/api/auth/login', {
         email: email,
         password: password
-    }, {
-        withCredentials: true,
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
     });
 
     return loginRes.data;
 }
 
 export const fetchUser = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/user`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/user');
     return result.data;
 }
 
 export const updateDarkMode = async (isDarkMode) => {
-    const token = getAccessToken();
-    const result = await axios.patch(`${apiEndpoint}/api/user/update/settings/darkMode`,
-        isDarkMode,
-    {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.patch('/api/user/update/settings/darkMode', isDarkMode);
     return result.data;
 }
 
 // Expenses
 export const fetchExpensesForCalendar = async (month, year) => {
-    const token = getAccessToken();
-    const expensesRes = await axios.get(`${apiEndpoint}/api/expenses/expensesForDashboardCalendar`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
+    const expensesRes = await apiClient.get('/api/expenses/expensesForDashboardCalendar', {
         params: {
-            'month': month,
-            'year': year
+            month: month,
+            year: year
         }
     });
 
@@ -101,12 +82,14 @@ export const postExpense = async (expenseProps) => {
         endDate,
         paidOnCreation,
         dueLastDayOfMonth,
-        initialDatePaid
+        initialDatePaid,
+        payToNow  // TODO: Backend needs to handle this - should pay all due dates from start to today
     } = expenseProps;
 
     const token = getAccessToken();
     if (!token) throw new Error('401');
-    const result = await axios.post(`${apiEndpoint}/api/expenses/createExpense`, {
+
+    const result = await apiClient.post('/api/expenses/createExpense', {
         name: name,
         cost: cost,
         recurrenceRate: recurrenceRate,
@@ -117,21 +100,61 @@ export const postExpense = async (expenseProps) => {
         isPaidOnCreation: paidOnCreation,
         dueLastDayOfMonth: dueLastDayOfMonth,
         initialDatePaid: initialDatePaid,
-    }, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    })
+        payToNow: payToNow,
+    });
 
     return result.data;
 }
 
-export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePaid) => {
+// TODO: Backend endpoint needed - PATCH /api/expenses/update/expense
+export const updateExpense = async (expenseId, expenseData) => {
     const token = getAccessToken();
+    if (!token) throw new Error('401');
 
+    const result = await apiClient.patch('/api/expenses/update/expense', {
+        expenseId: expenseId,
+        name: expenseData.name,
+        cost: expenseData.cost,
+        description: expenseData.description,
+        recurrenceRate: expenseData.recurrenceRate,
+        startDate: expenseData.startDate,
+        endDate: expenseData.endDate,
+        categoryId: expenseData.categoryId,
+        dueEndOfMonth: expenseData.dueLastDayOfMonth,
+    });
+
+    return result.data;
+};
+
+// TODO: Backend endpoint needed - POST /api/expenses/payments/payAllOverdue
+// Should pay all unpaid due dates that are before today
+export const payAllOverdueDatesForExpense = async (expenseId, datePaid) => {
+    const token = getAccessToken();
+    if (!token) throw new Error('401');
+
+    const result = await apiClient.post('/api/expenses/payments/payAllOverdue', {
+        expenseId: expenseId,
+        datePaid: datePaid
+    });
+
+    return result.data;
+};
+
+// TODO: Backend endpoint needed - DELETE /api/expenses/payments/deletePayment
+export const deletePayment = async (paymentId) => {
+    const token = getAccessToken();
+    if (!token) throw new Error('401');
+
+    const result = await apiClient.delete('/api/expenses/payments/deletePayment', {
+        params: {
+            paymentId: paymentId,
+        }
+    });
+
+    return result.data;
+};
+
+export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePaid) => {
     const body = {
         expenseId: expenseId,
         isPaid: isPaid,
@@ -142,14 +165,7 @@ export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePa
         body.datePaid = new Date().toISOString().substring(0,10);
     }
 
-    const result = await axios.patch(`${apiEndpoint}/api/expenses/update/paidStatus`, body, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
+    const result = await apiClient.patch('/api/expenses/update/paidStatus', body);
 
     return result.data;
 }
@@ -157,57 +173,28 @@ export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePa
 export const getPaymentsForDate = async (date, expenses) => {
     if (!date || expenses.length < 1) return [];
 
-    const token = getAccessToken();
     const expenseIds = expenses.map(exp => exp.id);
-    const result = await axios.get(`${apiEndpoint}/api/expenses/expensePaymentsForDate`, {
-        withCredentials: true,
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
+    const result = await apiClient.get('/api/expenses/expensePaymentsForDate', {
         params: {
-            'date': date,
-            'expenseIds': expenseIds
+            date: date,
+            expenseIds: expenseIds
         }
-    })
+    });
 
     return result.data;
 }
 
 export const fetchLateExpenses = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/lateExpenses`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/lateExpenses');
     return result.data;
 }
 
 export const getUpcomingExpenses = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/getUpcomingExpenses`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/getUpcomingExpenses');
     return result.data;
 }
 
 export const getAllExpenses = async (sortOption, sortDirection, showInactiveExpenses, searchFilter) =>  {
-    const token = getAccessToken();
-
     const params = {
         sort: sortOption,
         sortDir: sortDirection,
@@ -219,13 +206,7 @@ export const getAllExpenses = async (sortOption, sortDirection, showInactiveExpe
         params.searchColumn = searchFilter.searchColumn;
     }
 
-    const result = await axios.get(`${apiEndpoint}/api/expenses/getAllExpenses`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
+    const result = await apiClient.get('/api/expenses/getAllExpenses', {
         params: params
     });
 
@@ -233,47 +214,21 @@ export const getAllExpenses = async (sortOption, sortDirection, showInactiveExpe
 }
 
 export const createExpenseCategory = async (name) =>  {
-    const token = getAccessToken();
-
-    const result = await axios.post(`${apiEndpoint}/api/expenses/categories/create`, {
+    const result = await apiClient.post('/api/expenses/categories/create', {
         categoryName: name
-    }, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
     });
 
     return result.data;
 }
 
 export const getAllExpenseCategories = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/categories`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
+    const result = await apiClient.get('/api/expenses/categories');
     console.log(result.data)
     return result.data;
 }
 
 export const getExpenseCategoriesWithTotalSpent = async (categoryChartRangeOption) => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/categories/categoriesTotalSpent`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
+    const result = await apiClient.get('/api/expenses/categories/categoriesTotalSpent', {
         params: {
             rangeOption: categoryChartRangeOption
         }
@@ -283,61 +238,26 @@ export const getExpenseCategoriesWithTotalSpent = async (categoryChartRangeOptio
 }
 
 export const getExpenseSortOptions = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/table/sortOptions`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/table/sortOptions');
     return result.data;
 }
 
 export const getExpenseSearchableColumns = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/table/searchableColumns`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/table/searchableColumns');
     return result.data;
 }
 
 export const updateExpenseActiveStatus  = async (isActive, expenseId) => {
-    const token = getAccessToken();
-
-    const result = await axios.patch(`${apiEndpoint}/api/expenses/update/activeStatus`, {
+    const result = await apiClient.patch('/api/expenses/update/activeStatus', {
         expenseId: expenseId,
         isActive: isActive,
-    }, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
     });
 
     return result.data;
 }
 
 export const deleteExpense = async (expenseId) => {
-    const token = getAccessToken();
-
-    const result = await axios.delete(`${apiEndpoint}/api/expenses/deleteExpense`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        },
+    const result = await apiClient.delete('/api/expenses/deleteExpense', {
         params: {
             expenseId: expenseId,
         }
@@ -347,15 +267,7 @@ export const deleteExpense = async (expenseId) => {
 }
 
 export const getPaymentsForExpense = async (expenseId) => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/payments/paymentsForExpense`,{
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
+    const result = await apiClient.get('/api/expenses/payments/paymentsForExpense', {
         params: {
             expenseId: expenseId,
         }
@@ -365,15 +277,7 @@ export const getPaymentsForExpense = async (expenseId) => {
 }
 
 export const getLateDatesForExpense = async (expenseId) => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/lateDatesForExpense`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
+    const result = await apiClient.get('/api/expenses/lateDatesForExpense', {
         params: {
             expenseId: expenseId,
         }
@@ -383,63 +287,24 @@ export const getLateDatesForExpense = async (expenseId) => {
 }
 
 export const getCategoryChartRangeOptions = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/categories/categoryChartRangeOptions`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/categories/categoryChartRangeOptions');
     return result.data;
 }
 
 export const getExpenseTableBatchActions = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/table/getBatchActions`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/table/getBatchActions');
     return result.data;
 }
 
 export const categoryBatchUpdate = async(expenseIds, categoryId) => {
-    const token = getAccessToken();
-
     console.log(expenseIds, categoryId);
-    await axios.patch(`${apiEndpoint}/api/expenses/update/batchCategoryUpdate`, {
+    await apiClient.patch('/api/expenses/update/batchCategoryUpdate', {
         expenseIds: expenseIds,
         categoryId: categoryId,
-    }, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    })
+    });
 }
 
 export const getTotalSpent = async () => {
-    const token = getAccessToken();
-
-    const result = await axios.get(`${apiEndpoint}/api/expenses/payments/totalSpent`, {
-        withCredentials: true,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-    });
-
+    const result = await apiClient.get('/api/expenses/payments/totalSpent');
     return result.data;
 }

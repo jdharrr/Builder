@@ -2,8 +2,77 @@ import React, {useEffect, useRef, useState} from 'react';
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
 
-import {getLateDatesForExpense, getPaymentsForExpense} from "../api.jsx";
+import {getLateDatesForExpense, getPaymentsForExpense, payAllOverdueDatesForExpense} from "../api.jsx";
 import {getStatus} from "../util.jsx";
+import {showError, showSuccess} from "../utils/toast.js";
+
+// Validation helper functions
+const validateRecurrencePattern = (selectedDate, startDate, recurrenceRate, dueEndOfMonth) => {
+    const selectedDay = Number(selectedDate.substring(8, 10));
+    const selectedMonth = Number(selectedDate.substring(5, 7));
+    const selectedYear = Number(selectedDate.substring(0, 4));
+    const startDateDay = Number(startDate.substring(8, 10));
+    const startDateMonth = Number(startDate.substring(5, 7));
+
+    const oneDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.round((new Date(selectedDate) - new Date(startDate)) / oneDay);
+
+    switch (recurrenceRate) {
+        case 'daily':
+            return true;
+
+        case 'weekly':
+            return diffDays % 7 === 0;
+
+        case 'monthly':
+            if (dueEndOfMonth) {
+                const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+                return selectedDay === daysInSelectedMonth;
+            }
+            return selectedDay === startDateDay;
+
+        case 'yearly':
+            return selectedMonth === startDateMonth && selectedDay === startDateDay;
+
+        case 'once':
+            return true;
+
+        default:
+            return false;
+    }
+};
+
+const validateDueDate = (selectedDate, expense, existingPayments) => {
+    // Check if payment already exists
+    if (existingPayments?.some(p => p.dueDatePaid === selectedDate.substring(0, 10))) {
+        return { valid: false, error: 'PAYMENT_EXISTS' };
+    }
+
+    const selectedDateObj = new Date(selectedDate);
+    const startDateObj = new Date(expense.startDate);
+    const endDateObj = expense.endDate ? new Date(expense.endDate) : null;
+
+    // Check date range
+    if (selectedDateObj < startDateObj) {
+        return { valid: false, error: 'BEFORE_START' };
+    }
+    if (endDateObj && selectedDateObj >= endDateObj) {
+        return { valid: false, error: 'AFTER_END' };
+    }
+
+    // Check recurrence pattern match
+    const recurrenceValid = validateRecurrencePattern(
+        selectedDate,
+        expense.startDate,
+        expense.recurrenceRate,
+        expense.dueEndOfMonth
+    );
+
+    return {
+        valid: recurrenceValid,
+        error: recurrenceValid ? null : 'INVALID_RECURRENCE'
+    };
+};
 
 export const ExpensePayDateInputModal = ({handleSave, handleClose, expense, preSelectedDueDate}) => {
     const navigate = useNavigate();
@@ -73,7 +142,7 @@ export const ExpensePayDateInputModal = ({handleSave, handleClose, expense, preS
 
     const handleSaveClick = () => {
         if (invalidDueDate) {
-            alert('Please enter a valid due date');
+            showError('Please enter a valid due date');
             return;
         }
 
@@ -87,50 +156,26 @@ export const ExpensePayDateInputModal = ({handleSave, handleClose, expense, preS
     }
 
     const handleSelectedDueDatePaidChange = (selectedDate) => {
-        setPaymentExists(false);
-        setInvalidDueDate(false);
+        const validation = validateDueDate(selectedDate, expense, existingPayments);
 
-        if (existingPayments && existingPayments.some(p => p.dueDatePaid === selectedDate.substring(0,10))) {
-            setPaymentExists(true);
-            setSelectedDueDatePaid(selectedDate);
-            return;
-        }
-
-        const selectedYear = Number(selectedDate.substring(0,4));
-        const selectedMonth = Number(selectedDate.substring(5,7));
-        const selectedDay = Number(selectedDate.substring(8,10));
-        const startDateMonth = Number(expense.startDate.substring(5,7));
-        const startDateDay = Number(expense.startDate.substring(8,10));
-        const oneDay = 1000 * 60 * 60 * 24;
-        const diffDays = Math.round((new Date(selectedDate) - new Date(expense.startDate)) / oneDay);
-        const daysInSelectedMonth = new Date(selectedYear, selectedMonth + 2, 0).getDate();
-
-        // Verify the due date the user is paying is valid
-        if (new Date(selectedDate) < new Date(expense.startDate)
-            && (expense.endDate === null || new Date(selectedDate) >= new Date(expense.endDate))) {
-            setInvalidDueDate(true);
-            setSelectedDueDatePaid(selectedDate);
-            return;
-        }
-
-        // TODO: fix this digusting code
-        if (expense.recurrenceRate === 'daily') {
-                setSelectedDueDatePaid(selectedDate);
-        } else if (expense.recurrenceRate === 'weekly' && diffDays % 7 === 0) {
-            setSelectedDueDatePaid(selectedDate);
-        } else if (expense.recurrenceRate === 'monthly' && expense.dueEndOfMonth && selectedDay === daysInSelectedMonth) {
-            setSelectedDueDatePaid(selectedDate);
-        } else if (expense.recurrenceRate === 'monthly' && selectedDay === startDateDay) {
-            setSelectedDueDatePaid(selectedDate);
-        } else if (expense.recurrenceRate === 'yearly'
-                   && selectedMonth === startDateMonth
-                   && selectedDay === startDateDay) {
-            setSelectedDueDatePaid(selectedDate);
-        } else {
-            setInvalidDueDate(true);
-            setSelectedDueDatePaid(selectedDate);
-        }
+        setSelectedDueDatePaid(selectedDate);
+        setPaymentExists(validation.error === 'PAYMENT_EXISTS');
+        setInvalidDueDate(!validation.valid && validation.error !== 'PAYMENT_EXISTS');
     }
+
+    const handlePayAllOverdue = async () => {
+        try {
+            const result = await payAllOverdueDatesForExpense(expense.id, selectedDatePaid);
+            showSuccess(`Successfully paid ${result.count} overdue date(s)!`);
+            handleClose();
+        } catch (err) {
+            if (getStatus(err) === 401) {
+                navigate('/login');
+            } else {
+                showError('Failed to pay all overdue dates');
+            }
+        }
+    };
 
     return (
         <div className="modal show d-block">
@@ -174,6 +219,11 @@ export const ExpensePayDateInputModal = ({handleSave, handleClose, expense, preS
                         </form>
                     </div>
                     <div className="modal-footer">
+                        {expense.recurrenceRate !== 'once' && lateDates.length > 0 && (
+                            <button type="button" className="btn btn-warning me-2" onClick={handlePayAllOverdue}>
+                                Pay All {lateDates.length} Overdue Dates
+                            </button>
+                        )}
                         <button type="button" className="btn btn-primary" disabled={(invalidDueDate || paymentExists)} onClick={handleSaveClick}>Save</button>
                         <button type="button" className="btn btn-primary" onClick={handleClose}>Close</button>
                     </div>

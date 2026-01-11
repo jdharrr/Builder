@@ -15,8 +15,23 @@ export const CalendarSkeleton = () => {
 
             <div className="calendarGrid">
                 {cells.map((_, idx) => (
-                    <div key={idx} className="dayBox placeholder-glow" aria-hidden="true">
-                        <span className="placeholder col-6" />
+                    <div
+                        key={idx}
+                        className="dayBox placeholder-glow"
+                        aria-hidden="true"
+                        style={{
+                            height: '3rem',
+                            width: '3rem'
+                        }}
+                    >
+                        <span
+                            className="placeholder"
+                            style={{
+                                width: '1.5rem',
+                                height: '1.2rem',
+                                alignSelf: 'flex-start'
+                            }}
+                        />
                     </div>
                 ))}
             </div>

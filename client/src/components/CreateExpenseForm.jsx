@@ -4,6 +4,8 @@ import {useQueryClient} from "@tanstack/react-query";
 
 import {createExpenseCategory, getAllExpenseCategories, postExpense} from "../api.jsx";
 import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormContext.jsx";
+import {MONTHS, getYearRange} from "../constants/dateConstants.js";
+import {RECURRENCE_RATES} from "../constants/expenseConstants.js";
 
 import '../css/createExpenseForm.css';
 import {FaPlus} from "react-icons/fa";
@@ -11,19 +13,10 @@ import {getStatus} from "../util.jsx";
 import {Dropdown} from "./Dropdown.jsx";
 import {Modal} from "./Modal.jsx";
 import {NewCategoryInput} from "./NewCategoryInput.jsx";
+import {showSuccess, showError} from "../utils/toast.js";
 
 export const CreateExpenseForm = ({includeStartDateInput}) => {
-    const recurrenceRates = {
-        'once': 'Once',
-        'daily': 'Daily',
-        'weekly': 'Weekly',
-        'monthly': 'Monthly',
-        'yearly': 'Yearly',
-    };
-
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 51 }, (_, i) => currentYear - 25 + i);
+    const years = getYearRange();
 
     const navigate = useNavigate();
     const qc = useQueryClient();
@@ -39,7 +32,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
 
     const [recurrenceRate, setRecurrenceRate] = useState('once');
 
-    const [endOfMonthStartDate, setEndOfMonthStartDate] = useState({year: (new Date()).getFullYear(), month: months.at((new Date()).getMonth())});
+    const [endOfMonthStartDate, setEndOfMonthStartDate] = useState({year: (new Date()).getFullYear(), month: MONTHS.at((new Date()).getMonth())});
 
     const [expenseProps, setExpenseProps] = useState({
         name: '',
@@ -51,7 +44,8 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
         endDate: null,
         paidOnCreation: false,
         dueLastDayOfMonth: false,
-        initialDatePaid: null
+        initialDatePaid: null,
+        payToNow: false,
     });
 
     const wrapperRef = useRef(null);
@@ -94,7 +88,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
             };
 
             if (expenseProps.dueLastDayOfMonth) {
-                const monthIndex = months.indexOf(endOfMonthStartDate.month);
+                const monthIndex = MONTHS.indexOf(endOfMonthStartDate.month);
                 payload.startDate = new Date(endOfMonthStartDate.year, monthIndex + 1, 0).toISOString().substring(0, 10);
             }
 
@@ -104,11 +98,11 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                 navigate('/login');
                 return;
             }
-            alert('Error creating expense.');
+            showError('Error creating expense.');
             return;
         }
 
-        isCreated ? alert('Expense successfully created.'): alert('Failed to create Expense.');
+        isCreated ? showSuccess('Expense successfully created.') : showError('Failed to create Expense.');
         if (isCreated) {
             // An expense has been added, refresh any stale lists
             qc.clear();
@@ -137,13 +131,13 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
     const handleSaveCategoryClick = async (newCategoryName) => {
         try {
             await createExpenseCategory(newCategoryName);
-            alert("Category created!");
+            showSuccess("Category created!");
         } catch (err) {
             if (getStatus(err) === 401) {
                 navigate('/login');
             }
 
-            alert('Failed to create category.');
+            showError('Failed to create category.');
         }
 
         setRefreshCategories((prevState) => !prevState);
@@ -222,7 +216,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                     <div className='mb-3'>
                         <label className={'form-label'}>Recurrence Rate</label>
                         <select className={'form-select'} value={recurrenceRate} onChange={(e) => handleRecurrenceRateChange(e.target.value)}>
-                            {Object.entries(recurrenceRates).map(([rate, rateLabel]) => (
+                            {Object.entries(RECURRENCE_RATES).map(([rate, rateLabel]) => (
                                 <option value={rate} key={rateLabel}>{rateLabel}</option>
                             ))}
                         </select>
@@ -232,8 +226,8 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                         && expenseProps.startDate.substring(8,10) == new Date(new Date(expenseProps.startDate).getFullYear(), new Date(expenseProps.startDate).getMonth() + 1, 0).getDate()
                         &&
                             <div className='ms-1'>
-                                <label className={'form-text me-2'}>Due on the last day of the month?</label>
-                                <input className={'form-check-input mt-2'} type={'checkbox'}
+                                <label className={'form-label me-2'} htmlFor="dueEndOfMonth1">Due on the last day of the month?</label>
+                                <input className={'form-check-input mt-2'} type={'checkbox'} id="dueEndOfMonth1"
                                        onChange={() => {
                                            setExpenseProps((prevState) => ({
                                                ...prevState,
@@ -250,7 +244,7 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                                 <>
                                     <label className={'form-label'}>{expenseProps.recurrenceRate === 'once' ? 'Due Date' : 'Start Date'}</label>
                                     <div className="d-flex gap-2">
-                                        <Dropdown title={endOfMonthStartDate.month} options={months} handleOptionChange={handleMonthChange} maxHeight={'20rem'} includeScrollbarY={true} />
+                                        <Dropdown title={endOfMonthStartDate.month} options={MONTHS} handleOptionChange={handleMonthChange} maxHeight={'20rem'} includeScrollbarY={true} />
                                         <Dropdown title={endOfMonthStartDate.year} options={years} handleYearChange={handleYearChange} maxHeight={'20rem'} includeScrollbarY={true} />
                                     </div>
                                 </>
@@ -274,8 +268,8 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
 
                             {expenseProps.recurrenceRate === 'monthly' &&
                                 <div className='ms-1'>
-                                    <label className={'form-text me-2'}>Due on the last day of the month?</label>
-                                    <input className={'form-check-input mt-2'} type={'checkbox'}
+                                    <label className={'form-label me-2'} htmlFor="dueEndOfMonth2">Due on the last day of the month?</label>
+                                    <input className={'form-check-input mt-2'} type={'checkbox'} id="dueEndOfMonth2"
                                            onChange={() => {
                                                setExpenseProps((prevState) => ({
                                                    ...prevState,
@@ -338,36 +332,108 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                                }
                         />
                     </div>
-                    <div className='mb-3'>
-                        <div className=''>
-                            <label className={'form-label me-2'}>{expenseProps.recurrenceRate === 'once' ? 'Paid?' : 'Initial Payment?'}</label>
-                            <input className={'form-check-input'} type={'checkbox'} checked={expenseProps.paidOnCreation}
-                                  onChange={
-                                      () => {
-                                          setExpenseProps((prevState) => ({
-                                              ...prevState,
-                                              paidOnCreation: !prevState.paidOnCreation
-                                          }));
-                                      }
-                                  }
-                            />
-                        </div>
-                        {expenseProps.paidOnCreation &&
+                    {expenseProps.recurrenceRate === 'once' ? (
+                        <div className='mb-3'>
                             <div className=''>
-                                <label className={'form-label'}>Paid on:</label>
-                                <input className={'form-control'} type='date'
-                                       onChange={
-                                           (e) => {
-                                               setExpenseProps((prevState) => ({
-                                                   ...prevState,
-                                                   initialDatePaid: e.target.value
-                                               }));
-                                           }
-                                       }
+                                <label className={'form-label me-2'} htmlFor="paidCheckbox">Paid?</label>
+                                <input
+                                    className={'form-check-input'}
+                                    type={'checkbox'}
+                                    id="paidCheckbox"
+                                    checked={expenseProps.paidOnCreation}
+                                    onChange={() => {
+                                        setExpenseProps((prevState) => ({
+                                            ...prevState,
+                                            paidOnCreation: !prevState.paidOnCreation,
+                                        }));
+                                    }}
                                 />
                             </div>
-                        }
-                    </div>
+                            {expenseProps.paidOnCreation &&
+                                <div className='mt-2'>
+                                    <label className={'form-label'}>Paid on:</label>
+                                    <input className={'form-control'} type='date'
+                                           onChange={
+                                               (e) => {
+                                                   setExpenseProps((prevState) => ({
+                                                       ...prevState,
+                                                       initialDatePaid: e.target.value
+                                                   }));
+                                               }
+                                           }
+                                    />
+                                </div>
+                            }
+                        </div>
+                    ) : (() => {
+                        // Helper function to check if start date is before today
+                        const isStartDateBeforeToday = () => {
+                            if (!expenseProps.startDate) return false;
+                            const startDate = new Date(expenseProps.startDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            startDate.setHours(0, 0, 0, 0);
+                            return startDate < today;
+                        };
+
+                        return isStartDateBeforeToday() && (
+                            <>
+                                <div className='mb-3'>
+                                    <div className=''>
+                                        <label className={'form-label me-2'} htmlFor="initialPayment">Initial payment?</label>
+                                        <input
+                                            className={'form-check-input'}
+                                            type={'checkbox'}
+                                            id="initialPayment"
+                                            checked={expenseProps.paidOnCreation}
+                                            onChange={() => {
+                                                setExpenseProps((prevState) => ({
+                                                    ...prevState,
+                                                    paidOnCreation: !prevState.paidOnCreation,
+                                                    // Auto-uncheck payToNow when checking this
+                                                    payToNow: !prevState.paidOnCreation ? false : prevState.payToNow,
+                                                }));
+                                            }}
+                                        />
+                                    </div>
+                                    {expenseProps.paidOnCreation &&
+                                        <div className='mt-2'>
+                                            <label className={'form-label'}>Paid on:</label>
+                                            <input className={'form-control'} type='date'
+                                                   onChange={
+                                                       (e) => {
+                                                           setExpenseProps((prevState) => ({
+                                                               ...prevState,
+                                                               initialDatePaid: e.target.value
+                                                           }));
+                                                       }
+                                                   }
+                                            />
+                                        </div>
+                                    }
+                                </div>
+                                <div className='mb-3'>
+                                    <label className={'form-label me-2'} htmlFor='payToNow'>
+                                        Pay all due dates from start to today?
+                                    </label>
+                                    <input
+                                        className={'form-check-input'}
+                                        type={'checkbox'}
+                                        id='payToNow'
+                                        checked={expenseProps.payToNow}
+                                        onChange={() => {
+                                            setExpenseProps((prevState) => ({
+                                                ...prevState,
+                                                payToNow: !prevState.payToNow,
+                                                // Auto-uncheck paidOnCreation when checking this
+                                                paidOnCreation: !prevState.payToNow ? false : prevState.paidOnCreation,
+                                            }));
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        );
+                    })()}
                 </form>
             </Modal>
         </div>

@@ -91,7 +91,13 @@ export const UserModal = ({handleClose}) => {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p>Loading...</p>
+                                                <div className={'list-group'}>
+                                                    {['Username', 'Email', 'Created', 'Last Updated'].map((label, idx) => (
+                                                        <div className={'list-group-item placeholder-glow'} key={idx}>
+                                                            <span className="placeholder col-7" />
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )
                                         }
                                     </div>
@@ -105,7 +111,9 @@ export const UserModal = ({handleClose}) => {
                                                     </label>
                                                 </div>
                                             ) : (
-                                                <p>Loading...</p>
+                                                <div className="placeholder-glow">
+                                                    <span className="placeholder col-8" />
+                                                </div>
                                             )
                                         }
                                     </div>

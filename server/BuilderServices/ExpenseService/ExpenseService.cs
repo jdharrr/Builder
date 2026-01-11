@@ -110,7 +110,7 @@ public class ExpenseService
         }
     }
 
-    public async Task UpdateNextDueDateAsync(ExpenseDto dto, bool isFuture)
+    private async Task UpdateNextDueDateAsync(ExpenseDto dto, bool isFuture)
     {
         if (dto.RecurrenceRate == "once")
         {
