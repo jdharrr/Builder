@@ -7,12 +7,13 @@ import {
     getExpenseSearchableColumns,
     getPaymentsForExpense,
     updateExpenseActiveStatus,
-    updateExpensePaidStatus,
+    payDueDate,
     updateExpense,
-    deletePayment
+    getAllExpenses,
+    deletePayments
 } from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
-import {ExpensePayDateInputModal} from "../../../components/ExpensePayDateInputModal.jsx";
+import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
 
 import '../css/expensesTableSection.css';
 import {SelectFromListModal} from "../components/SelectFromListModal.jsx";
@@ -22,8 +23,6 @@ import {useDebounce} from "../../../hooks/useDebounce.js";
 
 //TODO: Fix exception handling on 401 after token expires
 // Currently it causes the components to error out
-
-// TODO: error middleware (lol eventually) for toast pop up on api errors
 
 // Memoized search row component to prevent re-renders when table data changes
 const SearchRow = memo(({
@@ -53,7 +52,7 @@ const SearchRow = memo(({
         ))}
     </tr>
 ));
-export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSort, setSearchFilter, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds}) => {
+export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds}) => {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
@@ -61,6 +60,11 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
     const [viewDateInputModal, setViewDateInputModal] = useState({isShowing: false, expense: {}});
     const [viewEditExpenseModal, setViewEditExpenseModal] = useState({isShowing: false, expense: null});
 
+    const [sortDirection, setSortDirection] = useState('asc');
+    const [searchFilter, setSearchFilter] = useState({
+        searchColumn: '',
+        searchValue: '',
+    });
     const [activeSearchFilter, setActiveSearchFilter] = useState({
         searchColumn: '',
         searchValue: '',
@@ -88,6 +92,27 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
         },
     });
 
+    const { data: expenses = [] } = useSuspenseQuery({
+        queryKey: ['tableExpenses', selectedSort, sortDirection, searchFilter, showInactiveExpenses],
+        queryFn: async () => {
+            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, searchFilter)
+                    : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses))
+                ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
+                navigate('/login');
+            }
+        },
+    });
+
     useEffect(() => {
         if (selectActive) {
             setSelectedIds([]);
@@ -100,6 +125,19 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
             setSearchFilter(debouncedSearchFilter);
         }
     }, [debouncedSearchFilter, enableSearch, setSearchFilter]);
+
+    useEffect(() => {
+        if (!enableSearch) {
+            setSearchFilter({
+                searchColumn: '',
+                searchValue: '',
+            });
+            setActiveSearchFilter({
+               searchColumn: '',
+               searchValue: '',
+            });
+        }
+    }, [enableSearch]);
 
     const handleHeaderClick = (column) => {
         setSelectedSort(column);
@@ -196,11 +234,11 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
     const handleExpenseSelectSave = async (selectedIds) => {
         try {
             // Delete all selected payments
-            await Promise.all(selectedIds.map(paymentId => deletePayment(paymentId)));
+            await deletePayments(selectedIds);
 
             showSuccess(`Successfully deleted ${selectedIds.length} payment(s)!`);
             setViewSelectExpensesForActionModal({isShowing: false, payments: []});
-            await qc.refetchQueries({ queryKey: ['allExpenses']});
+            await qc.refetchQueries({ queryKey: ['lateDates']});
         } catch (err) {
             if (getStatus(err) === 401) {
                 navigate('/login');
@@ -215,7 +253,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
             await updateExpense(expenseId, expenseData);
             showSuccess('Expense updated successfully!');
             setViewEditExpenseModal({ isShowing: false, expense: null });
-            await qc.refetchQueries({ queryKey: ['allExpenses'] });
+            await qc.refetchQueries({ queryKey: ['tableExpenses'] });
         } catch (err) {
             if (getStatus(err) === 401) {
                 navigate('/login');
@@ -228,7 +266,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
     const handleDateInputSave = async (paymentDate, dueDatePaid) => {
         const expense = viewDateInputModal.expense;
         try {
-            await updateExpensePaidStatus(expense.id, true, dueDatePaid, paymentDate);
+            await payDueDate(expense.id, dueDatePaid, paymentDate);
             showSuccess('Payment saved!');
         } catch (err) {
             if (err.status === 401) {
@@ -332,7 +370,7 @@ export const ExpensesTableSection = ({expenses, setSortDirection, setSelectedSor
             }
 
             {viewDateInputModal.isShowing && viewDateInputModal.expense &&
-                <ExpensePayDateInputModal
+                <ExpensePaymentInputModal
                     handleSave={handleDateInputSave}
                     handleClose={() => setViewDateInputModal({isShowing: false, expenses: {}})}
                     expense={viewDateInputModal.expense}

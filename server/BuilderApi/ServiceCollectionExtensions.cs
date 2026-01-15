@@ -63,7 +63,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection ConfigureUserContext(this IServiceCollection services)
     {
-        services.AddSingleton<UserContext>();
+        services.AddScoped<UserContext>();
 
         return services;
     }

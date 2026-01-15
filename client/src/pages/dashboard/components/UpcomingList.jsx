@@ -3,12 +3,12 @@ import {useNavigate} from "react-router-dom";
 import {useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 import {OverlayTrigger, Tooltip} from "react-bootstrap";
 
-import {getUpcomingExpenses, updateExpensePaidStatus} from "../../../api.jsx";
+import {getUpcomingExpenses, payDueDate} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 
 import '../css/upcomingList.css';
 import '../../../css/global.css';
-import {ExpensePayDateInputModal} from "../../../components/ExpensePayDateInputModal.jsx";
+import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
 import {showSuccess, showError} from "../../../utils/toast.js";
 
 export const UpcomingList = () => {
@@ -42,9 +42,8 @@ export const UpcomingList = () => {
     })
 
     const handleDateInputSave = async (paymentDate, dueDatePaid) => {
-        console.log(checkedExpense);
         try {
-            await updateExpensePaidStatus(checkedExpense.id, true, dueDatePaid, paymentDate);
+            await payDueDate(checkedExpense.id, dueDatePaid, paymentDate);
             showSuccess('Payment saved!');
         } catch (err) {
             if (err.status === 401) {
@@ -53,7 +52,7 @@ export const UpcomingList = () => {
                 showError('Failed to save payment');
             }
         }
-        setShowExpenseDatePaidModal({isShowing: false, expense: {}});
+        setShowExpenseDatePaidModal(false);
         await qc.refetchQueries({ queryKey: ['upcomingExpenses']});
     }
 
@@ -101,7 +100,7 @@ export const UpcomingList = () => {
                                     <label className="form-label me-2" htmlFor={`paid-${expense.id}-${date}`}>Paid?</label>
                                     <input
                                         className="form-check-input"
-                                        type="checkbox"
+                                        type="checkbox" //TODO: uncheck on cancel payment
                                         id={`paid-${expense.id}-${date}`}
                                         onChange={() => {
                                             setCheckedExpense(expense);
@@ -118,7 +117,7 @@ export const UpcomingList = () => {
             </div>
 
             {showExpenseDatePaidModal &&
-                <ExpensePayDateInputModal expense={checkedExpense} preSelectedDueDate={checkedDueDate} handleSave={handleDateInputSave} handleClose={() => {
+                <ExpensePaymentInputModal expense={checkedExpense} preSelectedDueDate={checkedDueDate} handleSave={handleDateInputSave} handleClose={() => {
                         setShowExpenseDatePaidModal(false)
                         setCheckedExpense(null);
                         setCheckedDueDate(null);

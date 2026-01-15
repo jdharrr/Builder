@@ -16,7 +16,7 @@ public class ExpensePaymentRepository
         _dbService = dbService;
     }
 
-    public async Task<long> CreateExpensePaymentAsync(ExpensePaymentDto dto)
+    public async Task<long> CreateExpensePaymentAsync(int expenseId, string paymentDate, string dueDatePaid, double cost, int userId)
     {
         var sql = @"INSERT INTO expense_payments (
                     expense_id,
@@ -33,11 +33,11 @@ public class ExpensePaymentRepository
                 )";
         var parameters = new Dictionary<string, object?>()
         {
-            { "@expenseId", dto.ExpenseId },
-            { "@userId", dto.UserId },
-            { "@cost", dto.Cost },
-            { "@paymentDate", dto.PaymentDate },
-            { "@dueDatePaid", dto.DueDatePaid }
+            { "@expenseId", expenseId },
+            { "@userId", userId },
+            { "@cost", cost },
+            { "@paymentDate", paymentDate },
+            { "@dueDatePaid", dueDatePaid }
         };
 
         var result = new ExecuteResponse();
@@ -56,24 +56,29 @@ public class ExpensePaymentRepository
         return result.LastInsertedId;
     }
 
-    public async Task<bool> DeleteExpensePaymentAsync(ExpensePaymentDto dto)
+    public async Task<bool> DeleteExpensePaymentsAsync(List<int> paymentIds, int userId)
     {
-        var sql = @"DELETE FROM expense_payments
+        var idParams = paymentIds
+            .Select((_, i) => $"@id{i}")
+            .ToArray();
+
+        var sql = $@"DELETE FROM expense_payments
                     WHERE user_id = @userId
-                        AND DATE(due_date_paid) = @dueDate
-                        AND expense_id = @expenseId";
+                        AND id IN ({string.Join(',', idParams)})";
+        
         var parameters = new Dictionary<string, object?>()
         {
-            { "@userId", dto.UserId },
-            { "@dueDate", dto.DueDatePaid },
-            { "@expenseId", dto.ExpenseId }
+            { "@userId", userId }
         };
+        
+        for (int i = 0; i < paymentIds.Count; i++)
+            parameters[$"@id{i}"] = paymentIds[i];
 
         var result = await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
         return result.RowsAffected > 0;
     }
 
-    public async Task<ExpensePaymentDto?> GetExpensePaymentByDueDateAsync(ExpensePaymentDto dto)
+    public async Task<ExpensePaymentDto?> GetExpensePaymentByDueDateAsync(int userId, string dueDate, int expenseId)
     {
         var sql = @"SELECT id, expense_id, cost, payment_date, due_date_paid FROM expense_payments
                     WHERE user_id = @userId
@@ -81,9 +86,9 @@ public class ExpensePaymentRepository
                         AND expense_id = @expenseId";
         var parameters = new Dictionary<string, object?>()
         {
-            { "@userId", dto.UserId },
-            { "@dueDate", dto.DueDatePaid },
-            { "@expenseId", dto.ExpenseId }
+            { "@userId", userId },
+            { "@dueDate", dueDate },
+            { "@expenseId", expenseId }
         };
 
         var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);

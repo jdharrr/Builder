@@ -1,11 +1,10 @@
 import React, {useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
-import {useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
+import {useQueryClient} from "@tanstack/react-query";
 
 import {ExpensesTableSection} from "./sections/ExpensesTableSection.jsx";
 import {
     categoryBatchUpdate,
-    getAllExpenses,
     getExpenseSortOptions,
     getExpenseTableBatchActions
 } from "../../api.jsx";
@@ -23,39 +22,12 @@ export default function ExpensesPage() {
 
     const [sortOptions, setSortOptions] = useState([]);
     const [selectedSort, setSelectedSort] = useState('CreatedDate');
-    const [sortDirection, setSortDirection] = useState('asc');
     const [enableSearch, setEnableSearch] = useState(false);
-    const [searchFilter, setSearchFilter] = useState({
-        searchColumn: '',
-        searchValue: '',
-    });
     const [showInactiveExpenses, setShowInactiveExpenses] = useState(false);
     const [selectActive, setSelectActive] = useState(false);
     const [batchActions, setBatchActions] = useState([]);
     const [showUpdateCategoryModal, setShowUpdateCategoryModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
-
-    const { data: expenses = [] } = useSuspenseQuery({
-        queryKey: ['allExpenses', selectedSort, sortDirection, searchFilter, showInactiveExpenses],
-        queryFn: async () => {
-            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, searchFilter)
-                                 : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses))
-                                 ?? [];
-        },
-        staleTime: 60_000,
-        placeholderData: (previousData) => previousData,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-
-            return failureCount < 2;
-        },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        },
-    });
 
     useEffect(() => {
         async function loadSortOptions() {
@@ -92,16 +64,6 @@ export default function ExpensesPage() {
         setSelectedSort(name);
     }
 
-    const handleEnableSearchChange = (e) => {
-        setEnableSearch(e.target.checked);
-        if (!e.target.checked) {
-            setSearchFilter({
-                searchColumn: '',
-                searchValue: '',
-            });
-        }
-    }
-
     const handleBatchAction = (e, action) => {
         if (!selectedIds || selectedIds.length === 0) {
             showWarning("Please select at least one expense");
@@ -135,7 +97,7 @@ export default function ExpensesPage() {
 
         setShowUpdateCategoryModal(false);
         setSelectedIds([]);
-        await qc.refetchQueries({ queryKey: ['allExpenses']});
+        await qc.refetchQueries({ queryKey: ['tableExpenses']});
     }
 
     return (
@@ -161,17 +123,15 @@ export default function ExpensesPage() {
                         </label>
                     </div>
                     <div className="form-check form-switch d-flex align-items-center ms-3">
-                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={(e) => handleEnableSearchChange(e)} />
+                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
                         <label className="form-check-label ms-2" htmlFor="searchToggle">
                             Search
                         </label>
                     </div>
                 </div>
                 <ExpensesTableSection
-                    expenses={expenses}
-                    setSortDirection={setSortDirection}
+                    selectedSort={selectedSort}
                     setSelectedSort={setSelectedSort}
-                    setSearchFilter={setSearchFilter}
                     enableSearch={enableSearch}
                     showInactiveExpenses={showInactiveExpenses}
                     selectActive={selectActive}

@@ -16,6 +16,7 @@ import {NewCategoryInput} from "./NewCategoryInput.jsx";
 import {showSuccess, showError} from "../utils/toast.js";
 
 export const CreateExpenseForm = ({includeStartDateInput}) => {
+    //TODO: ensure recurrence pattern match on end date and start date
     const years = getYearRange();
 
     const navigate = useNavigate();

@@ -1,6 +1,7 @@
 ﻿using BuilderServices.ExpenseCategoryService;
 using BuilderServices.ExpenseCategoryService.Request;
 using BuilderServices.ExpensePaymentService;
+using BuilderServices.ExpensePaymentService.Requests;
 using BuilderServices.ExpenseService;
 using BuilderServices.ExpenseService.Enums;
 using BuilderServices.ExpenseService.Requests;
@@ -38,6 +39,9 @@ public class ExpenseController : ControllerBase
         //TODO: Validate request
 
         var expenseId = await _expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
+
+        if (request.IsPaidOnCreation)
+            await _paymentService.PayDueDateAsync((int)expenseId, request.InitialDatePaid ?? DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"), request.StartDate).ConfigureAwait(false);
 
         return Ok(new { ExpenseId = expenseId });
     }
@@ -133,6 +137,14 @@ public class ExpenseController : ControllerBase
         return Ok(payments);
     }
 
+    [HttpPost("payments/payAllOverdue/{expenseId}")]
+    public async Task<IActionResult> PayAllOverdueDates(int expenseId)
+    {
+        await _paymentService.PayAllOverdueDatesAsync(expenseId).ConfigureAwait(false);
+
+        return Ok();
+    }
+
     [HttpDelete("deleteExpense")]
     public async Task<IActionResult> DeleteExpense([FromQuery] int expenseId)
     {
@@ -141,18 +153,19 @@ public class ExpenseController : ControllerBase
         return Ok();
     }
 
-    [HttpPatch("update/paidStatus")]
-    public async Task<IActionResult> UpdateExpensePaidStatus([FromBody] UpdateExpensePaidStatusRequest request)
+    [HttpPatch("payments/payDueDate")]
+    public async Task<IActionResult> PayDueDate([FromBody] PayDueDateRequest request)
     {
-        var dto = new ExpensePaymentDto
-        {
-            ExpenseId = request.ExpenseId,
-            PaymentDate = request.DatePaid,
-            DueDatePaid = request.DueDate
-        };
-
-        await _expenseService.UpdatePaymentForDueDateAsync(dto, request.IsPaid).ConfigureAwait(false);
+        await _paymentService.PayDueDateAsync(request.ExpenseId, request.DueDate, request.DatePaid).ConfigureAwait(false);
         
+        return Ok();
+    }
+
+    [HttpDelete("payments/unPayDueDates")]
+    public async Task<IActionResult> UnpayDueDate([FromQuery] UnpayDueDatesRequest request)
+    {
+        await _paymentService.UnpayDueDateAsync(request.PaymentIds).ConfigureAwait(false);
+
         return Ok();
     }
 

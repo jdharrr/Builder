@@ -7,7 +7,6 @@ import {getStatus} from "../../../util.jsx";
 import {FaPlus} from "react-icons/fa";
 import {NewCategoryInput} from "../../../components/NewCategoryInput.jsx";
 import {showSuccess, showError} from "../../../utils/toast.js";
-import {RECURRENCE_RATES} from "../../../constants/expenseConstants.js";
 
 export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
     const navigate = useNavigate();
@@ -19,7 +18,6 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
     const [expenseProps, setExpenseProps] = useState({
         name: expense.name || '',
         cost: expense.cost || 0.0,
-        recurrenceRate: expense.recurrenceRate || 'once',
         categoryId: expense.categoryId || null,
         description: expense.description || '',
         startDate: expense.startDate || null,
@@ -118,24 +116,6 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                             }));
                         }}
                     />
-                </div>
-                <div className='mb-3'>
-                    <label className={'form-label'}>Recurrence Rate</label>
-                    <select
-                        className={'form-select'}
-                        value={expenseProps.recurrenceRate}
-                        onChange={(e) => {
-                            setExpenseProps((prevState) => ({
-                                ...prevState,
-                                recurrenceRate: e.target.value,
-                                endDate: e.target.value === 'once' ? null : prevState.endDate,
-                            }));
-                        }}
-                    >
-                        {Object.entries(RECURRENCE_RATES).map(([rate, rateLabel]) => (
-                            <option value={rate} key={rateLabel}>{rateLabel}</option>
-                        ))}
-                    </select>
                 </div>
                 <div className={'mb-3'}>
                     <label className={'form-label'}>

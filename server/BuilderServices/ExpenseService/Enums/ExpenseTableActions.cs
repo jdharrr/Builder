@@ -9,8 +9,7 @@ public enum ExpenseTableAction
     Pay,
     Unpay,
     Delete,
-    Edit,
-    EditPayments
+    Edit
 }
 
 public static class ExpenseTableActionsHelper
@@ -25,7 +24,6 @@ public static class ExpenseTableActionsHelper
             ExpenseTableAction.Unpay => recurrenceIsOnce ? "Mark as Unpaid" : "Mark a Date Unpaid",
             ExpenseTableAction.Delete => "Delete",
             ExpenseTableAction.Edit => "Edit",
-            ExpenseTableAction.EditPayments => recurrenceIsOnce ? "Edit Payment" : "Edit Payments",
             _ => throw new GenericException("Invalid expense table action.")
         };
     }

@@ -1,6 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 import {API_BASE_URL} from "./constants/api.js";
+import qs from "qs";
 
 const getAccessToken = () => Cookies.get("access_token");
 
@@ -126,46 +127,38 @@ export const updateExpense = async (expenseId, expenseData) => {
     return result.data;
 };
 
-// TODO: Backend endpoint needed - POST /api/expenses/payments/payAllOverdue
-// Should pay all unpaid due dates that are before today
-export const payAllOverdueDatesForExpense = async (expenseId, datePaid) => {
+export const payAllOverdueDatesForExpense = async (expenseId) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
-    const result = await apiClient.post('/api/expenses/payments/payAllOverdue', {
-        expenseId: expenseId,
-        datePaid: datePaid
+    const result = await apiClient.post(`/api/expenses/payments/payAllOverdue/${expenseId}`);
+
+    return result.data;
+};
+
+export const deletePayments = async (paymentIds) => {
+    const token = getAccessToken();
+    if (!token) throw new Error('401');
+
+    const result = await apiClient.delete('/api/expenses/payments/unpayDueDates', {
+        params: { paymentIds },
+        paramsSerializer: params =>
+            qs.stringify(params, { arrayFormat: 'repeat' })
     });
 
     return result.data;
 };
 
-// TODO: Backend endpoint needed - DELETE /api/expenses/payments/deletePayment
-export const deletePayment = async (paymentId) => {
-    const token = getAccessToken();
-    if (!token) throw new Error('401');
-
-    const result = await apiClient.delete('/api/expenses/payments/deletePayment', {
-        params: {
-            paymentId: paymentId,
-        }
-    });
-
-    return result.data;
-};
-
-export const updateExpensePaidStatus = async (expenseId, isPaid, dueDate, datePaid) => {
+export const payDueDate = async (expenseId, dueDate, datePaid) => {
     const body = {
         expenseId: expenseId,
-        isPaid: isPaid,
         dueDate: dueDate
     };
 
     if (datePaid === undefined) {
         body.datePaid = new Date().toISOString().substring(0,10);
     }
-
-    const result = await apiClient.patch('/api/expenses/update/paidStatus', body);
+    const result = await apiClient.patch('/api/expenses/payments/payDueDate', body);
 
     return result.data;
 }
