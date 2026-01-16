@@ -72,7 +72,7 @@ public class ExpensePaymentService
         }
     }
 
-    public async Task UnpayDueDateAsync(List<int> paymentIds)
+    public async Task UnpayDueDateAsync(List<object> paymentIds)
     {
         await _repo.DeleteExpensePaymentsAsync(paymentIds, _userContext.UserId).ConfigureAwait(false);
     }

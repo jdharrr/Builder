@@ -16,13 +16,12 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
     const [showCreateCategorySection, setShowCreateCategorySection] = useState(false);
 
     const [expenseProps, setExpenseProps] = useState({
-        name: expense.name || '',
-        cost: expense.cost || 0.0,
+        name: expense.name || null,
+        cost: expense.cost || null,
         categoryId: expense.categoryId || null,
         description: expense.description || '',
         startDate: expense.startDate || null,
         endDate: expense.endDate || null,
-        dueLastDayOfMonth: expense.dueEndOfMonth || false,
     });
 
     const wrapperRef = useRef(null);
@@ -108,7 +107,6 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                         step="0.01"
                         min="0"
                         className="form-control"
-                        value={expenseProps.cost}
                         onChange={(e) => {
                             setExpenseProps((prev) => ({
                                 ...prev,

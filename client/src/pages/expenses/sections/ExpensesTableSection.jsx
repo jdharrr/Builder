@@ -188,13 +188,18 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         try {
             switch (action) {
                 case 'Active':
-                    await updateExpenseActiveStatus(true, expenseId);
-                    await qc.refetchQueries({ queryKey: ['allExpenses']});
+                case 'Inactive': {
+                    const isActive = action === 'Active';
+
+                    try {
+                        await updateExpenseActiveStatus(isActive, expenseId);
+                        showSuccess("Active status successfully updated!");
+                        await qc.refetchQueries({ queryKey: ['tableExpenses'] });
+                    } catch {
+                        showError("Failed to update active status for expense.");
+                    }
                     break;
-                case 'Inactive':
-                    await updateExpenseActiveStatus(false, expenseId);
-                    await qc.refetchQueries({ queryKey: ['allExpenses']});
-                    break;
+                }
                 case 'Pay':
                     await handlePaidChangeAction(true, expenseId);
                     break;

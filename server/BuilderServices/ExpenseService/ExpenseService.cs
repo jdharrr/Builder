@@ -164,14 +164,34 @@ public class ExpenseService
         };
     }
 
-    public async Task UpdateExpenseActiveStatusAsync(int expenseId, bool isActive)
+    public async Task UpdateExpenseAsync(int expenseId, string? name = null, double? cost = null,
+        string? startDate = null, string? endDate = null, int? categoryId = null, string? description = null, int? active = null)
     {
-        var updateDict = new Dictionary<string, object?>
+        if (active != null && active != 1 && active != 0)
+            throw new GenericException("Invalid value for active field");
+        
+        var values = new
         {
-            { "active", isActive ? 1 : 0 }
+            name,
+            cost,
+            start_date = startDate,
+            end_date = endDate,
+            category_id = categoryId,
+            description,
+            active
         };
 
-        await _expenseRepo.UpdateExpenseAsync(updateDict, expenseId, _userContext.UserId).ConfigureAwait(false);
+        var updateDict = new Dictionary<string, object?>();
+        foreach (var prop in values.GetType().GetProperties())
+        {
+            var value = prop.GetValue(values);
+            if (value != null)
+            {
+                updateDict[prop.Name] = value;
+            }
+        }
+
+        await _expenseRepo.UpdateExpenseAsync(updateDict, expenseId, _userContext.UserId);
     }
 
     public async Task DeleteExpenseAsync(int expenseId)

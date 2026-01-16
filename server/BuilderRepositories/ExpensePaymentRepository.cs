@@ -7,11 +7,11 @@ using System.Data;
 
 namespace BuilderRepositories;
 
-public class ExpensePaymentRepository
+public class ExpensePaymentRepository: BuilderRepository
 {
     private readonly DatabaseService _dbService;
 
-    public ExpensePaymentRepository(DatabaseService dbService)
+    public ExpensePaymentRepository(DatabaseService dbService): base(dbService)
     {
         _dbService = dbService;
     }
@@ -56,24 +56,16 @@ public class ExpensePaymentRepository
         return result.LastInsertedId;
     }
 
-    public async Task<bool> DeleteExpensePaymentsAsync(List<int> paymentIds, int userId)
+    public async Task<bool> DeleteExpensePaymentsAsync(List<object> paymentIds, int userId)
     {
-        var idParams = paymentIds
-            .Select((_, i) => $"@id{i}")
-            .ToArray();
-
-        var sql = $@"DELETE FROM expense_payments
-                    WHERE user_id = @userId
-                        AND id IN ({string.Join(',', idParams)})";
-        
         var parameters = new Dictionary<string, object?>()
         {
             { "@userId", userId }
         };
+        var sql = $@"DELETE FROM expense_payments
+                    WHERE user_id = @userId
+                        AND id IN ({BuildInParams(paymentIds, ref parameters)})";
         
-        for (int i = 0; i < paymentIds.Count; i++)
-            parameters[$"@id{i}"] = paymentIds[i];
-
         var result = await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
         return result.RowsAffected > 0;
     }

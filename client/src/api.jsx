@@ -107,7 +107,6 @@ export const postExpense = async (expenseProps) => {
     return result.data;
 }
 
-// TODO: Backend endpoint needed - PATCH /api/expenses/update/expense
 export const updateExpense = async (expenseId, expenseData) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
@@ -117,11 +116,9 @@ export const updateExpense = async (expenseId, expenseData) => {
         name: expenseData.name,
         cost: expenseData.cost,
         description: expenseData.description,
-        recurrenceRate: expenseData.recurrenceRate,
         startDate: expenseData.startDate,
         endDate: expenseData.endDate,
         categoryId: expenseData.categoryId,
-        dueEndOfMonth: expenseData.dueLastDayOfMonth,
     });
 
     return result.data;
@@ -241,9 +238,9 @@ export const getExpenseSearchableColumns = async () => {
 }
 
 export const updateExpenseActiveStatus  = async (isActive, expenseId) => {
-    const result = await apiClient.patch('/api/expenses/update/activeStatus', {
+    const result = await apiClient.patch('/api/expenses/update/expense', {
         expenseId: expenseId,
-        isActive: isActive,
+        active: isActive,
     });
 
     return result.data;

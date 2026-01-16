@@ -40,9 +40,9 @@ public class ExpenseController : ControllerBase
 
         var expenseId = await _expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
 
-        if (request.IsPaidOnCreation)
-            await _paymentService.PayDueDateAsync((int)expenseId, request.InitialDatePaid ?? DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"), request.StartDate).ConfigureAwait(false);
-
+        if (request.PayToNow)
+            await _paymentService.PayAllOverdueDatesAsync((int)expenseId).ConfigureAwait(false);
+        
         return Ok(new { ExpenseId = expenseId });
     }
 
@@ -87,85 +87,11 @@ public class ExpenseController : ControllerBase
         return Ok(expenses);
     }
 
-    [HttpPost("categories/create")]
-    public async Task<IActionResult> CreateExpenseCategory([FromBody] CreateExpenseCategoryRequest request)
-    {
-        // TODO: validate request
-
-        await _categoryService.CreateExpenseCategoryAsync(request.CategoryName).ConfigureAwait(false);
-
-        return Ok();
-    }
-
-    [HttpGet("categories")]
-    public async Task<IActionResult> GetExpenseCategories()
-    {
-        var categories = await _categoryService.GetExpenseCategoriesAsync().ConfigureAwait(false);
-
-        return Ok(categories);
-    }
-
-    [HttpGet("table/sortOptions")]
-    public IActionResult GetSortOptions()
-    {
-        var options = ExpenseService.GetSortOptions();
-
-        return Ok(options);
-    }
-
-    [HttpGet("table/searchableColumns")]
-    public IActionResult GetSearchableColumns()
-    {
-        var columns = ExpenseService.GetSearchColumns();
-
-        return Ok(columns);
-    }
-
-    [HttpPatch("update/activeStatus")]
-    public async Task<IActionResult> UpdateExpenseActiveStatus([FromBody] UpdateExpenseActiveStatusRequest request)
-    {
-        await _expenseService.UpdateExpenseActiveStatusAsync(request.ExpenseId, request.IsActive).ConfigureAwait(false);
-
-        return Ok();
-    }
-
-    [HttpGet("payments/paymentsForExpense")]
-    public async Task<IActionResult> GetPaymentsForExpense([FromQuery] int expenseId)
-    {
-        var payments = await _paymentService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
-        
-        return Ok(payments);
-    }
-
-    [HttpPost("payments/payAllOverdue/{expenseId}")]
-    public async Task<IActionResult> PayAllOverdueDates(int expenseId)
-    {
-        await _paymentService.PayAllOverdueDatesAsync(expenseId).ConfigureAwait(false);
-
-        return Ok();
-    }
-
     [HttpDelete("deleteExpense")]
     public async Task<IActionResult> DeleteExpense([FromQuery] int expenseId)
     {
         await _expenseService.DeleteExpenseAsync(expenseId).ConfigureAwait(false);
         
-        return Ok();
-    }
-
-    [HttpPatch("payments/payDueDate")]
-    public async Task<IActionResult> PayDueDate([FromBody] PayDueDateRequest request)
-    {
-        await _paymentService.PayDueDateAsync(request.ExpenseId, request.DueDate, request.DatePaid).ConfigureAwait(false);
-        
-        return Ok();
-    }
-
-    [HttpDelete("payments/unPayDueDates")]
-    public async Task<IActionResult> UnpayDueDate([FromQuery] UnpayDueDatesRequest request)
-    {
-        await _paymentService.UnpayDueDateAsync(request.PaymentIds).ConfigureAwait(false);
-
         return Ok();
     }
 
@@ -185,6 +111,87 @@ public class ExpenseController : ControllerBase
         return Ok(lateDates);
     }
 
+    //expense updates
+    [HttpPatch("update/expense")]
+    public async Task<IActionResult> UpdateExpense([FromBody] UpdateExpenseRequest request)
+    {
+        int? isActive = null;
+        if (request.Active != null)
+            isActive = (bool)request.Active ? 1 : 0;
+            
+        await _expenseService.UpdateExpenseAsync(request.ExpenseId, request.Name, request.Cost, request.StartDate, request.EndDate, request.CategoryId, request.Description, isActive).ConfigureAwait(false);
+
+        return Ok();
+    }
+    
+    [HttpPatch("update/batchCategoryUpdate")]
+    public async Task<IActionResult> CategoryBatchUpdate([FromBody] CategoryBatchUpdateRequest request)
+    {
+        await _categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
+
+        return Ok();
+    }
+    
+    //payments
+    [HttpGet("payments/totalSpent")]
+    public async Task<IActionResult> GetTotalSpent()
+    {
+        var totalSpent = await _paymentService.GetTotalSpentAsync().ConfigureAwait(false);
+        
+        return Ok(totalSpent);
+    }
+    
+    [HttpDelete("payments/unPayDueDates")]
+    public async Task<IActionResult> UnpayDueDate([FromQuery] UnpayDueDatesRequest request)
+    {
+        await _paymentService.UnpayDueDateAsync(request.PaymentIds).ConfigureAwait(false);
+
+        return Ok();
+    }
+    
+    [HttpPost("payments/payAllOverdue/{expenseId}")]
+    public async Task<IActionResult> PayAllOverdueDates(int expenseId)
+    {
+        await _paymentService.PayAllOverdueDatesAsync(expenseId).ConfigureAwait(false);
+
+        return Ok();
+    }
+    
+    [HttpPatch("payments/payDueDate")]
+    public async Task<IActionResult> PayDueDate([FromBody] PayDueDateRequest request)
+    {
+        await _paymentService.PayDueDateAsync(request.ExpenseId, request.DueDate, request.DatePaid).ConfigureAwait(false);
+        
+        return Ok();
+    }
+    
+    [HttpGet("payments/paymentsForExpense")]
+    public async Task<IActionResult> GetPaymentsForExpense([FromQuery] int expenseId)
+    {
+        var payments = await _paymentService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
+        
+        return Ok(payments);
+    }
+    
+    //categories
+    [HttpGet("categories")]
+    public async Task<IActionResult> GetExpenseCategories()
+    {
+        var categories = await _categoryService.GetExpenseCategoriesAsync().ConfigureAwait(false);
+
+        return Ok(categories);
+    }
+    
+    [HttpPost("categories/create")]
+    public async Task<IActionResult> CreateExpenseCategory([FromBody] CreateExpenseCategoryRequest request)
+    {
+        // TODO: validate request
+
+        await _categoryService.CreateExpenseCategoryAsync(request.CategoryName).ConfigureAwait(false);
+
+        return Ok();
+    }
+    
     [HttpGet("categories/categoriesTotalSpent")]
     public async Task<IActionResult> GetExpenseCategoriesWithTotalSpent([FromQuery] string rangeOption)
     {
@@ -200,28 +207,29 @@ public class ExpenseController : ControllerBase
 
         return Ok(options);
     }
+    
+    //expense table
+    [HttpGet("table/sortOptions")]
+    public IActionResult GetSortOptions()
+    {
+        var options = ExpenseService.GetSortOptions();
 
+        return Ok(options);
+    }
+
+    [HttpGet("table/searchableColumns")]
+    public IActionResult GetSearchableColumns()
+    {
+        var columns = ExpenseService.GetSearchColumns();
+
+        return Ok(columns);
+    }
+    
     [HttpGet("table/getBatchActions")]
     public IActionResult GetExpenseTableBatchActions()
     {
         var actions = ExpenseService.GetExpenseTableBatchActions();
 
         return Ok(actions);
-    }
-
-    [HttpPatch("update/batchCategoryUpdate")]
-    public async Task<IActionResult> CategoryBatchUpdate([FromBody] CategoryBatchUpdateRequest request)
-    {
-        await _categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
-
-        return Ok();
-    }
-
-    [HttpGet("payments/totalSpent")]
-    public async Task<IActionResult> GetTotalSpent()
-    {
-        var totalSpent = await _paymentService.GetTotalSpentAsync().ConfigureAwait(false);
-        
-        return Ok(totalSpent);
     }
 }

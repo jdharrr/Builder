@@ -2,5 +2,5 @@
 
 public class UnpayDueDatesRequest
 {
-    public required List<int> PaymentIds { get; set; }
+    public required List<object> PaymentIds { get; set; }
 }
