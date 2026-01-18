@@ -11,8 +11,16 @@ export const ExpenseTrackerSectionSkeleton = () => {
     return (
         <>
             <div className="expenseTrackerWrapper">
-                <h2 className={'titleText'}>{monthLabel} {yearLabel}</h2>
-                <MonthYearSelectorSkeleton />
+                <div className="expenseTrackerHeader">
+                    <div className="expenseTrackerTitleBlock">
+                        <span className="expenseTrackerEyebrow">Calendar Overview</span>
+                        <h2 className="expenseTrackerTitle">{monthLabel} {yearLabel}</h2>
+                    </div>
+                    <div className="expenseTrackerControls">
+                        <MonthYearSelectorSkeleton />
+                    </div>
+                </div>
+                <p className="expenseTrackerHint">Select a day to view or create expenses.</p>
                 <CalendarSkeleton />
             </div>
         </>

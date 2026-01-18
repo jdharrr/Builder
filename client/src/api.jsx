@@ -137,14 +137,18 @@ export const deletePayments = async (paymentIds) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
-    const result = await apiClient.delete('/api/expenses/payments/unpayDueDates', {
-        params: { paymentIds },
-        paramsSerializer: params =>
-            qs.stringify(params, { arrayFormat: 'repeat' })
-    });
+    const result = await apiClient.delete(
+        '/api/expenses/payments/unpayDueDates',
+        {
+            data: {
+                paymentIds
+            }
+        }
+    );
 
     return result.data;
 };
+
 
 export const payDueDate = async (expenseId, dueDate, datePaid) => {
     const body = {

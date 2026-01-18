@@ -84,8 +84,14 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
     };
 
     return (
-        <Modal title={'Edit Expense'} wrapperRef={wrapperRef} handleSave={handleSaveForm} handleClose={handleClose}>
-            <form>
+        <Modal
+            title={'Edit Expense'}
+            wrapperRef={wrapperRef}
+            handleSave={handleSaveForm}
+            handleClose={handleClose}
+            className="create-expense-modal"
+        >
+            <form className="create-expense-form">
                 <div className='mb-3'>
                     <label className={'form-label'}>Name</label>
                     <input
@@ -185,8 +191,8 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                             </select>
                         </div>
                         <div className={'col-1'}>
-                            <button className={'border-0 bg-white'} type='button' onClick={handleAddCategoryClick}>
-                                <FaPlus size={16} color={'#0d6efd'}/>
+                            <button className={'addCategoryButton'} type='button' onClick={handleAddCategoryClick}>
+                                <FaPlus size={14} />
                             </button>
                         </div>
                     </div>

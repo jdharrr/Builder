@@ -28,7 +28,7 @@ public class BuilderRepository
 
     public static string BuildInParams(List<object> inList, ref Dictionary<string, object?> parameters)
     {
-        var sql = "(";
+        var sql = "";
         for (int i = 0; i < inList.Count; i++)
         {
             sql += $"@param{i}";
@@ -38,6 +38,6 @@ public class BuilderRepository
             parameters[$"param{i}"] = inList[i]; 
         }
 
-        return sql += ")";
+        return sql;
     }
 }

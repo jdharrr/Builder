@@ -82,7 +82,7 @@ public class ExpenseController : ControllerBase
         if (!string.IsNullOrEmpty(request.SearchColumn) && !Enum.TryParse(typeof(ExpenseSearchColumn), request.SearchColumn, true, out searchColumn))
             return BadRequest("Invalid search column.");
 
-        var expenses = await _expenseService.GetAllExpensesAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses).ConfigureAwait(false);
+        var expenses = await _expenseService.GetAllExpensesForTableAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses).ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -141,8 +141,8 @@ public class ExpenseController : ControllerBase
         return Ok(totalSpent);
     }
     
-    [HttpDelete("payments/unPayDueDates")]
-    public async Task<IActionResult> UnpayDueDate([FromQuery] UnpayDueDatesRequest request)
+    [HttpDelete("payments/unpayDueDates")]
+    public async Task<IActionResult> UnpayDueDate([FromBody] UnpayDueDatesRequest request)
     {
         await _paymentService.UnpayDueDateAsync(request.PaymentIds).ConfigureAwait(false);
 

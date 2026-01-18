@@ -1,0 +1,39 @@
+/* Fade-in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Staggered animation for expense items */
+.expense-item,
+.late-expense-item {
+    animation: fadeIn 0.3s ease-out;
+    animation-fill-mode: both;
+}
+
+.expense-item:nth-child(1) { animation-delay: 0.05s; }
+.expense-item:nth-child(2) { animation-delay: 0.1s; }
+.expense-item:nth-child(3) { animation-delay: 0.15s; }
+.expense-item:nth-child(4) { animation-delay: 0.2s; }
+.expense-item:nth-child(5) { animation-delay: 0.25s; }
+
+.late-expense-item:nth-child(1) { animation-delay: 0.05s; }
+.late-expense-item:nth-child(2) { animation-delay: 0.1s; }
+.late-expense-item:nth-child(3) { animation-delay: 0.15s; }
+.late-expense-item:nth-child(4) { animation-delay: 0.2s; }
+.late-expense-item:nth-child(5) { animation-delay: 0.25s; }
+
+/* Smooth tab content transitions */
+.tab-content-wrapper {
+    animation: fadeIn 0.2s ease-out;
+}

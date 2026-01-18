@@ -100,9 +100,9 @@ public class ExpenseService
         return mappedExpenses;
     }
 
-    public async Task<List<ExpenseDto>> GetAllExpensesAsync(string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
+    public async Task<List<ExpenseDto>> GetAllExpensesForTableAsync(string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
     {
-        var expenses = await _expenseRepo.GetAllExpensesAsync(_userContext.UserId, sortColumn, sortDir, searchColumn, searchValue, showInactive).ConfigureAwait(false);
+        var expenses = await _expenseRepo.GetAllExpensesForTableAsync(_userContext.UserId, sortColumn, sortDir, searchColumn, searchValue, showInactive).ConfigureAwait(false);
         foreach (var expense in expenses)
         {
             var recurrenceIsOnce = expense.RecurrenceRate == "once";
@@ -201,8 +201,43 @@ public class ExpenseService
 
     public async Task<List<ExpenseDto>> GetLateExpensesAsync()
     {
-        // TODO: Get late expenses by checking if payment for date exists,,, ?? dunno the thought process behind this anymore lol
-        return await _expenseRepo.GetLateExpensesAsync(_userContext.UserId).ConfigureAwait(false);
+        var expenses = await _expenseRepo.GetAllExpensesAsync(_userContext.UserId);
+
+        var lateExpenses = new List<ExpenseDto>();
+        foreach (var expense in expenses)
+        {
+            var hasLate = false;
+            var currentDueDate = DateOnly.ParseExact(expense.StartDate, "yyyy-MM-dd");
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            while (currentDueDate < today)
+            {
+                if (expense.EndDate != null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
+                    break;
+                
+                var paymentExists = await _paymentRepo.GetExpensePaymentByDueDateAsync(_userContext.UserId,
+                    currentDueDate.ToString("yyyy-MM-dd"), expense.Id) != null;
+                if (!paymentExists)
+                    hasLate = true;
+                
+                currentDueDate = expense.RecurrenceRate switch
+                {
+                    "daily" => currentDueDate.AddDays(1),
+
+                    "weekly" => currentDueDate.AddDays(7),
+
+                    "monthly" => currentDueDate.AddMonths(1),
+
+                    "yearly" => currentDueDate.AddYears(1),
+
+                    _ => currentDueDate,
+                };
+            }
+
+            if (hasLate)
+                lateExpenses.Add(expense);
+        }
+
+        return lateExpenses;
     }
 
     public async Task<List<string>> GetLateDatesForExpense(int expenseId)

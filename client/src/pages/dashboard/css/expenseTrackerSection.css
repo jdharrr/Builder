@@ -1,6 +1,47 @@
 .expenseTrackerWrapper {
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 38rem;
+}
+
+.expenseTrackerHeader {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.expenseTrackerTitleBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.expenseTrackerEyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.expenseTrackerTitle {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.expenseTrackerControls {
+    display: flex;
     align-items: center;
-    justify-content: center;
+}
+
+.expenseTrackerHint {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
 }

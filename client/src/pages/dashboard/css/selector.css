@@ -1,3 +1,29 @@
 .selectorWrapper {
     z-index: 1000;
+    position: absolute;
+    top: 80%;
+    left: 50%;
+    transform: translate(-50%, 0.4rem);
+    padding: 0.35rem;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 20px -15px rgba(15, 23, 42, 0.25);
+    min-width: 10rem;
+}
+
+.selectorWrapper select {
+    width: 100%;
+    border: none;
+    background-color: #f9fafb;
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.selectorWrapper select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }

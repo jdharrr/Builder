@@ -223,7 +223,7 @@ public class ExpenseRepository : BuilderRepository
         }) ?? [];
     }
 
-    public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
+    public async Task<List<ExpenseDto>> GetAllExpensesForTableAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
     {
         var parameters = new Dictionary<string, object?>()
         {
@@ -277,6 +277,36 @@ public class ExpenseRepository : BuilderRepository
             CategoryId = row.Field<int?>("category_id"),
             CategoryName = row.Field<string>("category_name"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month")
+        }) ?? [];
+    }
+
+    public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId)
+    {
+        var sql = @"SELECT 
+                        id,
+                        name,
+                        recurrence_rate,
+                        next_due_date,
+                        start_date,
+                        end_date
+                    FROM expenses
+                    WHERE user_id = @userid
+                        AND active = 1";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@userid", userId }
+        };
+        
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapList(row => new ExpenseDto
+        {
+            Id = row.Field<int>("id"),
+            Name = row.Field<string>("name") ?? "Unknown Expense",
+            RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
+            NextDueDate = row.Field<DateTime?>("next_due_date")?.ToString("yyyy-MM-dd"),
+            StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
+            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
         }) ?? [];
     }
 
@@ -339,7 +369,7 @@ public class ExpenseRepository : BuilderRepository
         var parameters = new Dictionary<string, object?>();
         var sql = $@"UPDATE expenses
                     SET category_id = @categoryId
-                    WHERE id IN {BuildInParams(expenseIds, ref parameters)}
+                    WHERE id IN ({BuildInParams(expenseIds, ref parameters)})
                         AND user_id = @userId";
 
         parameters["@categoryId"] = categoryId;

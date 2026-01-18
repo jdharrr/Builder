@@ -82,39 +82,64 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
         setShowActionSelector(false);
     }
 
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDate = today.getDate();
+
     return (
         <div className="calendar">
             <div className='calendarHeader col-md'>
                 {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
-                    <strong key={day}>{day}</strong>
+                    <div className="calendarDayLabel" key={day}>
+                        {day}
+                    </div>
                 ))}
             </div>
             <div className='calendarGrid'>
                 {emptyDaysInMonth.map((_, idx) => (
                     <div
-                        className='dayBox'
-                        key={idx}
-                        style={{backgroundColor:'#f0f0f0'}}
+                        className='dayBox dayBox--empty'
+                        key={`empty-${idx}`}
                     ></div>
                 ))}
-                {Object.entries(expenses).map(([date, expensesForDate], idx) => (
-                    <div
-                        className='dayBox'
-                        key={idx + emptyDaysInMonth.length - 1}
-                        data-fulldate={date}
-                        style={{backgroundColor: expensesForDate.length > 0 ? 'pink' : '#fff'}}
-                        onClick={handleDayClick}
-                    >
-                        <div>
-                            { Number(date.substring(8, 10)) }
-                        </div>
-                        {showActionSelector && selectedDate === date &&
-                            <div className='selectorWrapper'>
-                                <Selector options={actionOptions} handleSelect={handleActionChange} handleClose={handleActionSelectorClose} />
+                {Object.entries(expenses).map(([date, expensesForDate]) => {
+                    const dayNumber = Number(date.substring(8, 10));
+                    const hasExpenses = expensesForDate.length > 0;
+                    const isToday = selectedYear === todayYear
+                        && selectedMonth === todayMonth
+                        && dayNumber === todayDate;
+                    const dayBoxClassName = [
+                        'dayBox',
+                        hasExpenses ? 'dayBox--active' : 'dayBox--open',
+                        isToday ? 'dayBox--today' : '',
+                        showActionSelector && selectedDate === date ? 'dayBox--menu-open' : '',
+                    ].join(' ').trim();
+
+                    return (
+                        <div
+                            className={dayBoxClassName}
+                            key={date}
+                            data-fulldate={date}
+                            onClick={handleDayClick}
+                        >
+                            <div className="dayBoxTop">
+                                <span className="dayNumber">{dayNumber}</span>
+                                {hasExpenses && (
+                                    <span className="dayPill">{expensesForDate.length}</span>
+                                )}
                             </div>
-                        }
-                    </div>
-                ))}
+                            <div className="dayMeta">
+                                <span className={`dayStatus ${hasExpenses ? '' : 'dayStatus--muted'}`}>
+                                    {hasExpenses ? 'Expenses' : 'Open'}
+                                </span>
+                            </div>
+                            {showActionSelector && selectedDate === date &&
+                                <Selector options={actionOptions} handleSelect={handleActionChange} handleClose={handleActionSelectorClose} />
+                            }
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

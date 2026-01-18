@@ -10,14 +10,7 @@ export const Fab = () => {
     return (
         <>
             <button
-                className="btn btn-primary rounded-circle shadow d-flex align-items-center justify-content-center"
-                style={{
-                    position: "fixed",
-                    bottom: "1rem",
-                    right: "1rem",
-                    width: "4rem",
-                    height: "4rem",
-                }}
+                className="fabButton"
                 onClick={() => {
                     setShowCreateExpenseForm((prevState) => ({
                         ...prevState,

@@ -1,14 +1,21 @@
-import React from 'react';
-
-import {useSuspenseQuery} from "@tanstack/react-query";
-import {fetchLateExpenses} from "../../../api.jsx";
+import React, {useState} from 'react';
+import {useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
+import {FaExclamationCircle, FaCheckCircle, FaEye} from 'react-icons/fa';
+
+import {fetchLateExpenses} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
+import {LateDatesModal} from "./LateDatesModal.jsx";
 
 import '../css/lateExpenses.css';
+import '../css/animations.css';
 
 export const LateExpenses = () => {
     const navigate = useNavigate();
+    const qc = useQueryClient();
+
+    const [showLateDatesModal, setShowLateDatesModal] = useState(false);
+    const [selectedExpense, setSelectedExpense] = useState(null);
 
     const { data: lateExpenses = [] } = useSuspenseQuery({
         queryKey: ['lateExpenses'],
@@ -26,17 +33,54 @@ export const LateExpenses = () => {
                 navigate('/login');
             }
         }
-    })
+    });
+
+    const handleShowClick = (expense) => {
+        setSelectedExpense(expense);
+        setShowLateDatesModal(true);
+    };
 
     return (
-        <div className={'lateExpensesList list-group list-group-flush'} style={{width: '25rem'}}>
-            {lateExpenses.map((expense, idx) => (
-                <div className="list-group-item" key={idx}>
-                    <div>
-                        {expense.name}
+        <>
+            <div className="late-expenses-list">
+                {lateExpenses.length === 0 ? (
+                    <div className="no-late-expenses">
+                        <FaCheckCircle className="no-late-icon" />
+                        <span>No late expenses found.</span>
                     </div>
-                </div>
-            ))}
-        </div>
+                ) : (
+                    lateExpenses.map((expense, idx) => (
+                        <div key={idx} className="late-expense-item">
+                            <div className="late-indicator">
+                                <FaExclamationCircle className="late-icon" />
+                            </div>
+                            <div className="late-expense-name">
+                                {expense.name}
+                            </div>
+                            <button
+                                className="show-button"
+                                onClick={() => handleShowClick(expense)}
+                            >
+                                <FaEye className="show-icon" />
+                                Show
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {showLateDatesModal && selectedExpense && (
+                <LateDatesModal
+                    expense={selectedExpense}
+                    handleClose={() => {
+                        setShowLateDatesModal(false);
+                        setSelectedExpense(null);
+                    }}
+                    onPaymentSuccess={() => {
+                        qc.invalidateQueries(['lateExpenses']);
+                    }}
+                />
+            )}
+        </>
     );
 }

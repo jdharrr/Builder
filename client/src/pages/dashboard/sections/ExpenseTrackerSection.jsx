@@ -14,13 +14,21 @@ export const ExpenseTrackerSection = () => {
     return (
         <>
             <div className="expenseTrackerWrapper">
-                <h2 className={'titleText'}>{monthName} {selectedYear}</h2>
-                <MonthYearSelector
-                    selectedYear={selectedYear}
-                    selectedMonth={selectedMonth}
-                    setSelectedYear={setSelectedYear}
-                    setSelectedMonth={setSelectedMonth}
-                />
+                <div className="expenseTrackerHeader">
+                    <div className="expenseTrackerTitleBlock">
+                        <span className="expenseTrackerEyebrow">Calendar Overview</span>
+                        <h2 className="expenseTrackerTitle">{monthName} {selectedYear}</h2>
+                    </div>
+                    <div className="expenseTrackerControls">
+                        <MonthYearSelector
+                            selectedYear={selectedYear}
+                            selectedMonth={selectedMonth}
+                            setSelectedYear={setSelectedYear}
+                            setSelectedMonth={setSelectedMonth}
+                        />
+                    </div>
+                </div>
+                <p className="expenseTrackerHint">Select a day to view or create expenses.</p>
                 <Calendar
                     selectedYear={selectedYear}
                     selectedMonth={selectedMonth}

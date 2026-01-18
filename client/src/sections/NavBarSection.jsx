@@ -14,45 +14,45 @@ export const NavBarSection = () => {
 
     return (
         <>
-            <nav className="navBarSection navbar px-4 sticky-top">
-                <a className="navbar-brand" href="/dashboard">Budget & Expenses</a>
+            <nav className="navBarSection navbar sticky-top">
+                <a className="navbar-brand navBrand" href="/dashboard">Budget & Expenses</a>
 
-                <div className="navItemGroup ms-auto align-items-center gap-5">
-                    <div className={'navItem px-3'}>
+                <div className="navItemGroup ms-auto align-items-center">
+                    <div className={'navItem'}>
                         <NavLink
                             to="/dashboard"
                             className={({ isActive }) =>
-                                isActive ? "text-primary fw-bold nav-link" : "nav-link"
+                                isActive ? "nav-link-item active" : "nav-link-item"
                             }
                         >
                             Dashboard
                         </NavLink>
                     </div>
-                    <div className={'navItem px-3'}>
+                    <div className={'navItem'}>
                         <NavLink
                             to="/expenses"
                             className={({ isActive }) =>
-                                isActive ? "text-primary fw-bold nav-link" : "nav-link"
+                                isActive ? "nav-link-item active" : "nav-link-item"
                             }
                         >
                             Expenses
                         </NavLink>
                     </div>
-                    <div className={'navItem px-3'}>
+                    <div className={'navItem'}>
                         <NavLink
                             to="/totals"
                             className={({ isActive }) =>
-                                isActive ? "text-primary fw-bold nav-link" : "nav-link"
+                                isActive ? "nav-link-item active" : "nav-link-item"
                             }
                         >
                             Totals
                         </NavLink>
                     </div>
-                    <div className="border rounded-circle p-2"
-                         style={{ cursor: "pointer" }}
+                    <div
+                         className="navUserButton"
                          onClick={() => setShowUserModal(true)}
                     >
-                        <FaUser size={24} />
+                        <FaUser size={20} />
                     </div>
                 </div>
             </nav>

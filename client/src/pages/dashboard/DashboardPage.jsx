@@ -22,15 +22,23 @@ export default function DashboardPage() {
 
     return (
         <>
-            <div className="d-flex justify-content-center align-items-center">
-                    <Card title='Expense Tracker' >
+            <div className="d-flex justify-content-center align-items-stretch dashboard-cards">
+                    <Card
+                        title='Expense Tracker'
+                        className="dashboard-card expense-tracker-card"
+                        style={{width: 'min(38rem, 100%)'}}
+                    >
                         <Suspense fallback={<ExpenseTrackerSectionSkeleton />}>
                             <ErrorBoundary FallbackComponent={ExpenseTrackerSectionSkeleton} >
                                 <ExpenseTrackerSection />
                             </ErrorBoundary>
                         </Suspense>
                     </Card>
-                <Card title='Upcoming Expenses' >
+                <Card
+                    title='Upcoming Expenses'
+                    className="dashboard-card upcoming-expenses-card"
+                    style={{width: 'min(38rem, 100%)'}}
+                >
                     <Suspense fallback={<UpcomingExpensesSectionSkeleton />}>
                         <ErrorBoundary FallbackComponent={UpcomingExpensesSectionSkeleton} >
                             <UpcomingExpensesSection />

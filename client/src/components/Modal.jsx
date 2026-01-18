@@ -1,8 +1,10 @@
 import React from 'react';
 
-export const Modal = ({children, title, wrapperRef, handleSave, handleClose}) => {
+export const Modal = ({children, title, wrapperRef, handleSave, handleClose, className = ''}) => {
+    const modalClassName = `modal show d-block ${className}`.trim();
+
     return (
-        <div className='modal show d-block'>
+        <div className={modalClassName}>
             <div className='modal-dialog'>
                 <div className='modal-content' ref={wrapperRef}>
                     <div className='modal-header'>

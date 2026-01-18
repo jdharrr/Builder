@@ -46,78 +46,96 @@ export const UserModal = ({handleClose}) => {
     }
 
     return (
-        <div className="modal show d-block">
+        <div className="modal show d-block user-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">
-                        <h5 className="modal-title">User Profile</h5>
+                        <div className="user-modal-title">
+                            <span className="user-modal-eyebrow">Profile</span>
+                            <h5 className="modal-title">User Settings</h5>
+                        </div>
                     </div>
                     <div className="userModalBody modal-body">
-                        <div className="row h-100">
-                            <div className="col-3 border-end border-dark-subtle">
-                                <ul className={'nav flex-column'}>
-                                    <li className={'nav-item'} role={'presentation'}>
-                                        <button className="nav-link active" id={'general-tab'} type={'button'}
-                                                data-bs-target={'#general-tab-content'} role={'tab'} data-bs-toggle={'tab'}>
-                                            General
-                                        </button>
-                                    </li>
-                                    <li className={'nav-item'} role={'presentation'}>
-                                        <button className="nav-link" id={'settings-tab'} type={'button'}
-                                                data-bs-target={'#settings-tab-content'} role={'tab'} data-bs-toggle={'tab'}>
-                                            Settings
-                                        </button>
-                                    </li>
-                                </ul>
+                        <div className="user-modal-tabs">
+                            <div className="tab-pills user-modal-pills" role="tablist">
+                                <button
+                                    className="tab-pill active"
+                                    id={'general-tab'}
+                                    type={'button'}
+                                    data-bs-target={'#general-tab-content'}
+                                    role={'tab'}
+                                    data-bs-toggle={'tab'}
+                                >
+                                    General
+                                </button>
+                                <button
+                                    className="tab-pill"
+                                    id={'settings-tab'}
+                                    type={'button'}
+                                    data-bs-target={'#settings-tab-content'}
+                                    role={'tab'}
+                                    data-bs-toggle={'tab'}
+                                >
+                                    Settings
+                                </button>
                             </div>
+                        </div>
 
-                            <div className="col-9">
-                                <div className={'tab-content'} >
-                                    <div className="tab-pane show active" id={'general-tab-content'} role={'tabpanel'}>
-                                        { !isLoading ?
-                                            (
-                                                <div className={'list-group'}>
-                                                    <div className={'list-group-item'}>
-                                                        {`Username: ${user.username}`}
-                                                    </div >
-                                                    <div className={'list-group-item'}>
-                                                        {`Email: ${user.email}`}
-                                                    </div>
-                                                    <div className={'list-group-item'}>
-                                                        {`Created: ${user.createdAt.substring(0, 10)}`}
-                                                    </div>
-                                                    <div className={'list-group-item'}>
-                                                        {`Last Updated: ${user.updatedAt.substring(0,10)}`}
-                                                    </div>
+                        <div className={'tab-content user-modal-content'} >
+                            <div className="tab-pane show active" id={'general-tab-content'} role={'tabpanel'}>
+                                { !isLoading ?
+                                    (
+                                        <div className={'user-modal-list'}>
+                                            <div className={'user-modal-row'}>
+                                                <span className="user-modal-label">Username</span>
+                                                <span className="user-modal-value">{user.username}</span>
+                                            </div >
+                                            <div className={'user-modal-row'}>
+                                                <span className="user-modal-label">Email</span>
+                                                <span className="user-modal-value">{user.email}</span>
+                                            </div>
+                                            <div className={'user-modal-row'}>
+                                                <span className="user-modal-label">Created</span>
+                                                <span className="user-modal-value">{user.createdAt.substring(0, 10)}</span>
+                                            </div>
+                                            <div className={'user-modal-row'}>
+                                                <span className="user-modal-label">Last Updated</span>
+                                                <span className="user-modal-value">{user.updatedAt.substring(0,10)}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={'user-modal-list'}>
+                                            {['Username', 'Email', 'Created', 'Last Updated'].map((label, idx) => (
+                                                <div className={'user-modal-row placeholder-glow'} key={idx}>
+                                                    <span className="placeholder col-7" />
                                                 </div>
-                                            ) : (
-                                                <div className={'list-group'}>
-                                                    {['Username', 'Email', 'Created', 'Last Updated'].map((label, idx) => (
-                                                        <div className={'list-group-item placeholder-glow'} key={idx}>
-                                                            <span className="placeholder col-7" />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )
-                                        }
-                                    </div>
-                                    <div className="tab-pane" id={'settings-tab-content'} role={'tabpanel'}>
-                                        { !isLoading ?
-                                            (
-                                                <div className={'form-check form-switch'}>
-                                                    <input className={'form-check-input'} type='checkbox' role={'switch'} checked={user.settings.darkMode} onChange={(e) => handleDarkModeChange(e.target.checked)}/>
-                                                    <label className="form-check-label">
-                                                        Dark Mode
-                                                    </label>
-                                                </div>
-                                            ) : (
-                                                <div className="placeholder-glow">
-                                                    <span className="placeholder col-8" />
-                                                </div>
-                                            )
-                                        }
-                                    </div>
-                                </div>
+                                            ))}
+                                        </div>
+                                    )
+                                }
+                            </div>
+                            <div className="tab-pane" id={'settings-tab-content'} role={'tabpanel'}>
+                                { !isLoading ?
+                                    (
+                                        <div className={'user-modal-setting'}>
+                                            <span className="user-modal-label">Dark Mode</span>
+                                            <label className="user-modal-switch">
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type='checkbox'
+                                                    role={'switch'}
+                                                    checked={user.settings.darkMode}
+                                                    onChange={(e) => handleDarkModeChange(e.target.checked)}
+                                                />
+                                                <span className="user-modal-switch-track" />
+                                            </label>
+                                        </div>
+                                    ) : (
+                                        <div className="placeholder-glow">
+                                            <span className="placeholder col-8" />
+                                        </div>
+                                    )
+                                }
                             </div>
                         </div>
                     </div>

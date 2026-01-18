@@ -115,54 +115,70 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     };
 
     return (
-        <div className="modal show d-block">
+        <div className="modal show d-block create-expense-modal payment-input-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">
-                        <h5 className="modal-title">Payments started on {expense?.startDate?.substring(0,10)}, recurs {expense.dueEndOfMonth ? 'at the end of every month' : expense.recurrenceRate}</h5>
+                        <div className="payment-modal-title">
+                            <span className="payment-modal-eyebrow">Record payment</span>
+                            <h5 className="modal-title">
+                                {expense?.name ?? 'Expense'} Payment
+                            </h5>
+                            <span className="payment-modal-meta">
+                                Starts {expense?.startDate?.substring(0, 10)}
+                            </span>
+                        </div>
                     </div>
                     <div className="modal-body">
                         {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
-                            <div className={"mb-2"}>
-                                <div>
-                                    Late Due Dates: {lateDates.length <= 0 ? 'No late expenses!' : ''}
+                            <div className="payment-section">
+                                <div className="payment-section-header">
+                                    <span className="payment-section-title">Late Due Dates</span>
+                                    <span className="payment-section-count">
+                                        {lateDates.length}
+                                    </span>
                                 </div>
-                                {lateDates.length > 0 &&
-                                    <div className="list-group list-group-flush">
+                                {lateDates.length > 0 ? (
+                                    <div className="payment-dates">
                                         {lateDates.map((date, idx) => (
-                                            <div key={idx} className="list-group-item">
+                                            <div key={idx} className="payment-date-pill">
                                                 {date}
                                             </div>
                                         ))}
                                     </div>
-                                }
+                                ) : (
+                                    <p className="modal-empty">No late expenses.</p>
+                                )}
                             </div>
                         }
                         {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
-                            <div>
-                                <label className={'form-label mt-1'}>Select a due date to mark as paid:</label>
+                            <div className="payment-section">
+                                <label className={'form-label'}>Select a due date to mark as paid</label>
                                 <input className={'form-control'} type={'date'} value={selectedDueDatePaid} onChange={(e) => handleSelectedDueDatePaidChange(e.target.value)} />
                                 {invalidDueDate &&
-                                    <label className={"form-text text-danger"}>Invalid Date</label>
+                                    <span className="payment-error">Invalid date.</span>
                                 }
                                 {paymentExists &&
-                                    <label className={'form-text text-danger'}>Payment already exists!</label>
+                                    <span className="payment-error">Payment already exists.</span>
                                 }
                             </div>
                         }
-                        <form>
-                            <label className="form-label">Paid on:</label>
+                        <div className="payment-section">
+                            <label className="form-label">Paid on</label>
                             <input className={'form-control'} type={'date'} value={selectedDatePaid} onChange={(e) => setSelectedDatePaid(e.target.value)} />
-                        </form>
+                            <span className="payment-subtext">
+                                {expense.dueEndOfMonth ? 'End of month schedule' : `Recurs ${expense.recurrenceRate}`}
+                            </span>
+                        </div>
                     </div>
                     <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
                         {expense.recurrenceRate !== 'once' && lateDates.length > 0 && (
-                            <button type="button" className="btn btn-warning me-2" onClick={handlePayAllOverdue}>
-                                Pay All {lateDates.length} Overdue Dates
+                            <button type="button" className="btn btn-warning" onClick={handlePayAllOverdue}>
+                                Pay All {lateDates.length} Overdue
                             </button>
                         )}
                         <button type="button" className="btn btn-primary" disabled={(invalidDueDate || paymentExists)} onClick={handleSaveClick}>Save</button>
-                        <button type="button" className="btn btn-primary" onClick={handleClose}>Close</button>
                     </div>
                 </div>
             </div>

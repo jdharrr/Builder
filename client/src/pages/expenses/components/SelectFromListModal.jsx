@@ -1,5 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 
+import '../../../css/createExpenseForm.css';
+
 export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
     const [selectedIds, setSelectedIds] = useState([]);
 
@@ -28,20 +30,22 @@ export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
     }
 
     return (
-        <div className="modal show d-block">
+        <div className="modal show d-block create-expense-modal select-payments-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">
                         <h5 className="modal-title">{title}</h5>
                     </div>
                     <div className="modal-body">
-                        <div className="upcomingList list-group list-group-flush">
+                        <div className="payment-list">
                             {list && list.length > 0 ? (
                                 list.map((item, idx) => (
-                                    <div key={idx} className={'d-flex align-items-center'}>
-                                        <div className="list-group-item border-0 p-2 flex-grow-1">
-                                            <div><strong>Due Date:</strong> {item.dueDatePaid}</div>
-                                            <div><strong>Paid on:</strong> {item.paymentDate}</div>
+                                    <label key={idx} className="payment-row">
+                                        <div className="payment-row-details">
+                                            <span className="payment-row-label">Due date</span>
+                                            <span className="payment-row-value">{item.dueDatePaid}</span>
+                                            <span className="payment-row-label">Paid on</span>
+                                            <span className="payment-row-value">{item.paymentDate}</span>
                                         </div>
                                         <input
                                             className="form-check-input"
@@ -49,16 +53,23 @@ export const SelectFromListModal = ({list, handleSave, handleClose, title}) => {
                                             checked={selectedIds.includes(item.id)}
                                             onChange={(e) => handleCheckboxClick(e.target.checked, item.id)}
                                         />
-                                    </div>
+                                    </label>
                                 ))
                             ) : (
-                                <p>This expense has no payments.</p>
+                                <p className="modal-empty">This expense has no payments.</p>
                             )}
                         </div>
                     </div>
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-primary" disabled={selectedIds.length <= 0} onClick={handleSaveClick}>Save</button>
-                        <button type="button" className="btn btn-primary" onClick={handleClose}>Close</button>
+                        <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
+                        <button
+                            type="button"
+                            className="btn btn-warning"
+                            disabled={selectedIds.length <= 0}
+                            onClick={handleSaveClick}
+                        >
+                            Unpay Selected ({selectedIds.length})
+                        </button>
                     </div>
                 </div>
             </div>

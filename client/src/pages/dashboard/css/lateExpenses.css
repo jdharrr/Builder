@@ -1,25 +1,110 @@
-.lateExpensesList {
-    height: 28rem;
-    overflow-y: scroll;
+/* Container */
+.late-expenses-list {
+    max-height: 28rem;
+    overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-gutter: stable;
-    scrollbar-width: none;
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.lateExpensesList:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.4);
-    border-radius: 4px;
+/* Smooth scrollbar */
+.late-expenses-list::-webkit-scrollbar {
+    width: 6px;
 }
 
-.lateExpensesList::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+.late-expenses-list::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.lateExpensesList:hover {
-    scrollbar-width: thin;
+.late-expenses-list::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 3px;
+    transition: background-color 0.2s;
 }
 
-.lateExpensesList:hover::-webkit-scrollbar {
-    width: 8px;
+.late-expenses-list::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+}
+
+/* Late expense item */
+.late-expense-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.late-expense-item:hover {
+    background-color: #ffffff;
+    border-color: #fca5a5;
+    box-shadow: 0 1px 3px 0 rgba(239, 68, 68, 0.1);
+    transform: translateY(-1px);
+}
+
+.late-indicator {
+    display: flex;
+    align-items: center;
+}
+
+.late-icon {
+    color: #ef4444;
+    font-size: 1.125rem;
+}
+
+.late-expense-name {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.show-button {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    color: #374151;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.show-button:hover {
+    background-color: #6366f1;
+    border-color: #6366f1;
+    color: #ffffff;
+}
+
+.show-icon {
+    font-size: 0.875rem;
+}
+
+/* No late expenses state */
+.no-late-expenses {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}
+
+.no-late-icon {
+    font-size: 3rem;
+    color: #10b981;
 }

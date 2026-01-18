@@ -190,8 +190,14 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
 
     return (
         <div>
-            <Modal title={date === null ? 'Create Expense' : 'Create Expense For ' + date.substring(0,10)} wrapperRef={wrapperRef} handleSave={handleSaveForm} handleClose={handleCloseForm}>
-                <form>
+            <Modal
+                title={date === null ? 'Create Expense' : 'Create Expense For ' + date.substring(0,10)}
+                wrapperRef={wrapperRef}
+                handleSave={handleSaveForm}
+                handleClose={handleCloseForm}
+                className="create-expense-modal"
+            >
+                <form className="create-expense-form">
                     <div className='mb-3'>
                         <label className={'form-label'}>Name</label>
                         <input className={'form-control'} type='text'
@@ -317,8 +323,8 @@ export const CreateExpenseForm = ({includeStartDateInput}) => {
                                 </select>
                             </div>
                             <div className={'col-1'}>
-                                <button className={'border-0 bg-white'} type='button' onClick={handleAddCategoryClick}>
-                                    <FaPlus size={16} color={'#0d6efd'}/>
+                                <button className={'addCategoryButton'} type='button' onClick={handleAddCategoryClick}>
+                                    <FaPlus size={14} />
                                 </button>
                             </div>
                         </div>

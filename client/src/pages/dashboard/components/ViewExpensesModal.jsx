@@ -77,45 +77,69 @@ export const ViewExpensesModal = () => {
     const month = MONTHS[Number(date.substring(5, 7)) - 1];
     const year = Number(date.substring(0, 4));
     const day = Number(date.substring(8, 10));
+    const formatCost = (value) => {
+        if (value === null || value === undefined || value === '') return '$0.00';
+        if (typeof value === 'number') return `$${value.toFixed(2)}`;
+        const trimmed = value.toString().trim();
+        return trimmed.startsWith('$') ? trimmed : `$${trimmed}`;
+    };
+    const formatDate = (value) => {
+        if (!value) return 'No due date';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return value;
+        return parsed.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const formatRecurrence = (value) => {
+        if (!value) return 'One-time';
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    };
 
     return (
-        <div className="modal show d-block">
+        <div className="modal show d-block view-expenses-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className="modal-content">
                     <div className="modal-header">
-                        <h5 className={'modal-title'}>{day} {month}, {year}</h5>
+                        <div className="modal-title-block">
+                            <span className="modal-eyebrow">Expenses for</span>
+                            <h5 className="modal-title">{day} {month}, {year}</h5>
+                        </div>
+                        <span className="modal-count">{expenses.length} item{expenses.length === 1 ? '' : 's'}</span>
                     </div>
                     <div className="modal-body">
                         {expenses.length === 0 ? (
-                            <p>No expenses found</p>
+                            <div className="modal-empty">No expenses found for this day.</div>
                         ) : (
-                            <div className={"list-group list-group-flush"} >
-                                <div className="list-group-item">
-                                    <div className={"row"}>
-                                        <div className={"col-3"}>Name</div>
-                                        <div className={"col-3"}>Cost</div>
-                                        <div className={"col-4"}>Category</div>
-                                        <div className={"col-2"}>Edit</div>
-                                    </div>
-                                </div>
+                            <div className="expense-list">
                                 {expenses.map((expense, idx) => (
-                                    <div key={idx} className={"viewExpenseItem list-group-item"} onClick={() => handleExpenseRowClick(expense)}>
-                                        <div className={"row"}>
-                                            <div className={"col-3"}>{expense.name}</div>
-                                            <div className={"col-3"}>{expense.cost}</div>
-                                            <div className={"col-4"}>{expense.category}</div>
-                                            <div className="col-1 text-end">
-                                                <button
-                                                    type={"button"}
-                                                    className="viewExpenseEditBtn border-0 bg-transparent"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleExpenseEditClick(expense);
-                                                    }}
-                                                >
-                                                    <FaPen size={16}/>
-                                                </button>
+                                    <div
+                                        key={idx}
+                                        className="expense-row"
+                                        onClick={() => handleExpenseRowClick(expense)}
+                                    >
+                                        <div className="expense-row-main">
+                                            <span className="expense-row-name">{expense.name}</span>
+                                            <span className="expense-row-category">{expense.categoryName ?? expense.category}</span>
+                                            <div className="expense-row-details">
+                                                <span className="expense-row-detail">
+                                                    Next due: {formatDate(expense.nextDueDate)}
+                                                </span>
+                                                <span className="expense-row-detail">
+                                                    Recurrence: {formatRecurrence(expense.recurrenceRate)}
+                                                </span>
                                             </div>
+                                        </div>
+                                        <div className="expense-row-meta">
+                                            <span className="expense-row-amount">{formatCost(expense.cost)}</span>
+                                            <button
+                                                type={"button"}
+                                                className="expense-row-edit"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleExpenseEditClick(expense);
+                                                }}
+                                            >
+                                                <FaPen size={14}/>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -124,7 +148,7 @@ export const ViewExpensesModal = () => {
                     </div>
                     <div className='modal-footer'>
                         <button type='button' className={'btn btn-primary'} onClick={handleClose}>Close</button>
-                        <button type='button' className={'btn btn-primary'} onClick={handleAddExpense}>+</button>
+                        <button type='button' className={'btn btn-primary'} onClick={handleAddExpense}>Add Expense</button>
                     </div>
                 </div>
             </div>
