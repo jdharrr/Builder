@@ -77,7 +77,12 @@ export const UpcomingList = () => {
                             {expensesForDate.length === 0 ? (
                                 <div className="no-expenses">No expenses</div>
                             ) : (
-                                expensesForDate.map((expense) => (
+                                expensesForDate.map((expense) => {
+                                    const isChecked = showExpenseDatePaidModal
+                                        && checkedExpense?.id === expense.id
+                                        && checkedDueDate === date;
+
+                                    return (
                                     <div className="expense-item" key={`${date}-${expense.id}`}>
                                         <OverlayTrigger
                                             placement="bottom"
@@ -99,7 +104,12 @@ export const UpcomingList = () => {
                                                 type="checkbox"
                                                 className="custom-checkbox"
                                                 id={`paid-${expense.id}-${date}`}
+                                                checked={isChecked}
                                                 onChange={() => {
+                                                    if (isChecked) {
+                                                        return;
+                                                    }
+
                                                     setCheckedExpense(expense);
                                                     setCheckedDueDate(date);
                                                     setShowExpenseDatePaidModal(true);
@@ -110,7 +120,8 @@ export const UpcomingList = () => {
                                             </label>
                                         </div>
                                     </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>

@@ -1,0 +1,150 @@
+.expenses-table-scroll {
+    width: 100%;
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 1.25rem;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow:
+        0 20px 40px -32px rgba(15, 23, 42, 0.45),
+        0 4px 12px -8px rgba(15, 23, 42, 0.2);
+}
+
+.expenses-table {
+    width: 100%;
+    min-width: 64rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.expenses-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.85rem 0.75rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.expenses-table tbody tr {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+.expenses-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.expenses-table td {
+    padding: 0.85rem 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+    color: #111827;
+}
+
+.cell-name {
+    font-weight: 600;
+}
+
+.cell-amount {
+    font-weight: 700;
+    color: #047857;
+}
+
+.cell-date {
+    color: #6b7280;
+}
+
+.category-pill,
+.recurrence-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.recurrence-pill {
+    background-color: #eef2ff;
+    color: #4338ca;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+.cell-actions {
+    text-align: right;
+}
+
+.actions-button {
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    color: #374151;
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+
+.actions-button:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+.actions-menu {
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    padding: 0.4rem;
+    box-shadow: 0 16px 30px -22px rgba(15, 23, 42, 0.6);
+}
+
+.actions-menu .dropdown-item {
+    border-radius: 0.6rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.7rem;
+}
+
+.actions-menu .dropdown-item:hover {
+    background-color: #f3f4f6;
+}
+
+.expenses-table-scroll::-webkit-scrollbar {
+    height: 0;
+    width: 0;
+}
+
+.expenses-table-scroll:hover::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.expenses-table-scroll::-webkit-scrollbar-thumb {
+    background-color: #cbd5f5;
+    border-radius: 999px;
+}
+
+.expenses-table-scroll:hover::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+}
+
+.expenses-table-scroll {
+    scrollbar-width: none;
+}
+
+.expenses-table-scroll:hover {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5f5 transparent;
+}

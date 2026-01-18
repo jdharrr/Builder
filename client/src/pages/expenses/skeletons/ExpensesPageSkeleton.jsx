@@ -6,37 +6,44 @@ import '../css/expensesPage.css';
 
 export default function ExpensesPageSkeleton() {
     return (
-        <div className="d-flex justify-content-center align-items-center">
-            <div className="expensesCard card text-center m-5">
-                <div className="card-body d-flex flex-column">
-                    <div className={"d-flex align-items-center mb-2"}>
-                        <div className="dropdown text-center me-2">
-                            <button className="btn dropdown-toggle border-dark-subtle" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false"
-                            >
-                                Sort
-                            </button>
-                            <ul className="dropdown-menu" >
-                                <li >
-                                    <a className={"dropdown-item"} href={"#"}>
-                                        Loading...
-                                    </a>
-                                </li>
+        <div className="expenses-page">
+            <div className="expenses-hero">
+                <div className="expenses-hero-title">
+                    <span className="expenses-eyebrow">Expenses</span>
+                    <h1 className="expenses-title">Expense Table</h1>
+                    <p className="expenses-subtitle">Track, sort, and batch-edit your expenses without losing context.</p>
+                </div>
+                <div className="expenses-hero-stats">
+                    <div className="expenses-stat placeholder-glow">
+                        <span className="placeholder col-4" />
+                    </div>
+                </div>
+            </div>
 
-                            </ul>
+            <div className="card expenses-page-card" style={{width: 'min(90rem, 100%)'}}>
+                <div className="card-body expenses-page-body">
+                    <div className="expenses-toolbar">
+                        <div className="expenses-toolbar-group">
+                            <div className="expenses-control placeholder-glow">
+                                <span className="placeholder col-6" />
+                            </div>
+                            <div className="expenses-control placeholder-glow">
+                                <span className="placeholder col-5" />
+                            </div>
                         </div>
-                        <div className="form-check form-switch d-flex align-items-center ms-auto">
-                            <label className="form-check-label me-5">
-                                Search
-                            </label>
-                            <input className="form-check-input" type="checkbox" disabled />
+                        <div className="expenses-toolbar-toggles">
+                            {['Select', 'Show Inactive', 'Search'].map((label) => (
+                                <div className="expenses-toggle placeholder-glow" key={label}>
+                                    <span className="placeholder col-6" />
+                                </div>
+                            ))}
                         </div>
                     </div>
                     <ExpensesTableSectionSkeleton
                         selectActive={false}
                         showInactiveExpenses={false}
                         enableSearch={false}
-                        rowCount={10}
+                        rowCount={8}
                     />
                 </div>
             </div>

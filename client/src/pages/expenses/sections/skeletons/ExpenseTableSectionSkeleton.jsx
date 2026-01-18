@@ -23,9 +23,9 @@ export const ExpensesTableSectionSkeleton = ({
     const columnCount = Object.keys(headers).length;
 
     return (
-        <div className={"table-responsive"} style={{ maxWidth: '100%' }}>
-            <table className="table table-striped table-bordered" style={{ cursor: "default", tableLayout: "fixed", width: "100%" }}>
-                <thead style={{cursor: 'pointer'}}>
+        <div className="expenses-table-scroll">
+            <table className="table expenses-table" style={{ cursor: "default", tableLayout: "fixed", width: "100%" }}>
+                <thead className="expenses-table-head">
                     <tr>
                         {selectActive && <th key={"select"} scope={'col'}></th>}
                         {showInactiveExpenses && <th key={'active'} scope={'col'}>Active</th>}
@@ -52,25 +52,25 @@ export const ExpensesTableSectionSkeleton = ({
                         </tr>
                     )}
                 </thead>
-                <tbody className="table-group-divider">
+                <tbody className="expenses-table-body">
                     {Array.from({ length: rowCount }).map((_, rowIdx) => (
-                        <tr key={rowIdx} className="placeholder-glow">
+                        <tr key={rowIdx} className="placeholder-glow expenses-table-row">
                             {selectActive && (
-                                <td>
+                                <td className="cell cell-select text-center">
                                     <span className="placeholder" style={{width: '1rem', height: '1rem', display: 'inline-block'}} />
                                 </td>
                             )}
                             {showInactiveExpenses && (
-                                <td className={'text-center'}>
+                                <td className={'text-center cell cell-status'}>
                                     <span className="placeholder col-4" />
                                 </td>
                             )}
                             {Array.from({ length: columnCount }).map((_, cellIdx) => (
-                                <td key={cellIdx}>
+                                <td key={cellIdx} className="text-center">
                                     <span className="placeholder col-8" />
                                 </td>
                             ))}
-                            <td>
+                            <td className="text-center">
                                 <span className="placeholder col-6" />
                             </td>
                         </tr>

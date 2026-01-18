@@ -8,6 +8,8 @@ import {useQuery} from "@tanstack/react-query";
 import {getStatus} from "../../util.jsx";
 import {Dropdown} from '../../components/Dropdown.jsx'
 
+import './css/totalsPage.css';
+
 export default function TotalsPage() {
     const navigate = useNavigate();
     
@@ -122,18 +124,48 @@ export default function TotalsPage() {
     }
 
     return (
-        <>
-            <Card title={"Category Breakdown"}>
-                <Dropdown title={"Range"} options={Object.entries(categoryChartRangeOptions)} handleOptionChange={handleRangeChange} changeTitleOnOptionChange={true}/>
-                <div className={"d-flex align-items-center justify-content-center"}>
-                    <Doughnut data={categoryPieData} style={{ maxWidth: '30rem', maxHeight: '30rem' }} />
+        <div className="totals-page">
+            <div className="totals-hero">
+                <div className="totals-hero-title">
+                    <span className="totals-eyebrow">Totals</span>
+                    <h1 className="totals-title">Spending Overview</h1>
+                    <p className="totals-subtitle">See where money goes and how much you have spent over time.</p>
                 </div>
-            </Card>
-            <Card title={"Total Spent"}>
-                <div>
-                    <p>{totalSpent.toString()}</p>
+                <div className="totals-stat">
+                    <span className="totals-stat-label">Total Spent</span>
+                    <span className="totals-stat-value">{totalSpent.toString()}</span>
                 </div>
-            </Card>
-        </>
+            </div>
+
+            <div className="totals-grid">
+                <Card
+                    title={"Category Breakdown"}
+                    className="totals-card"
+                    bodyClassName="totals-card-body"
+                    style={{width: '100%'}}
+                >
+                    <div className="totals-range">
+                        <span className="totals-stat-label">Range</span>
+                        <Dropdown
+                            title={"Range"}
+                            options={Object.entries(categoryChartRangeOptions)}
+                            handleOptionChange={handleRangeChange}
+                            changeTitleOnOptionChange={true}
+                        />
+                    </div>
+                    <div className="totals-chart">
+                        <Doughnut data={categoryPieData} style={{ maxWidth: '24rem', maxHeight: '24rem' }} />
+                    </div>
+                </Card>
+                <Card
+                    title={"Total Spent"}
+                    className="totals-card totals-total-card"
+                    style={{width: '100%'}}
+                >
+                    <div className="totals-total-amount">{totalSpent.toString()}</div>
+                    <div className="totals-total-subtext">Across all tracked expenses.</div>
+                </Card>
+            </div>
+        </div>
     );
 }

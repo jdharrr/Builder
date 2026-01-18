@@ -113,11 +113,17 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     };
 
     return (
-        <div className='modal show d-block'>
+        <div className='modal show d-block create-expense-modal late-dates-modal'>
             <div className='modal-dialog'>
                 <div className='modal-content' ref={wrapperRef}>
                     <div className='modal-header'>
-                        <h5 className="modal-title">Late Dates for {expense.name}</h5>
+                        <div className="late-dates-title">
+                            <span className="late-dates-eyebrow">Late dates</span>
+                            <div className="late-dates-heading">
+                                <h5 className="modal-title">{expense.name}</h5>
+                                <span className="late-dates-count">{lateDates.length}</span>
+                            </div>
+                        </div>
                     </div>
                     <div className='modal-body'>
                         {isLoading ? (
@@ -129,25 +135,25 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
                         ) : !showPaymentDateInput ? (
                             <>
                                 {lateDates.length === 0 ? (
-                                    <p className="text-muted">No late dates found for this expense.</p>
+                                    <p className="modal-empty">No late dates found for this expense.</p>
                                 ) : (
-                                    <div className="list-group list-group-flush">
+                                    <div className="late-dates-list">
                                         {lateDates.map((date, idx) => (
-                                            <div key={idx} className="list-group-item">
+                                            <label key={idx} className="late-date-row">
                                                 <input
                                                     type="checkbox"
-                                                    className="form-check-input me-2"
+                                                    className="form-check-input"
                                                     checked={selectedDates.includes(date)}
                                                     onChange={(e) => handleCheckboxChange(date, e.target.checked)}
                                                 />
-                                                {date}
-                                            </div>
+                                                <span className="late-date-value">{date}</span>
+                                            </label>
                                         ))}
                                     </div>
                                 )}
                             </>
                         ) : (
-                            <div>
+                            <div className="late-dates-payment">
                                 <label className="form-label">Payment Date</label>
                                 <input
                                     type="date"
@@ -155,8 +161,8 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
                                     value={paymentDate}
                                     onChange={(e) => setPaymentDate(e.target.value)}
                                 />
-                                <div className="mt-2 text-muted">
-                                    <small>This date will be applied to all {selectedDates.length} selected late date(s).</small>
+                                <div className="late-dates-note">
+                                    This date will be applied to all {selectedDates.length} selected late date(s).
                                 </div>
                             </div>
                         )}

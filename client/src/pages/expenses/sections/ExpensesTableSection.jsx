@@ -294,9 +294,9 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
 
     return (
         <div>
-            <div className={"table-responsive"} style={{ maxWidth: '100%' }}>
-                <table className="table table-striped table-bordered" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
-                    <thead style={{cursor: 'pointer'}} >
+            <div className="expenses-table-scroll">
+                <table className="table expenses-table" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
+                    <thead className="expenses-table-head">
                     <tr>
                         {selectActive && <th key={"select"} scope={'col'}></th>}
                         {showInactiveExpenses && <th key={'active'} scope={'col'} onClick={() => handleHeaderClick('active')}>Active</th>}
@@ -317,11 +317,11 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                         />
                     }
                     </thead>
-                    <tbody className="table-group-divider" >
+                    <tbody className="expenses-table-body" >
                     {expenses.map((exp, idx) => (
-                        <tr key={idx}>
+                        <tr key={idx} className="expenses-table-row">
                             {selectActive &&
-                                <td>
+                                <td className="cell cell-select">
                                     <input
                                         className="form-check-input"
                                         type="checkbox"
@@ -330,19 +330,29 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                                     />
                                 </td>
                             }
-                            {showInactiveExpenses && <td className={'text-nowrap text-center'}>{exp.active ? "Yes" : "No"}</td>}
-                            <td className={'text-nowrap'}>{exp.createdAt}</td>
-                            <td className={'text-nowrap'}>{exp.updatedAt}</td>
-                            <td>{exp.categoryName}</td>
-                            <td className={"text-truncate"}>{exp.name}</td>
-                            <td>${exp.cost}</td>
-                            <td className={'text-nowrap'}>{exp.nextDueDate}</td>
-                            <td>{exp.recurrenceRate.charAt(0).toUpperCase() + exp.recurrenceRate.slice(1).toLowerCase()}</td>
-                            <td className={'text-nowrap'}>{exp.startDate}</td>
-                            <td className={'text-nowrap'}>{exp.endDate ? exp.endDate : ''}</td>
-                            <td>
+                            {showInactiveExpenses && <td className={'text-nowrap text-center cell cell-status'}>{exp.active ? "Yes" : "No"}</td>}
+                            <td className={'text-nowrap text-center cell cell-date'}>{exp.createdAt}</td>
+                            <td className={'text-nowrap text-center cell cell-date'}>{exp.updatedAt}</td>
+                            <td className="cell cell-category text-center">
+                                <span className="category-pill">{exp.categoryName || 'Uncategorized'}</span>
+                            </td>
+                            <td className={"text-truncate text-center cell cell-name"}>{exp.name}</td>
+                            <td className="cell cell-amount text-center">${exp.cost}</td>
+                            <td className={'text-nowrap text-center cell cell-date'}>{exp.nextDueDate}</td>
+                            <td className="cell cell-recurrence text-center">
+                                <span className="recurrence-pill">
+                                    {exp.recurrenceRate.charAt(0).toUpperCase() + exp.recurrenceRate.slice(1).toLowerCase()}
+                                </span>
+                            </td>
+                            <td className={'text-nowrap text-center cell cell-date'}>{exp.startDate}</td>
+                            <td className={'text-nowrap text-center cell cell-date'}>{exp.endDate ? exp.endDate : ''}</td>
+                            <td className="cell cell-actions">
                                 <div className="dropdown">
-                                    <a className="btn btn-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                    <button
+                                        type="button"
+                                        className="actions-button dropdown-toggle"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
                                        onClick={(e) => {
                                            e.preventDefault();
                                            e.stopPropagation();
@@ -350,9 +360,9 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                                        }}
                                     >
                                         Actions
-                                    </a>
+                                    </button>
 
-                                    <ul className={`dropdown-menu ${clickedActionRowId === exp.id ? "show" : ""}`} >
+                                    <ul className={`dropdown-menu ${clickedActionRowId === exp.id ? "show" : ""} actions-menu`} >
                                         {Object.entries(exp.tableActions).map(([action, label], idx) => (
                                             <li key={idx}><a className="dropdown-item" href="#" onClick={(e) => handleActionClick(e, action, exp.id)}>{label}</a></li>
                                         ))}

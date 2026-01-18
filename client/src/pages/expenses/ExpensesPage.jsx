@@ -101,31 +101,53 @@ export default function ExpensesPage() {
     }
 
     return (
-        <div className="d-flex justify-content-center">
-            <Card>
-                <div className={"d-flex mb-2"}>
-                    <Dropdown title={"Sort"} options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")} handleOptionChange={handleSortChange} />
-                    { selectActive &&
-                        <div className={'ms-1'}>
-                            <Dropdown title={"Batch Actions"} options={Object.entries(batchActions)} handleOptionChange={handleBatchAction} />
+        <div className="expenses-page">
+            <div className="expenses-hero">
+                <div className="expenses-hero-title">
+                    <span className="expenses-eyebrow">Expenses</span>
+                    <h1 className="expenses-title">Expense Table</h1>
+                    <p className="expenses-subtitle">Track, sort, and batch-edit your expenses without losing context.</p>
+                </div>
+                <div className="expenses-hero-stats">
+                    <div className="expenses-stat">
+                        <span className="expenses-stat-label">Selected</span>
+                        <span className="expenses-stat-value">{selectedIds.length}</span>
+                    </div>
+                </div>
+            </div>
+
+            <Card className="expenses-page-card" bodyClassName="expenses-page-body" style={{width: 'min(90rem, 100%)'}}>
+                <div className="expenses-toolbar">
+                    <div className="expenses-toolbar-group">
+                        <div className="expenses-control">
+                            <Dropdown
+                                title={"Sort"}
+                                options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")}
+                                handleOptionChange={handleSortChange}
+                            />
                         </div>
-                    }
-                    <div className="form-check form-switch d-flex align-items-center ms-auto">
-                        <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
-                        <label className="form-check-label ms-2" htmlFor="selectToggle">
-                            Select
-                        </label>
+                        { selectActive &&
+                            <div className="expenses-control">
+                                <Dropdown
+                                    title={"Batch Actions"}
+                                    options={Object.entries(batchActions)}
+                                    handleOptionChange={handleBatchAction}
+                                />
+                            </div>
+                        }
                     </div>
-                    <div className="form-check form-switch d-flex align-items-center ms-3">
-                        <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
-                        <label className="form-check-label ms-2" htmlFor="showInactiveToggle">
-                            Show Inactive
+                    <div className="expenses-toolbar-toggles">
+                        <label className="expenses-toggle" htmlFor="selectToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
+                            <span>Select</span>
                         </label>
-                    </div>
-                    <div className="form-check form-switch d-flex align-items-center ms-3">
-                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
-                        <label className="form-check-label ms-2" htmlFor="searchToggle">
-                            Search
+                        <label className="expenses-toggle" htmlFor="showInactiveToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                            <span>Show Inactive</span>
+                        </label>
+                        <label className="expenses-toggle" htmlFor="searchToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
+                            <span>Search</span>
                         </label>
                     </div>
                 </div>

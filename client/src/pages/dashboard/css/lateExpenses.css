@@ -108,3 +108,69 @@
     font-size: 3rem;
     color: #10b981;
 }
+
+.late-dates-modal .modal-dialog {
+    max-width: 30rem;
+}
+
+.late-dates-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.late-dates-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.late-dates-heading .modal-title {
+    margin: 0;
+}
+
+.late-dates-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.late-dates-count {
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background-color: #fef2f2;
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.late-dates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.late-date-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid #fee2e2;
+    background-color: #fef2f2;
+    font-weight: 600;
+    color: #b91c1c;
+}
+
+.late-date-value {
+    font-size: 0.85rem;
+}
+
+.late-dates-note {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}

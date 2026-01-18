@@ -25,12 +25,33 @@ export const LoginPage = ({setAuthenticated}) =>  {
 
     return (
       <div className="loginWrapper">
-          <h1>Login</h1>
-          <div className="loginForm">
-              <input className='loginInput' type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-              <input className='loginInput' type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+          <div className="loginCard">
+              <div className="loginHeader">
+                  <span className="loginEyebrow">Welcome back</span>
+                  <h1 className="loginTitle">Sign in</h1>
+                  <p className="loginSubtitle">Track expenses with a clean view of what is due and what is paid.</p>
+              </div>
+              <div className="loginForm">
+                  <label className="loginLabel" htmlFor="loginEmail">Email</label>
+                  <input
+                      id="loginEmail"
+                      className='loginInput'
+                      type="email"
+                      placeholder="you@email.com"
+                      onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <label className="loginLabel" htmlFor="loginPassword">Password</label>
+                  <input
+                      id="loginPassword"
+                      className='loginInput'
+                      type="password"
+                      placeholder="••••••••"
+                      onChange={(e) => setPassword(e.target.value)}
+                  />
+              </div>
+              <button className="loginSubmit" type="submit" onClick={handleSubmitClick}>Login</button>
+              <p className="loginFootnote">Use your existing credentials to continue.</p>
           </div>
-          <button className="loginSubmit" type="submit" onClick={handleSubmitClick}>Login</button>
       </div>
     );
 }
