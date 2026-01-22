@@ -1,0 +1,114 @@
+.manage-categories-modal .modal-dialog {
+    max-width: 40rem;
+}
+
+.manage-categories-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.manage-categories-card {
+    padding: 1rem;
+    border-radius: 0.9rem;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.manage-categories-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+
+.manage-categories-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.manage-categories-subtext {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.manage-categories-create {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.manage-categories-create-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.manage-categories-create-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.manage-categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.manage-categories-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+}
+
+.manage-categories-input {
+    flex: 1;
+}
+
+.manage-categories-name {
+    flex: 1;
+    font-size: 0.95rem;
+    color: #111827;
+}
+
+.manage-categories-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.manage-categories-icon-button {
+    border: 1px solid #d1d5db;
+    background-color: #ffffff;
+    color: #4b5563;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.manage-categories-icon-button:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.manage-categories-muted {
+    font-size: 0.9rem;
+    color: #6b7280;
+}

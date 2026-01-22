@@ -9,13 +9,21 @@ export const Modal = ({children, title, wrapperRef, handleSave, handleClose, cla
                 <div className='modal-content' ref={wrapperRef}>
                     <div className='modal-header'>
                         <h5 className="modal-title">{title}</h5>
+                        <button
+                            type="button"
+                            className="modal-close-button"
+                            onClick={handleClose}
+                            aria-label="Close"
+                        >
+                            x
+                        </button>
                     </div>
                     <div className='modal-body'>
                         {children}
                     </div>
                     <div className={'modal-footer'}>
-                        <button type="button" className="btn btn-primary" onClick={handleClose}>Close</button>
-                        <button type="button" className="btn btn-primary" onClick={handleSave}>Save</button>
+                        <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
+                        <button type="button" className="btn btn-success" onClick={handleSave}>Save</button>
                     </div>
                 </div>
             </div>

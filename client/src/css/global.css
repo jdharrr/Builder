@@ -6,3 +6,18 @@
     --bs-heading-color: var(--bs-emphasis-color);
     --bs-tertiary-bg: color-mix(in oklab, var(--bs-body-bg), #fff 6%);
 }
+
+.modal-close-button {
+    border: none;
+    background: transparent;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #6b7280;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.modal-close-button:hover {
+    color: #111827;
+}

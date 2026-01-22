@@ -4,6 +4,7 @@ using DatabaseServices.Repsonses;
 using Microsoft.VisualBasic;
 using MySql.Data.MySqlClient;
 using System.Data;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace BuilderRepositories;
 
@@ -16,28 +17,31 @@ public class ExpensePaymentRepository: BuilderRepository
         _dbService = dbService;
     }
 
-    public async Task<long> CreateExpensePaymentAsync(int expenseId, string paymentDate, string dueDatePaid, double cost, int userId)
+    public async Task<long> CreateExpensePaymentAsync(int expenseId, string paymentDate, string dueDatePaid, bool isSkipped, double cost, int? creditCardId = null)
     {
         var sql = @"INSERT INTO expense_payments (
                     expense_id,
-                    user_id,
                     cost,
                     payment_date,
-                    due_date_paid
+                    due_date_paid,
+                    skipped,
+                    credit_card_id
                 ) VALUES(
                     @expenseId,
-                    @userId,
                     @cost,
                     @paymentDate,
-                    @dueDatePaid
+                    @dueDatePaid,
+                    @isSkipped,
+                    @creditCardId
                 )";
         var parameters = new Dictionary<string, object?>()
         {
             { "@expenseId", expenseId },
-            { "@userId", userId },
             { "@cost", cost },
             { "@paymentDate", paymentDate },
-            { "@dueDatePaid", dueDatePaid }
+            { "@dueDatePaid", dueDatePaid },
+            { "@isSkipped", isSkipped ? 1 : 0 },
+            { "@creditCardId", creditCardId }
         };
 
         var result = new ExecuteResponse();
@@ -56,29 +60,23 @@ public class ExpensePaymentRepository: BuilderRepository
         return result.LastInsertedId;
     }
 
-    public async Task<bool> DeleteExpensePaymentsAsync(List<object> paymentIds, int userId)
+    public async Task<bool> DeleteExpensePaymentsAsync(List<object> paymentIds)
     {
-        var parameters = new Dictionary<string, object?>()
-        {
-            { "@userId", userId }
-        };
+        var parameters = new Dictionary<string, object?>();
         var sql = $@"DELETE FROM expense_payments
-                    WHERE user_id = @userId
-                        AND id IN ({BuildInParams(paymentIds, ref parameters)})";
+                    WHERE id IN ({BuildInParams(paymentIds, ref parameters)})";
         
         var result = await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
         return result.RowsAffected > 0;
     }
 
-    public async Task<ExpensePaymentDto?> GetExpensePaymentByDueDateAsync(int userId, string dueDate, int expenseId)
+    public async Task<ExpensePaymentDto?> GetExpensePaymentByDueDateAsync(string dueDate, int expenseId)
     {
         var sql = @"SELECT id, expense_id, cost, payment_date, due_date_paid FROM expense_payments
-                    WHERE user_id = @userId
-                        AND due_date_paid = @dueDate
+                    WHERE due_date_paid = @dueDate
                         AND expense_id = @expenseId";
         var parameters = new Dictionary<string, object?>()
         {
-            { "@userId", userId },
             { "@dueDate", dueDate },
             { "@expenseId", expenseId }
         };
@@ -97,9 +95,11 @@ public class ExpensePaymentRepository: BuilderRepository
 
     public async Task<List<ExpensePaymentDto>> GetPaymentsForDateAsync(DateOnly dueDatePaid, int userId)
     {
-        var sql = @"SELECT * FROM expense_payments
-                    WHERE user_id = @userId
-                    AND due_date_paid = @dueDatePaid";
+        var sql = @"SELECT * FROM expense_payments ep
+                    INNER JOIN expenses e
+                        ON e.user_id = @userId
+                        AND ep.expense_id = e.id
+                    WHERE ep.due_date_paid = @dueDatePaid";
         var parameters = new Dictionary<string, object?>()
         {
             { "@userId", userId },
@@ -118,15 +118,13 @@ public class ExpensePaymentRepository: BuilderRepository
         }) ?? [];
     }
 
-    public async Task<List<ExpensePaymentDto>> GetPaymentsForExpenseAsync(int expenseId, int userId)
+    public async Task<List<ExpensePaymentDto>> GetPaymentsForExpenseAsync(int expenseId)
     {
         var sql = @"SELECT * FROM expense_payments
-                    WHERE user_id = @userId
-                    AND expense_id = @expenseId
+                    WHERE expense_id = @expenseId
                   ";
         var parameters = new Dictionary<string, object?>()
         {
-            { "@userId", userId },
             { "@expenseId", expenseId }
         };
 
@@ -138,15 +136,19 @@ public class ExpensePaymentRepository: BuilderRepository
             ExpenseId = Convert.ToInt32(row["expense_id"]),
             Cost = Convert.ToDouble(row["cost"]),
             PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
-            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd")
+            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd"),
+            Skipped = row.Field<bool>("skipped")
         }) ?? [];
     }
 
     public async Task<double> GetTotalSpentForRangeAsync(int userId, DateOnly? startDate = null, DateOnly? endDate = null)
     {
         var sql = @"SELECT COALESCE(SUM(cost), 0.0) AS total_spent 
-                    FROM expense_payments
-                    WHERE user_id = @userId";
+                    FROM expense_payments ep
+                    INNER JOIN expenses e
+                        ON e.user_id = @userId
+                        AND ep.expense_id = e.id
+                    WHERE skipped = 0";
 
         var parameters = new Dictionary<string, object?>()
         {

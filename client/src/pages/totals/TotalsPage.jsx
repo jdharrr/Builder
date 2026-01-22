@@ -1,5 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from "react-router-dom";
+import React, {useMemo, useState} from 'react';
 import { Doughnut } from 'react-chartjs-2';
 
 import {Card} from "../../components/Card.jsx";
@@ -11,10 +10,21 @@ import {Dropdown} from '../../components/Dropdown.jsx'
 import './css/totalsPage.css';
 
 export default function TotalsPage() {
-    const navigate = useNavigate();
-    
-    const [categoryChartRangeOptions, setCategoryChartRangeOptions] = useState([]);
     const [selectedCategoryChartRangeOption, setSelectedCategoryChartRangeOption] = useState("AllTime");
+    const { data: categoryChartRangeOptions = [] } = useQuery({
+        queryKey: ['categoryChartRangeOptions'],
+        queryFn: async () => {
+            const options = await getCategoryChartRangeOptions();
+            return options ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
 
     const { data: categories = {} } = useQuery({
         queryKey: ['categories', selectedCategoryChartRangeOption],
@@ -28,12 +38,7 @@ export default function TotalsPage() {
 
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        }
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
     const { data: totalSpent = 0 } = useQuery({
@@ -49,29 +54,9 @@ export default function TotalsPage() {
 
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        }
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     });
     
-    useEffect(() => {
-        async function loadCategoryChartRangeOptions() {
-            try {
-                const options = await getCategoryChartRangeOptions();
-                setCategoryChartRangeOptions(options);
-            } catch(err) {
-                if (getStatus(err) === 401) {
-                    navigate('/login');
-                }
-            }
-        }
-        
-        loadCategoryChartRangeOptions();
-    }, [navigate])
-
     const categoryPieData = useMemo(() => {
         const pieColors = [
             "rgb(255, 99, 132)",   // pink/red

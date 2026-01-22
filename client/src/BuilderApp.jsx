@@ -6,10 +6,9 @@ import {LoginPage} from "./pages/login/LoginPage.jsx";
 import { PrivateRoute } from "./components/PrivateRoute.jsx";
 import {fetchUser, validateToken} from "./api.jsx";
 import {BuilderLayout} from "./layouts/BuilderLayout.jsx";
+import ExpensesPageSkeleton from "./pages/expenses/skeletons/ExpensesPageSkeleton.jsx";
 
 import './css/app.css';
-import {getStatus} from "./util.jsx";
-import ExpensesPageSkeleton from "./pages/expenses/skeletons/ExpensesPageSkeleton.jsx";
 
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage.jsx"));
 const ExpensesPage = lazy(() => import("./pages/expenses/ExpensesPage.jsx"));
@@ -21,10 +20,17 @@ export const BuilderApp = () => {
     useEffect(() => {
         async function validate() {
             const isValidated = await validateToken();
-            setAuthenticated(isValidated);
+            if (!isValidated && window.location.pathname !== "/login") {
+                window.location.assign('/login');
+            } else {
+                setAuthenticated(true);
+            }
         }
 
         validate();
+    }, []);
+
+    useEffect(() => {
         document.cookie = "XDEBUG_SESSION=PHPSTORM; path=/";
     }, []);
 
@@ -35,12 +41,7 @@ export const BuilderApp = () => {
         },
         enabled: authenticated ?? false,
         staleTime: 60_000,
-        throwOnError: false,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-
-            return failureCount < 2;
-        }
+        retry: false
     });
 
     return (

@@ -81,4 +81,14 @@ public class ExpenseCategoryService
     {
         await _expenseRepo.CategoryBatchUpdateAsync(expenseIds, categoryId, _userContext.UserId).ConfigureAwait(false);
     }
+
+    public async Task UpdateCategoryNameAsync(int categoryId, string newCategoryName)
+    {
+        await _expenseRepo.UpdateCategoryNameAsync(categoryId, newCategoryName, _userContext.UserId).ConfigureAwait(false);
+    }
+
+    public async Task DeleteExpenseCategoryAsync(int categoryId)
+    {
+        await _categoryRepo.DeleteExpenseCategoryAsync(categoryId, _userContext.UserId).ConfigureAwait(false);
+    }
 }

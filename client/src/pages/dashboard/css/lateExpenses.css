@@ -156,6 +156,7 @@
 .late-date-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.6rem;
     padding: 0.7rem 0.9rem;
     border-radius: 0.75rem;
@@ -165,8 +166,32 @@
     color: #b91c1c;
 }
 
+.late-date-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+}
+
 .late-date-value {
     font-size: 0.85rem;
+}
+
+.late-date-skip {
+    border: 1px solid #fecaca;
+    background-color: #ffffff;
+    color: #b91c1c;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.late-date-skip:hover {
+    background-color: #fee2e2;
 }
 
 .late-dates-note {

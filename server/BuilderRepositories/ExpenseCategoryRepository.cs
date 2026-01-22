@@ -6,11 +6,11 @@ using System.Data;
 
 namespace BuilderRepositories;
 
-public class ExpenseCategoryRepository
+public class ExpenseCategoryRepository : BuilderRepository
 {
     private readonly DatabaseService _dbService;
 
-    public ExpenseCategoryRepository(DatabaseService dbService)
+    public ExpenseCategoryRepository(DatabaseService dbService) : base(dbService)
     {
         _dbService = dbService;
     }
@@ -94,10 +94,11 @@ public class ExpenseCategoryRepository
                         ON ep.expense_id = e.id
                     WHERE ec.user_id = @userIdCopy
                         AND ec.active = 1
+                        AND ep.skipped = 0
                         {rangeSql}
                     GROUP BY ec.id, ec.name
                     ORDER BY ec.id";
-        var parameters = new Dictionary<string, object?>()
+        var parameters = new Dictionary<string, object?>
         {
             { "@userId", userId },
             { "@userIdCopy", userId }
@@ -117,5 +118,19 @@ public class ExpenseCategoryRepository
             Name = row.Field<string>("name") ?? string.Empty,
             TotalSpent = (double)row.Field<decimal>("total_spent")
         }) ?? [];
+    }
+
+    public async Task DeleteExpenseCategoryAsync(int categoryId, int userId)
+    {
+        var sql = @"DELETE FROM expense_categories
+                    WHERE id = @categoryId
+                        AND user_id = @userId";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@categoryId", categoryId },
+            { "@userId", userId }
+        };
+
+        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
     }
 }

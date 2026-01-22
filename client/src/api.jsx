@@ -1,7 +1,6 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 import {API_BASE_URL} from "./constants/api.js";
-import qs from "qs";
 
 const getAccessToken = () => Cookies.get("access_token");
 
@@ -29,6 +28,19 @@ apiClient.interceptors.request.use(
     }
 );
 
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const status = error?.response?.status ?? error?.status ?? null;
+        if (status === 401) {
+            if (window.location.pathname !== '/login') {
+                window.location.assign('/login');
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 // User
 export const validateToken = async () => {
     const token = getAccessToken();
@@ -37,6 +49,7 @@ export const validateToken = async () => {
         const result = await apiClient.get('/api/auth/validateAccessToken');
         return result.data;
     } catch {
+        console.log('returning false from validateToken')
         return false;
     }
 }
@@ -81,9 +94,16 @@ export const postExpense = async (expenseProps) => {
         description,
         startDate,
         endDate,
-        paidOnCreation,
+        oneTimeExpenseIsPaid,
+        oneTimeExpenseIsCredit,
+        oneTimeExpenseCreditCardId,
+        isAutomaticPayment,
+        automaticPaymentIsCredit,
+        automaticPaymentCreditCardId,
+        payToNowIsCredit,
+        payToNowCreditCardId,
         dueLastDayOfMonth,
-        initialDatePaid,
+        oneTimeExpensePaymentDate,
         payToNow  // TODO: Backend needs to handle this - should pay all due dates from start to today
     } = expenseProps;
 
@@ -98,9 +118,16 @@ export const postExpense = async (expenseProps) => {
         description: description,
         startDate: startDate,
         endDate: endDate,
-        isPaidOnCreation: paidOnCreation,
+        oneTimeExpenseIsPaid: oneTimeExpenseIsPaid,
+        oneTimeExpenseIsCredit: oneTimeExpenseIsCredit,
+        oneTimeExpenseCreditCardId: oneTimeExpenseCreditCardId,
+        isAutomaticPayment: isAutomaticPayment,
+        automaticPaymentIsCredit: automaticPaymentIsCredit,
+        payToNowIsCredit: payToNowIsCredit,
+        payToNowCreditCardId: payToNowCreditCardId,
+        automaticPaymentCreditCardId: automaticPaymentCreditCardId,
         dueLastDayOfMonth: dueLastDayOfMonth,
-        initialDatePaid: initialDatePaid,
+        oneTimeExpensePaymentDate: oneTimeExpensePaymentDate,
         payToNow: payToNow,
     });
 
@@ -128,7 +155,7 @@ export const payAllOverdueDatesForExpense = async (expenseId) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
-    const result = await apiClient.post(`/api/expenses/payments/payAllOverdue/${expenseId}`);
+    const result = await apiClient.post(`/api/payments/payAllOverdue/${expenseId}`);
 
     return result.data;
 };
@@ -138,7 +165,7 @@ export const deletePayments = async (paymentIds) => {
     if (!token) throw new Error('401');
 
     const result = await apiClient.delete(
-        '/api/expenses/payments/unpayDueDates',
+        '/api/payments/unpayDueDates',
         {
             data: {
                 paymentIds
@@ -150,16 +177,17 @@ export const deletePayments = async (paymentIds) => {
 };
 
 
-export const payDueDate = async (expenseId, dueDate, datePaid) => {
+export const payDueDates = async (expenseId, dueDates, datePaid, isSkipped = false) => {
     const body = {
         expenseId: expenseId,
-        dueDate: dueDate
+        dueDates: dueDates,
+        isSkipped: isSkipped,
     };
 
-    if (datePaid === undefined) {
+    if (datePaid === undefined && !isSkipped) {
         body.datePaid = new Date().toISOString().substring(0,10);
     }
-    const result = await apiClient.patch('/api/expenses/payments/payDueDate', body);
+    const result = await apiClient.patch('/api/payments/payDueDates', body);
 
     return result.data;
 }
@@ -221,6 +249,21 @@ export const getAllExpenseCategories = async () => {
     return result.data;
 }
 
+export const updateExpenseCategoryName = async (categoryId, newCategoryName) => {
+    const result = await apiClient.patch('/api/expenses/categories/update/name', {
+        categoryId: categoryId,
+        newCategoryName: newCategoryName
+    });
+
+    return result.data;
+}
+
+export const deleteExpenseCategory = async (categoryId) => {
+    const result = await apiClient.delete(`/api/expenses/categories/delete/${categoryId}`);
+
+    return result.data;
+}
+
 export const getExpenseCategoriesWithTotalSpent = async (categoryChartRangeOption) => {
     const result = await apiClient.get('/api/expenses/categories/categoriesTotalSpent', {
         params: {
@@ -261,7 +304,7 @@ export const deleteExpense = async (expenseId) => {
 }
 
 export const getPaymentsForExpense = async (expenseId) => {
-    const result = await apiClient.get('/api/expenses/payments/paymentsForExpense', {
+    const result = await apiClient.get('/api/payments/paymentsForExpense', {
         params: {
             expenseId: expenseId,
         }
@@ -299,6 +342,23 @@ export const categoryBatchUpdate = async(expenseIds, categoryId) => {
 }
 
 export const getTotalSpent = async () => {
-    const result = await apiClient.get('/api/expenses/payments/totalSpent');
+    const result = await apiClient.get('/api/payments/totalSpent');
+    return result.data;
+}
+
+export const getCreditCards = async () => {
+    const result = await apiClient.get('/api/payments/creditCards');
+    return result.data;
+}
+
+export const createCreditCard = async (creditCardCompany) => {
+    const result = await apiClient.post('/api/payments/creditCards/create', creditCardCompany);
+    return result.data;
+}
+
+export const updateCreditCardCompany = async (creditCardId, creditCardCompany) => {
+    const result = await apiClient.patch(`/api/payments/creditCards/${creditCardId}/update/company`, {
+        newCompanyName: creditCardCompany
+    });
     return result.data;
 }

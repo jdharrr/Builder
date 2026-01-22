@@ -5,6 +5,7 @@ import {fetchUser, updateDarkMode} from "../api.jsx";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
 import {getStatus} from "../util.jsx";
+import {showSuccess, showError} from "../utils/toast.js";
 
 export const UserModal = ({handleClose}) => {
     const navigate = useNavigate();
@@ -20,12 +21,7 @@ export const UserModal = ({handleClose}) => {
 
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        }
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
     const wrapperRef = useRef(null);
@@ -54,6 +50,14 @@ export const UserModal = ({handleClose}) => {
                             <span className="user-modal-eyebrow">Profile</span>
                             <h5 className="modal-title">User Settings</h5>
                         </div>
+                        <button
+                            type="button"
+                            className="modal-close-button"
+                            onClick={handleClose}
+                            aria-label="Close"
+                        >
+                            x
+                        </button>
                     </div>
                     <div className="userModalBody modal-body">
                         <div className="user-modal-tabs">
@@ -140,7 +144,7 @@ export const UserModal = ({handleClose}) => {
                         </div>
                     </div>
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-primary" onClick={handleClose}>Close</button>
+                        <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
                     </div>
                 </div>
             </div>
@@ -175,11 +179,16 @@ const useToggleDarkMode = (navigate) => {
         onError: (_err, _isChecked, context) => {
             if (getStatus(_err) === 401) {
                 navigate('/login');
+            } else {
+                showError('Failed to update settings.');
             }
 
             if (context?.previous) {
                 qc.setQueryData(queryKey, context.previous);
             }
+        },
+        onSuccess: () => {
+            showSuccess('Settings updated.');
         },
         onSettled: () => {
             qc.refetchQueries({ queryKey: queryKey });

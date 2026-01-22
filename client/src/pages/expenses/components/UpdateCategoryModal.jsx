@@ -1,25 +1,21 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useNavigate} from "react-router-dom";
+import {useQuery} from "@tanstack/react-query";
 
 import {Modal} from '../../../components/Modal.jsx';
 import {Dropdown} from '../../../components/Dropdown.jsx';
 import {getStatus} from "../../../util.jsx";
-import {createExpenseCategory, getAllExpenseCategories} from "../../../api.jsx";
-import {NewCategoryInput} from "../../../components/NewCategoryInput.jsx";
-import {FaPlus} from "react-icons/fa";
-import {showSuccess, showError} from "../../../utils/toast.js";
+import {getAllExpenseCategories} from "../../../api.jsx";
+import '../../../css/createExpenseForm.css';
 
-export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) => {
-    const navigate = useNavigate();
-
-    const [categories, setCategories] = useState([]);
+export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal, handleManageCategories, isManageCategoriesOpen = false}) => {
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [refreshCategories, setRefreshCategories] = useState(false);
-    const [showCreateCategoryInput, setShowCreateCategoryInput] = useState(false);
 
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (isManageCategoriesOpen) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 setShowUpdateCategoryModal(false);
             }
@@ -27,23 +23,20 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) =>
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setShowUpdateCategoryModal]);
+    }, [setShowUpdateCategoryModal, isManageCategoriesOpen]);
 
-    useEffect(() => {
-        async function loadCategories() {
-            try {
-                const result = await getAllExpenseCategories();
-                console.log(result);
-                setCategories(result);
-            } catch (err) {
-                if (getStatus(err) === 401) {
-                    navigate('/login');
-                }
-            }
-        }
-
-        loadCategories();
-    }, [navigate, refreshCategories])
+    const { data: categories = [] } = useQuery({
+        queryKey: ['expenseCategories'],
+        queryFn: async () => {
+            return await getAllExpenseCategories();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
 
     const handleCategorySelect = (e, name) => {
         setSelectedCategory(name);
@@ -53,39 +46,31 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) =>
         handleSave(selectedCategory);
     }
 
-    const handleNewCategorySave = async (categoryName) => {
-        try {
-            await createExpenseCategory(categoryName);
-            showSuccess("Category created!");
-        } catch (err) {
-            if (getStatus(err) === 401) {
-                navigate('/login');
-            } else {
-                showError('Failed to create category.');
-            }
-        }
-
-        setRefreshCategories((prevState) => !prevState);
-        setShowCreateCategoryInput(false);
-        setSelectedCategory(categoryName);
-    }
-
-    const handleNewCategoryClose = () => {
-        setShowCreateCategoryInput(false);
-    }
 
     return (
-        <Modal title={"Select a new category"} wrapperRef={wrapperRef} handleSave={handleCategorySave} handleClose={() => setShowUpdateCategoryModal(false)}>
-            <div className="d-flex flex-column">
-                <div className="d-flex">
-                    <Dropdown title={"Select a category"} options={categories.map(({ id, name }) => [id, name])} handleOptionChange={handleCategorySelect} changeTitleOnOptionChange={true} />
-                    <button className={'border-0 bg-white'} type='button' onClick={() => setShowCreateCategoryInput(true)}>
-                        <FaPlus size={16} color={'#0d6efd'}/>
-                    </button>
+        <Modal
+            title={"Update Category"}
+            wrapperRef={wrapperRef}
+            handleSave={handleCategorySave}
+            handleClose={() => setShowUpdateCategoryModal(false)}
+            className="create-expense-modal update-category-modal"
+        >
+            <div className="update-category-body">
+                <div className="update-category-card">
+                    <span className="update-category-label">Select Category</span>
+                    <p className="update-category-subtext">Choose the category you want to apply to all selected expenses.</p>
+                    <div className="update-category-row">
+                        <Dropdown
+                            title={"Select a category"}
+                            options={categories.map(({ id, name }) => [id, name])}
+                            handleOptionChange={handleCategorySelect}
+                            changeTitleOnOptionChange={true}
+                        />
+                        <button className={'manageCategoriesButton'} type='button' onClick={handleManageCategories}>
+                            Manage
+                        </button>
+                    </div>
                 </div>
-                {showCreateCategoryInput &&
-                    <NewCategoryInput handleSave={handleNewCategorySave} handleClose={handleNewCategoryClose} />
-                }
             </div>
         </Modal>
     );

@@ -13,4 +13,6 @@ public class ExpensePaymentDto
     public string PaymentDate { get; set; } = string.Empty;
 
     public string DueDatePaid { get; set; } = string.Empty;
+
+    public bool Skipped { get; set; } = false;
 }

@@ -1,15 +1,14 @@
-﻿using BuilderServices.ExpenseCategoryService;
+﻿using BuilderRepositories;
+using BuilderServices.ExpenseCategoryService;
 using BuilderServices.ExpenseCategoryService.Request;
 using BuilderServices.ExpensePaymentService;
-using BuilderServices.ExpensePaymentService.Requests;
 using BuilderServices.ExpenseService;
 using BuilderServices.ExpenseService.Enums;
 using BuilderServices.ExpenseService.Requests;
 using DatabaseServices.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Ocsp;
-using System.Text.Json;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace BuilderApi.Controllers;
 
@@ -37,11 +36,37 @@ public class ExpenseController : ControllerBase
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseRequest request)
     {
         //TODO: Validate request
+        if (request is { OneTimeExpenseIsCredit: true, OneTimeExpenseIsPaid: true })
+            throw new GenericException("Cannot provide both credit and payment");
+        
+        if ((request.OneTimeExpenseIsCredit && request.OneTimeExpenseCreditCardId == null) 
+            || (request.PayToNowIsCredit && request.PayToNowCreditCardId == null)
+            || (request.IsAutomaticPayment && request.AutomaticPaymentCreditCardId == null))
+            throw new GenericException("Must provide a credit card for payment");
+
+        if ((request.OneTimeExpenseIsPaid || request.OneTimeExpenseIsCredit) &&
+            request.OneTimeExpensePaymentDate == null)
+            throw new GenericException("Must provide a payment date for expense");
+        
+        if (request.RecurrenceRate != "once" && (request.OneTimeExpenseIsCredit || request.OneTimeExpenseIsPaid))
+            throw new GenericException("Payment requires a recurrence rate of once");
+
+        if (request.RecurrenceRate == "once" && request.PayToNow)
+            throw new GenericException("Pay to now cannot have recurrence rate of once");
 
         var expenseId = await _expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
 
+        if (request.OneTimeExpenseIsPaid || request.OneTimeExpenseIsCredit)
+            await _paymentService
+                .PayDueDateAsync((int)expenseId, request.StartDate, request.OneTimeExpenseIsCredit, request.OneTimeExpenseCreditCardId, request.OneTimeExpensePaymentDate)
+                .ConfigureAwait(false);
+
+        if (request.OneTimeExpenseIsCredit)
+            await _paymentService.AddPaymentToCreditCardAsync(request.Cost, (int)request.OneTimeExpenseCreditCardId!)
+                .ConfigureAwait(false);
+        
         if (request.PayToNow)
-            await _paymentService.PayAllOverdueDatesAsync((int)expenseId).ConfigureAwait(false);
+            await _paymentService.PayAllOverdueDatesAsync((int)expenseId, request.PayToNowCreditCardId).ConfigureAwait(false);
         
         return Ok(new { ExpenseId = expenseId });
     }
@@ -65,7 +90,7 @@ public class ExpenseController : ControllerBase
     }
 
     [HttpGet("getAllExpenses")]
-    public async Task<IActionResult> GetAllExpenses([FromQuery] GetAllExpensesRequest request)
+    public async Task<IActionResult> GetAllExpensesForTable([FromQuery] GetAllExpensesRequest request)
     {
         // TODO: Validate search request
 
@@ -132,47 +157,6 @@ public class ExpenseController : ControllerBase
         return Ok();
     }
     
-    //payments
-    [HttpGet("payments/totalSpent")]
-    public async Task<IActionResult> GetTotalSpent()
-    {
-        var totalSpent = await _paymentService.GetTotalSpentAsync().ConfigureAwait(false);
-        
-        return Ok(totalSpent);
-    }
-    
-    [HttpDelete("payments/unpayDueDates")]
-    public async Task<IActionResult> UnpayDueDate([FromBody] UnpayDueDatesRequest request)
-    {
-        await _paymentService.UnpayDueDateAsync(request.PaymentIds).ConfigureAwait(false);
-
-        return Ok();
-    }
-    
-    [HttpPost("payments/payAllOverdue/{expenseId}")]
-    public async Task<IActionResult> PayAllOverdueDates(int expenseId)
-    {
-        await _paymentService.PayAllOverdueDatesAsync(expenseId).ConfigureAwait(false);
-
-        return Ok();
-    }
-    
-    [HttpPatch("payments/payDueDate")]
-    public async Task<IActionResult> PayDueDate([FromBody] PayDueDateRequest request)
-    {
-        await _paymentService.PayDueDateAsync(request.ExpenseId, request.DueDate, request.DatePaid).ConfigureAwait(false);
-        
-        return Ok();
-    }
-    
-    [HttpGet("payments/paymentsForExpense")]
-    public async Task<IActionResult> GetPaymentsForExpense([FromQuery] int expenseId)
-    {
-        var payments = await _paymentService.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
-        
-        return Ok(payments);
-    }
-    
     //categories
     [HttpGet("categories")]
     public async Task<IActionResult> GetExpenseCategories()
@@ -206,6 +190,22 @@ public class ExpenseController : ControllerBase
         var options = ExpenseCategoryService.GetCategoryChartRangeOptions();
 
         return Ok(options);
+    }
+
+    [HttpPatch("categories/update/name")]
+    public async Task<IActionResult> UpdateCategoryName(UpdateCategoryNameRequest request)
+    {
+        await _categoryService.UpdateCategoryNameAsync(request.CategoryId, request.NewCategoryName).ConfigureAwait(false);
+
+        return Ok();
+    }
+
+    [HttpDelete("categories/delete/{id:int}")]
+    public async Task<IActionResult> DeleteExpenseCategory(int id)
+    {
+        await _categoryService.DeleteExpenseCategoryAsync(id).ConfigureAwait(false);
+
+        return Ok();
     }
     
     //expense table

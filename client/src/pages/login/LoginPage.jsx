@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import Cookies from "js-cookie";
 import {useNavigate} from "react-router-dom";
+import {useMutation} from "@tanstack/react-query";
 
 import {login} from "../../api.jsx";
+import {getStatus} from "../../util.jsx";
+import {showSuccess, showError} from "../../utils/toast.js";
 
 import './css/login.css';
 
@@ -13,15 +16,26 @@ export const LoginPage = ({setAuthenticated}) =>  {
     const [password, setPassword] = useState('');
 
     const handleSubmitClick = async () => {
-        try {
-            const data = await login(email, password);
+        loginMutation.mutate({ email, password });
+    }
+
+    const loginMutation = useMutation({
+        mutationFn: ({ email, password }) => login(email, password),
+        onSuccess: (data) => {
             Cookies.set('access_token', data.token);
             setAuthenticated(true);
+            showSuccess('Welcome back!');
             navigate('/dashboard');
-        } catch (err) {
-            alert(err.message);
+        },
+        onError: (error) => {
+            if (getStatus(error) === 401) {
+                showError('Login failed. Please check your credentials.');
+                navigate('/login');
+                return;
+            }
+            showError('Login failed. Please check your credentials.');
         }
-    }
+    });
 
     return (
       <div className="loginWrapper">

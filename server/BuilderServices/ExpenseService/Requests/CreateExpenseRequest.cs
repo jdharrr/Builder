@@ -19,4 +19,20 @@ public class CreateExpenseRequest
     public int? CategoryId { get; set; } = 0;
 
     public bool PayToNow { get; set; } = false;
+
+    public bool PayToNowIsCredit { get; set; } = false;
+    
+    public int? PayToNowCreditCardId { get; set; }
+
+    public bool OneTimeExpenseIsPaid { get; set; } = false;
+    
+    public string? OneTimeExpensePaymentDate { get; set; }
+
+    public bool OneTimeExpenseIsCredit { get; set; } = false;
+    
+    public int? OneTimeExpenseCreditCardId { get; set; }
+    
+    public bool IsAutomaticPayment { get; set; } = false;
+    
+    public int? AutomaticPaymentCreditCardId { get; set; }
 }

@@ -1,6 +1,5 @@
 import React, {useState} from 'react';
 import {useSuspenseQuery, useQueryClient} from "@tanstack/react-query";
-import {useNavigate} from "react-router-dom";
 import {FaExclamationCircle, FaCheckCircle, FaEye} from 'react-icons/fa';
 
 import {fetchLateExpenses} from "../../../api.jsx";
@@ -11,7 +10,6 @@ import '../css/lateExpenses.css';
 import '../css/animations.css';
 
 export const LateExpenses = () => {
-    const navigate = useNavigate();
     const qc = useQueryClient();
 
     const [showLateDatesModal, setShowLateDatesModal] = useState(false);
@@ -27,12 +25,7 @@ export const LateExpenses = () => {
             if (getStatus(error) === 401) return false;
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        }
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
     const handleShowClick = (expense) => {

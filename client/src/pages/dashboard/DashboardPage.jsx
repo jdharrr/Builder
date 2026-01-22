@@ -6,19 +6,13 @@ import { UpcomingExpensesSection } from "./sections/UpcomingExpensesSection.jsx"
 import {ExpenseTrackerSection} from "./sections/ExpenseTrackerSection.jsx";
 import {ExpenseTrackerSectionSkeleton} from "./sections/skeletons/ExpenseTrackerSectionSkeleton.jsx";
 import {UpcomingExpensesSectionSkeleton} from "./sections/skeletons/UpcomingExpensesSectionSkeleton.jsx";
-import {CreateExpenseForm} from "../../components/CreateExpenseForm.jsx";
-import {ViewExpensesModal} from "./components/ViewExpensesModal.jsx";
-import {ViewExpenseModal} from "../../components/ViewExpenseModal.jsx";
+import {CreateExpenseModal} from "../../components/CreateExpenseModal.jsx";
 import {CreateExpenseFormContext} from "../../providers/expenses/CreateExpenseFormContext.jsx";
-import {ViewExpensesModalContext} from "../../providers/expenses/ViewExpensesModalContext.jsx";
-import {ViewExpenseModalContext} from "../../providers/expenses/ViewExpenseModalContext.jsx";
 
 import './css/dashboardPage.css';
 
 export default function DashboardPage() {
     const {showCreateExpenseForm} = useContext(CreateExpenseFormContext);
-    const {showViewExpensesModal} = useContext(ViewExpensesModalContext);
-    const {showViewExpenseModal} = useContext(ViewExpenseModalContext);
 
     return (
         <>
@@ -47,15 +41,9 @@ export default function DashboardPage() {
                 </Card>
             </div>
             { showCreateExpenseForm.isShowing && !showCreateExpenseForm.isFab &&
-                <CreateExpenseForm
+                <CreateExpenseModal
                     includeStartDateInput={false}
                 />
-            }
-            { showViewExpensesModal.isShowing &&
-                <ViewExpensesModal />
-            }
-            {showViewExpenseModal.isShowing &&
-                <ViewExpenseModal />
             }
         </>
     );

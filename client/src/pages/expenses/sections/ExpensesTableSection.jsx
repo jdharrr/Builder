@@ -5,9 +5,8 @@ import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-que
 import {
     deleteExpense,
     getExpenseSearchableColumns,
-    getPaymentsForExpense,
     updateExpenseActiveStatus,
-    payDueDate,
+    payDueDates,
     updateExpense,
     getAllExpenses,
     deletePayments
@@ -16,8 +15,8 @@ import {getStatus} from "../../../util.jsx";
 import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
 
 import '../css/expensesTableSection.css';
-import {SelectFromListModal} from "../components/SelectFromListModal.jsx";
-import {EditExpenseModal} from "../components/EditExpenseModal.jsx";
+import {UnpayDatesModal} from "../components/UnpayDatesModal.jsx";
+import {EditExpenseModal} from "../../../components/EditExpenseModal.jsx";
 import {showSuccess, showError} from "../../../utils/toast.js";
 import {useDebounce} from "../../../hooks/useDebounce.js";
 
@@ -52,11 +51,11 @@ const SearchRow = memo(({
         ))}
     </tr>
 ));
-export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds}) => {
+export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds, pageSize = 10}) => {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
-    const [viewSelectExpensesForActionModal, setViewSelectExpensesForActionModal] = useState({isShowing: false, payments: []});
+    const [viewUnpayDatesModal, setViewUnpayDatesModal] = useState({isShowing: false, expenseId: null});
     const [viewDateInputModal, setViewDateInputModal] = useState({isShowing: false, expense: {}});
     const [viewEditExpenseModal, setViewEditExpenseModal] = useState({isShowing: false, expense: null});
 
@@ -72,6 +71,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
     const debouncedSearchFilter = useDebounce(activeSearchFilter, 500);
 
     const [clickedActionRowId, setClickedActionRowId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const {data: searchableHeaders = []} = useSuspenseQuery({
         queryKey: ['expenseTableHeaders'],
@@ -85,11 +85,6 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
             return failureCount < 2;
         },
         throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                queueMicrotask(() => navigate('/login', { replace: true }));
-            }
-        },
     });
 
     const { data: expenses = [] } = useSuspenseQuery({
@@ -106,11 +101,6 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
             return failureCount < 2;
         },
         throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        },
     });
 
     useEffect(() => {
@@ -190,14 +180,13 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                 case 'Active':
                 case 'Inactive': {
                     const isActive = action === 'Active';
-
-                    try {
-                        await updateExpenseActiveStatus(isActive, expenseId);
-                        showSuccess("Active status successfully updated!");
-                        await qc.refetchQueries({ queryKey: ['tableExpenses'] });
-                    } catch {
-                        showError("Failed to update active status for expense.");
+                    const confirmMessage = isActive
+                        ? 'Mark this expense as active?'
+                        : 'Mark this expense as inactive?';
+                    if (!window.confirm(confirmMessage)) {
+                        return;
                     }
+                    updateActiveMutation.mutate({ isActive, expenseId });
                     break;
                 }
                 case 'Pay':
@@ -212,10 +201,11 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                         deleteExpenseMutation.mutate(expenseId);
                     }
                     break;
-                case 'Edit':
+                case 'Edit': {
                     const expenseToEdit = expenses.find(e => e.id === expenseId);
                     setViewEditExpenseModal({ isShowing: true, expense: expenseToEdit });
                     break;
+                }
                 default:
                     showError('Invalid Expense Action');
             }
@@ -231,57 +221,21 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         if (isPay) {
             setViewDateInputModal({isShowing: true, expense: expense});
         } else {
-            const paymentsForExpense = await getPaymentsForExpense(expenseId);
-            setViewSelectExpensesForActionModal({isShowing: true, payments: paymentsForExpense});
+            setViewUnpayDatesModal({isShowing: true, expenseId});
         }
     }
 
     const handleExpenseSelectSave = async (selectedIds) => {
-        try {
-            // Delete all selected payments
-            await deletePayments(selectedIds);
-
-            showSuccess(`Successfully deleted ${selectedIds.length} payment(s)!`);
-            setViewSelectExpensesForActionModal({isShowing: false, payments: []});
-            await qc.refetchQueries({ queryKey: ['lateDates']});
-        } catch (err) {
-            if (getStatus(err) === 401) {
-                navigate('/login');
-            } else {
-                showError('Failed to delete payment(s)');
-            }
-        }
+        deletePaymentsMutation.mutate(selectedIds);
     }
 
     const handleEditExpenseSave = async (expenseId, expenseData) => {
-        try {
-            await updateExpense(expenseId, expenseData);
-            showSuccess('Expense updated successfully!');
-            setViewEditExpenseModal({ isShowing: false, expense: null });
-            await qc.refetchQueries({ queryKey: ['tableExpenses'] });
-        } catch (err) {
-            if (getStatus(err) === 401) {
-                navigate('/login');
-            } else {
-                showError('Failed to update expense');
-            }
-        }
+        updateExpenseMutation.mutate({ expenseId, expenseData });
     };
 
-    const handleDateInputSave = async (paymentDate, dueDatePaid) => {
+    const handleDateInputSave = async (paymentDate, dueDates) => {
         const expense = viewDateInputModal.expense;
-        try {
-            await payDueDate(expense.id, dueDatePaid, paymentDate);
-            showSuccess('Payment saved!');
-        } catch (err) {
-            if (err.status === 401) {
-                navigate('/login');
-            } else {
-                showError('Failed to save payment');
-            }
-        }
-        setViewDateInputModal({isShowing: true, expense: null});
-        await qc.refetchQueries({ queryKey: ['allExpenses']});
+        payDueDateMutation.mutate({ expenseId: expense.id, dueDates, paymentDate });
     }
 
     const handleSelectChange = (checked, id) => {
@@ -292,16 +246,102 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         );
     }
 
+
+    const updateActiveMutation = useMutation({
+        mutationFn: ({ isActive, expenseId }) => updateExpenseActiveStatus(isActive, expenseId),
+        onSuccess: () => {
+            showSuccess("Active status successfully updated!");
+            qc.refetchQueries({ queryKey: ['tableExpenses'] });
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError("Failed to update active status for expense.");
+            }
+        }
+    });
+
+    const deletePaymentsMutation = useMutation({
+        mutationFn: (ids) => deletePayments(ids),
+        onSuccess: (_data, ids) => {
+            showSuccess(`Successfully deleted ${ids.length} payment(s)!`);
+            setViewUnpayDatesModal({isShowing: false, expenseId: null});
+            qc.refetchQueries({ queryKey: ['lateDates']});
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError('Failed to delete payment(s)');
+            }
+        }
+    });
+
+    const updateExpenseMutation = useMutation({
+        mutationFn: ({ expenseId, expenseData }) => updateExpense(expenseId, expenseData),
+        onSuccess: () => {
+            showSuccess('Expense updated successfully!');
+            setViewEditExpenseModal({ isShowing: false, expense: null });
+            qc.refetchQueries({ queryKey: ['tableExpenses'] });
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError('Failed to update expense');
+            }
+        }
+    });
+
+    const payDueDateMutation = useMutation({
+        mutationFn: ({ expenseId, dueDates, paymentDate }) => payDueDates(expenseId, dueDates, paymentDate),
+        onSuccess: () => {
+            showSuccess('Payment saved!');
+            setViewDateInputModal({isShowing: false, expense: null});
+            qc.refetchQueries({ queryKey: ['allExpenses']});
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError('Failed to save payment');
+            }
+        }
+    });
+
+    const pageSizeValue = pageSize === 'All' ? expenses.length : pageSize;
+    const totalPages = pageSize === 'All'
+        ? 1
+        : Math.max(1, Math.ceil(expenses.length / pageSizeValue));
+
+    useEffect(() => {
+        if (pageSize === 'All') {
+            setCurrentPage(1);
+            return;
+        }
+
+        setCurrentPage((prev) => Math.min(prev, totalPages));
+    }, [pageSize, totalPages]);
+
+    const startIndex = pageSize === 'All' ? 0 : (currentPage - 1) * pageSizeValue;
+    const endIndex = pageSize === 'All' ? expenses.length : startIndex + pageSizeValue;
+    const displayedExpenses = expenses.slice(startIndex, endIndex);
+
     return (
         <div>
-            <div className="expenses-table-scroll">
+            <div className="expenses-table-wrap">
                 <table className="table expenses-table" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
                     <thead className="expenses-table-head">
                     <tr>
                         {selectActive && <th key={"select"} scope={'col'}></th>}
-                        {showInactiveExpenses && <th key={'active'} scope={'col'} onClick={() => handleHeaderClick('active')}>Active</th>}
+                        {showInactiveExpenses && <th key={'active'} scope={'col'} className="expenses-sortable" onClick={() => handleHeaderClick('active')}>Active</th>}
                         {Object.entries(searchableHeaders).map(([column, label], idx) => (
-                            <th className={"text-center"} key={idx} scope="col" onClick={() => handleHeaderClick(column)}>{label}</th>
+                            <th className={"text-center expenses-sortable"} key={idx} scope="col" onClick={() => handleHeaderClick(column)}>{label}</th>
                         ))}
                         <th key='actions' scope="col"></th>
                     </tr>
@@ -318,7 +358,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                     }
                     </thead>
                     <tbody className="expenses-table-body" >
-                    {expenses.map((exp, idx) => (
+                    {displayedExpenses.map((exp, idx) => (
                         <tr key={idx} className="expenses-table-row">
                             {selectActive &&
                                 <td className="cell cell-select">
@@ -337,7 +377,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                                 <span className="category-pill">{exp.categoryName || 'Uncategorized'}</span>
                             </td>
                             <td className={"text-truncate text-center cell cell-name"}>{exp.name}</td>
-                            <td className="cell cell-amount text-center">${exp.cost}</td>
+                            <td className="cell cell-amount text-center">${Number(exp.cost).toFixed(2)}</td>
                             <td className={'text-nowrap text-center cell cell-date'}>{exp.nextDueDate}</td>
                             <td className="cell cell-recurrence text-center">
                                 <span className="recurrence-pill">
@@ -374,13 +414,35 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                     </tbody>
                 </table>
             </div>
+            {pageSize !== 'All' && expenses.length > pageSizeValue && (
+                <div className="expenses-pagination">
+                    <button
+                        type="button"
+                        className="expenses-page-button"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    >
+                        Previous
+                    </button>
+                    <span className="expenses-page-indicator">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                        type="button"
+                        className="expenses-page-button"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
-            {viewSelectExpensesForActionModal.isShowing && viewSelectExpensesForActionModal.payments &&
-                <SelectFromListModal
+            {viewUnpayDatesModal.isShowing && viewUnpayDatesModal.expenseId &&
+                <UnpayDatesModal
+                    expenseId={viewUnpayDatesModal.expenseId}
                     handleSave={handleExpenseSelectSave}
-                    handleClose={() => setViewSelectExpensesForActionModal({isShowing: false, payments: []})}
-                    title={'Select an expense to mark as unpaid'}
-                    list={viewSelectExpensesForActionModal.payments}
+                    handleClose={() => setViewUnpayDatesModal({isShowing: false, expenseId: null})}
                 />
             }
 
@@ -409,6 +471,9 @@ const useDeleteExpense = (navigate) => {
 
     return useMutation({
         mutationFn: (expenseId) => deleteExpense(expenseId),
+        onSuccess: () => {
+            showSuccess('Expense deleted.');
+        },
         onMutate: async (expenseId) => {
             await qc.cancelQueries({ queryKey: queryKey });
 
@@ -423,7 +488,10 @@ const useDeleteExpense = (navigate) => {
         },
         onError: (_err, _isChecked, context) => {
             if (getStatus(_err) === 401) {
+                showError('Session expired. Please log in again.');
                 navigate('/login');
+            } else {
+                showError('Failed to delete expense.');
             }
 
             if (context?.previous) {

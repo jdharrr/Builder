@@ -1,9 +1,8 @@
 import React, {useState, useEffect, useContext} from 'react';
-import {useNavigate} from "react-router-dom";
 
 import { Selector } from "./Selector.jsx"
 import {CreateExpenseFormContext} from "../../../providers/expenses/CreateExpenseFormContext.jsx";
-import {ViewExpensesModalContext} from "../../../providers/expenses/ViewExpensesModalContext.jsx";
+import {ViewExpensesModal} from "./ViewExpensesModal.jsx";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {fetchExpensesForCalendar} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
@@ -11,10 +10,12 @@ import {getStatus} from "../../../util.jsx";
 import '../css/calendar.css';
 
 export const Calendar = ({selectedYear, selectedMonth}) => {
-    const navigate = useNavigate();
-
     const { setShowCreateExpenseForm } = useContext(CreateExpenseFormContext);
-    const { setShowViewExpensesModal } = useContext(ViewExpensesModalContext);
+    const [showViewExpensesModal, setShowViewExpensesModal] = useState({
+        isShowing: false,
+        expenses: [],
+        date: null
+    });
 
     const actionOptions = ['View Expenses', 'Create Expense'];
     const [showActionSelector, setShowActionSelector] = useState(false);
@@ -31,12 +32,7 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
 
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
     const [emptyDaysInMonth, setEmptyDaysInMonth] = useState([]);
@@ -58,7 +54,7 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
         setShowActionSelector(true);
     }
 
-    const handleActionChange = async (e) => {
+    const handleActionChange = (e) => {
         setShowActionSelector(false);
 
         const option = e.target.value;
@@ -73,14 +69,30 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
             setShowCreateExpenseForm((prevState) => ({
                 ...prevState,
                 isShowing: true,
+                isFab: false,
                 date: selectedDate
             }));
         }
     }
 
-    const handleActionSelectorClose = () => {
+    useEffect(() => {
         setShowActionSelector(false);
-    }
+        setSelectedDate(null);
+    }, [selectedMonth, selectedYear]);
+
+    useEffect(() => {
+        if (!showActionSelector) return;
+
+        const handleClickOutside = (event) => {
+            if (event.target.closest('.selectorWrapper')) {
+                return;
+            }
+            setShowActionSelector(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showActionSelector]);
 
     const today = new Date();
     const todayYear = today.getFullYear();
@@ -88,59 +100,68 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
     const todayDate = today.getDate();
 
     return (
-        <div className="calendar">
-            <div className='calendarHeader col-md'>
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
-                    <div className="calendarDayLabel" key={day}>
-                        {day}
-                    </div>
-                ))}
-            </div>
-            <div className='calendarGrid'>
-                {emptyDaysInMonth.map((_, idx) => (
-                    <div
-                        className='dayBox dayBox--empty'
-                        key={`empty-${idx}`}
-                    ></div>
-                ))}
-                {Object.entries(expenses).map(([date, expensesForDate]) => {
-                    const dayNumber = Number(date.substring(8, 10));
-                    const hasExpenses = expensesForDate.length > 0;
-                    const isToday = selectedYear === todayYear
-                        && selectedMonth === todayMonth
-                        && dayNumber === todayDate;
-                    const dayBoxClassName = [
-                        'dayBox',
-                        hasExpenses ? 'dayBox--active' : 'dayBox--open',
-                        isToday ? 'dayBox--today' : '',
-                        showActionSelector && selectedDate === date ? 'dayBox--menu-open' : '',
-                    ].join(' ').trim();
-
-                    return (
-                        <div
-                            className={dayBoxClassName}
-                            key={date}
-                            data-fulldate={date}
-                            onClick={handleDayClick}
-                        >
-                            <div className="dayBoxTop">
-                                <span className="dayNumber">{dayNumber}</span>
-                                {hasExpenses && (
-                                    <span className="dayPill">{expensesForDate.length}</span>
-                                )}
-                            </div>
-                            <div className="dayMeta">
-                                <span className={`dayStatus ${hasExpenses ? '' : 'dayStatus--muted'}`}>
-                                    {hasExpenses ? 'Expenses' : 'Open'}
-                                </span>
-                            </div>
-                            {showActionSelector && selectedDate === date &&
-                                <Selector options={actionOptions} handleSelect={handleActionChange} handleClose={handleActionSelectorClose} />
-                            }
+        <>
+            <div className="calendar">
+                <div className='calendarHeader col-md'>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
+                        <div className="calendarDayLabel" key={day}>
+                            {day}
                         </div>
-                    );
-                })}
+                    ))}
+                </div>
+                <div className='calendarGrid'>
+                    {emptyDaysInMonth.map((_, idx) => (
+                        <div
+                            className='dayBox dayBox--empty'
+                            key={`empty-${idx}`}
+                        ></div>
+                    ))}
+                    {Object.entries(expenses).map(([date, expensesForDate]) => {
+                        const dayNumber = Number(date.substring(8, 10));
+                        const hasExpenses = expensesForDate.length > 0;
+                        const isToday = selectedYear === todayYear
+                            && selectedMonth === todayMonth
+                            && dayNumber === todayDate;
+                        const dayBoxClassName = [
+                            'dayBox',
+                            hasExpenses ? 'dayBox--active' : 'dayBox--open',
+                            isToday ? 'dayBox--today' : '',
+                            showActionSelector && selectedDate === date ? 'dayBox--menu-open' : '',
+                        ].join(' ').trim();
+
+                        return (
+                            <div
+                                className={dayBoxClassName}
+                                key={date}
+                                data-fulldate={date}
+                                onClick={handleDayClick}
+                            >
+                                <div className="dayBoxTop">
+                                    <span className="dayNumber">{dayNumber}</span>
+                                    {hasExpenses && (
+                                        <span className="dayPill">{expensesForDate.length}</span>
+                                    )}
+                                </div>
+                                <div className="dayMeta">
+                                    <span className={`dayStatus ${hasExpenses ? '' : 'dayStatus--muted'}`}>
+                                        {hasExpenses ? 'Expenses' : 'Open'}
+                                    </span>
+                                </div>
+                                {showActionSelector && selectedDate === date &&
+                                    <Selector options={actionOptions} handleSelect={handleActionChange} handleClose={() => setShowActionSelector(false)} />
+                                }
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+            {showViewExpensesModal.isShowing &&
+                <ViewExpensesModal
+                    showViewExpensesModal={showViewExpensesModal}
+                    setShowViewExpensesModal={setShowViewExpensesModal}
+                    setShowCreateExpenseForm={setShowCreateExpenseForm}
+                />
+            }
+        </>
     );
 }

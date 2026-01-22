@@ -163,3 +163,10 @@
     font-weight: 600;
     padding: 0.45rem 1rem;
 }
+
+.view-expenses-modal .btn-secondary {
+    border-radius: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+}

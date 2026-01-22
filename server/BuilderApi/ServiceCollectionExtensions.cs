@@ -47,6 +47,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ExpensePaymentRepository>();
         services.AddScoped<ExpenseCategoryRepository>();
         services.AddScoped<UserSettingsRepository>();
+        services.AddScoped<CreditCardRepository>();
+        services.AddScoped<ScheduledPaymentRepository>();
 
         return services;
     }

@@ -1,6 +1,6 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {useNavigate} from "react-router-dom";
-import {useQueryClient} from "@tanstack/react-query";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 
 import {ExpensesTableSection} from "./sections/ExpensesTableSection.jsx";
 import {
@@ -14,50 +14,47 @@ import {Dropdown} from "../../components/Dropdown.jsx";
 
 import './css/expensesPage.css';
 import {UpdateCategoryModal} from "./components/UpdateCategoryModal.jsx";
+import {ManageCategoriesModal} from "../../components/ManageCategoriesModal.jsx";
 import {showSuccess, showWarning, showError} from "../../utils/toast.js";
 
 export default function ExpensesPage() {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
-    const [sortOptions, setSortOptions] = useState([]);
     const [selectedSort, setSelectedSort] = useState('CreatedDate');
     const [enableSearch, setEnableSearch] = useState(false);
     const [showInactiveExpenses, setShowInactiveExpenses] = useState(false);
     const [selectActive, setSelectActive] = useState(false);
-    const [batchActions, setBatchActions] = useState([]);
     const [showUpdateCategoryModal, setShowUpdateCategoryModal] = useState(false);
+    const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [pageSize, setPageSize] = useState(10);
 
-    useEffect(() => {
-        async function loadSortOptions() {
-            try {
-                const options = await getExpenseSortOptions();
-                setSortOptions(options);
-            } catch(e) {
-                if (e.response.status === 401) {
-                    navigate('/login');
-                }
-            }
-        }
+    const { data: sortOptions = [] } = useQuery({
+        queryKey: ['expenseSortOptions'],
+        queryFn: async () => {
+            return await getExpenseSortOptions();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
 
-        loadSortOptions();
-    }, [navigate])
-
-    useEffect(() => {
-        async function loadBatchActions() {
-            try {
-                const result =  await getExpenseTableBatchActions();
-                setBatchActions(result);
-            } catch (err) {
-                if (getStatus(err) === 401) {
-                    navigate('/login');
-                }
-            }
-        }
-
-        loadBatchActions()
-    }, [navigate])
+    const { data: batchActions = [] } = useQuery({
+        queryKey: ['expenseBatchActions'],
+        queryFn: async () => {
+            return await getExpenseTableBatchActions();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
 
     const handleSortChange = (e, name) => {
         e.preventDefault();
@@ -83,21 +80,36 @@ export default function ExpensesPage() {
         if (!category || !selectedIds) {
             return;
         }
+        updateCategoryMutation.mutate(category);
+    }
 
-        try {
-            await categoryBatchUpdate(selectedIds, category);
+    const updateCategoryMutation = useMutation({
+        mutationFn: (category) => categoryBatchUpdate(selectedIds, category),
+        onSuccess: () => {
             showSuccess("Successfully updated category");
-        } catch (err) {
+            setShowUpdateCategoryModal(false);
+            setSelectedIds([]);
+            qc.refetchQueries({ queryKey: ['tableExpenses']});
+        },
+        onError: (err) => {
             if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
                 showError("Failed to update category");
             }
         }
+    });
 
-        setShowUpdateCategoryModal(false);
-        setSelectedIds([]);
-        await qc.refetchQueries({ queryKey: ['tableExpenses']});
+    const handlePageSizeChange = (e, value) => {
+        e.preventDefault();
+        if (value === 'All') {
+            setPageSize('All');
+            return;
+        }
+
+        const parsed = Number(value);
+        setPageSize(Number.isNaN(parsed) ? 10 : parsed);
     }
 
     return (
@@ -108,12 +120,14 @@ export default function ExpensesPage() {
                     <h1 className="expenses-title">Expense Table</h1>
                     <p className="expenses-subtitle">Track, sort, and batch-edit your expenses without losing context.</p>
                 </div>
-                <div className="expenses-hero-stats">
-                    <div className="expenses-stat">
-                        <span className="expenses-stat-label">Selected</span>
-                        <span className="expenses-stat-value">{selectedIds.length}</span>
+                {selectActive && (
+                    <div className="expenses-hero-stats">
+                        <div className="expenses-stat">
+                            <span className="expenses-stat-label">Selected</span>
+                            <span className="expenses-stat-value">{selectedIds.length}</span>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             <Card className="expenses-page-card" bodyClassName="expenses-page-body" style={{width: 'min(90rem, 100%)'}}>
@@ -124,6 +138,14 @@ export default function ExpensesPage() {
                                 title={"Sort"}
                                 options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")}
                                 handleOptionChange={handleSortChange}
+                            />
+                        </div>
+                        <div className="expenses-control">
+                            <Dropdown
+                                title={"Rows"}
+                                options={Object.entries({10: '10', 25: '25', 50: '50', 100: '100', All: 'All'})}
+                                handleOptionChange={handlePageSizeChange}
+                                changeTitleOnOptionChange={true}
                             />
                         </div>
                         { selectActive &&
@@ -159,8 +181,25 @@ export default function ExpensesPage() {
                     selectActive={selectActive}
                     setSelectedIds={setSelectedIds}
                     selectedIds={selectedIds}
+                    pageSize={pageSize}
                 />
-                {showUpdateCategoryModal && <UpdateCategoryModal setShowUpdateCategoryModal={setShowUpdateCategoryModal} handleSave={handleCategoryUpdateSave} />}
+                {showUpdateCategoryModal && (
+                    <UpdateCategoryModal
+                        setShowUpdateCategoryModal={setShowUpdateCategoryModal}
+                        handleSave={handleCategoryUpdateSave}
+                        isManageCategoriesOpen={showManageCategoriesModal}
+                        handleManageCategories={() => {
+                            setShowUpdateCategoryModal(false);
+                            setShowManageCategoriesModal(true);
+                        }}
+                    />
+                )}
+                {showManageCategoriesModal && (
+                    <ManageCategoriesModal
+                        handleClose={() => setShowManageCategoriesModal(false)}
+                        onClose={() => setShowUpdateCategoryModal(true)}
+                    />
+                )}
             </Card>
         </div>
     );

@@ -27,7 +27,9 @@ public class ExpenseRepository : BuilderRepository
                     start_date,
                     end_date,
                     category_id,
-                    due_end_of_month
+                    due_end_of_month,
+                    automatic_payments,
+                    automatic_payment_credit_card_id
                 ) VALUES(
                     @name,
                     @cost,
@@ -38,7 +40,9 @@ public class ExpenseRepository : BuilderRepository
                     @startDate,
                     @endDate,
                     @categoryId,
-                    @dueLastDayOfMonth
+                    @dueLastDayOfMonth,
+                    @automaticPayments,
+                    @automaticPaymentCreditCardId
                 )";
 
         var parameters = new Dictionary<string, object?>()
@@ -47,16 +51,15 @@ public class ExpenseRepository : BuilderRepository
             { "@cost", dto.Cost },
             { "@description", dto.Description },
             { "@recurrenceRate", dto.RecurrenceRate },
-            { "@nextDueDate", dto.StartDate },
+            { "@nextDueDate", dto.NextDueDate },
             { "@userId", userId },
             { "@startDate", dto.StartDate },
-            { "@endDate", DBNull.Value },
-            { "@categoryId", dto.CategoryId ?? 0 },
-            { "@dueLastDayOfMonth", dto.DueEndOfMonth }
+            { "@endDate", dto.EndDate },
+            { "@categoryId", dto.CategoryId },
+            { "@dueLastDayOfMonth", dto.DueEndOfMonth },
+            { "@automaticPayments", dto.AutomaticPayments },
+            { "@automaticPaymentCreditCardId", dto.AutomaticPaymentCreditCardId },
         };
-
-        if (!string.IsNullOrEmpty(dto.EndDate))
-            parameters["@endDate"] = dto.EndDate;
 
         ExecuteResponse result;
         try
@@ -376,5 +379,39 @@ public class ExpenseRepository : BuilderRepository
         parameters["@userId"] = userId;
 
         await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+    }
+
+    public async Task UpdateCategoryNameAsync(int categoryId, string newCategoryName, int userId)
+    {
+        var sql = $@"UPDATE expense_categories
+                     SET name = @newName
+                     WHERE id = @categoryId
+                        AND user_id = @userId";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@categoryId", categoryId },
+            { "@newName", newCategoryName },
+            { "@userId", userId }
+        };
+
+        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+    }
+
+    public async Task<List<int>> GetExpensesEnrolledInAutomaticPaymentsAsync(int userId)
+    {
+        var sql = @"SELECT
+                        id
+                    FROM expenses
+                    WHERE user_id = @userId
+                        AND automatic_payments = 1
+                        AND active = 1";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@userId", userId }
+        };
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapList(row => row.Field<int>("id")) ?? [];
     }
 }

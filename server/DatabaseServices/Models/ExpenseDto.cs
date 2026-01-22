@@ -38,5 +38,9 @@ public class ExpenseDto
 
     public string? DueDatePaid { get; set; }
 
+    public bool AutomaticPayments { get; set; } = false;
+    
+    public int? AutomaticPaymentCreditCardId { get; set; }
+
     public Dictionary<string, string>? TableActions { get; set; }
 }

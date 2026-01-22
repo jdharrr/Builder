@@ -1,7 +1,5 @@
-.expenses-table-scroll {
+.expenses-table-wrap {
     width: 100%;
-    max-height: 70vh;
-    overflow: auto;
     border-radius: 1.25rem;
     border: 1px solid #e5e7eb;
     background: #ffffff;
@@ -17,6 +15,8 @@
     border-spacing: 0;
     margin: 0;
     font-size: 0.85rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
 }
 
 .expenses-table thead th {
@@ -31,6 +31,28 @@
     text-transform: uppercase;
     color: #9ca3af;
     font-weight: 600;
+}
+
+.expenses-table thead th:first-child {
+    border-top-left-radius: 1.25rem;
+}
+
+.expenses-table thead th:last-child {
+    border-top-right-radius: 1.25rem;
+}
+
+.expenses-sortable {
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+}
+
+.expenses-sortable::after {
+    content: '\2195';
+    font-size: 0.7rem;
+    color: #cbd5f5;
+    display: inline-block;
+    margin-left: 0.35rem;
 }
 
 .expenses-table tbody tr {
@@ -121,30 +143,40 @@
     background-color: #f3f4f6;
 }
 
-.expenses-table-scroll::-webkit-scrollbar {
-    height: 0;
-    width: 0;
+
+.expenses-pagination {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
-.expenses-table-scroll:hover::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
-}
-
-.expenses-table-scroll::-webkit-scrollbar-thumb {
-    background-color: #cbd5f5;
+.expenses-page-button {
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
     border-radius: 999px;
+    transition: all 0.2s ease;
 }
 
-.expenses-table-scroll:hover::-webkit-scrollbar-thumb:hover {
-    background-color: #9ca3af;
+.expenses-page-button:hover:not(:disabled) {
+    background-color: #f3f4f6;
+    color: #111827;
 }
 
-.expenses-table-scroll {
-    scrollbar-width: none;
+.expenses-page-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.expenses-table-scroll:hover {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5f5 transparent;
+.expenses-page-indicator {
+    font-size: 0.75rem;
+    color: #6b7280;
 }

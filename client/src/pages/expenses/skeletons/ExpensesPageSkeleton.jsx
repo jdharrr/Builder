@@ -13,11 +13,6 @@ export default function ExpensesPageSkeleton() {
                     <h1 className="expenses-title">Expense Table</h1>
                     <p className="expenses-subtitle">Track, sort, and batch-edit your expenses without losing context.</p>
                 </div>
-                <div className="expenses-hero-stats">
-                    <div className="expenses-stat placeholder-glow">
-                        <span className="placeholder col-4" />
-                    </div>
-                </div>
             </div>
 
             <div className="card expenses-page-card" style={{width: 'min(90rem, 100%)'}}>
@@ -43,7 +38,7 @@ export default function ExpensesPageSkeleton() {
                         selectActive={false}
                         showInactiveExpenses={false}
                         enableSearch={false}
-                        rowCount={8}
+                        rowCount={10}
                     />
                 </div>
             </div>

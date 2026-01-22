@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
 
 import {getLateDatesForExpense, getPaymentsForExpense, payAllOverdueDatesForExpense} from "../api.jsx";
@@ -12,13 +12,21 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     const qc = useQueryClient()
 
     const [selectedDatePaid, setSelectedDatePaid] = useState(new Date().toISOString().substring(0,10));
-    const [selectedDueDatePaid, setSelectedDueDatePaid] = useState(new Date().toISOString().substring(0,10));
-    const [invalidDueDate, setInvalidDueDate] = useState(false);
+    const [selectedLateDates, setSelectedLateDates] = useState([]);
+    const [selectedFutureDates, setSelectedFutureDates] = useState(
+        preSelectedDueDate ? [preSelectedDueDate] : []
+    );
+    const [futureDateInput, setFutureDateInput] = useState(preSelectedDueDate || new Date().toISOString().substring(0,10));
+    const [invalidFutureDate, setInvalidFutureDate] = useState(false);
     const [paymentExists, setPaymentExists] = useState(false);
 
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (event.target.closest('.Toastify')) {
+                return;
+            }
+
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 handleClose();
             }
@@ -26,13 +34,7 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-        if (expense.recurrenceRate !== 'once' && !preSelectedDueDate) {
-            handleSelectedDueDatePaidChange(selectedDueDatePaid);
-        }
-    }, [])
+    }, [handleClose]);
 
     const { data: lateDates = [] } = useQuery({
         queryKey: ['lateDates', expense.id],
@@ -40,18 +42,13 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
             return await getLateDatesForExpense(expense.id) ?? [];
         },
         staleTime: 0,
-        enabled: expense.recurrenceRate !== 'once' && !preSelectedDueDate,
+        enabled: expense.recurrenceRate !== 'once',
         retry: (failureCount, error) => {
             if (getStatus(error) === 401) return false;
 
             return failureCount < 2;
         },
         throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        },
     });
 
     const { data: existingPayments = [] } = useQuery({
@@ -60,59 +57,114 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
             return await getPaymentsForExpense(expense.id) ?? [];
         },
         staleTime: 0,
-        enabled: expense.recurrenceRate !== 'once' && !preSelectedDueDate,
+        enabled: expense.recurrenceRate !== 'once',
         retry: (failureCount, error) => {
             if (getStatus(error) === 401) return false;
 
             return failureCount < 2;
         },
         throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        },
     });
 
+    useEffect(() => {
+        if (expense.recurrenceRate === 'once' && !preSelectedDueDate) {
+            setSelectedFutureDates([expense.startDate]);
+        }
+    }, [expense, preSelectedDueDate]);
+
     const handleSaveClick = () => {
-        if (invalidDueDate) {
-            showError('Please enter a valid due date');
+        if (invalidFutureDate) {
+            showError('Please enter a valid future due date');
             return;
         }
 
-        if (preSelectedDueDate) {
-            handleSave(selectedDatePaid, preSelectedDueDate);
-        } else if (expense.recurrenceRate === 'once') {
-            handleSave(selectedDatePaid, expense.startDate);
-        } else {
-            handleSave(selectedDatePaid, selectedDueDatePaid);
+        const dueDates = [
+            ...selectedLateDates,
+            ...selectedFutureDates
+        ];
+
+        if (dueDates.length === 0) {
+            showError('Select at least one due date.');
+            return;
+        }
+
+        handleSave(selectedDatePaid, dueDates);
+    }
+
+    const handleFutureDateAdd = () => {
+        if (!futureDateInput) return;
+
+        if (lateDates.includes(futureDateInput)) {
+            if (selectedLateDates.includes(futureDateInput)) {
+                showError('That late date is already selected.');
+                return;
+            }
+
+            setSelectedLateDates((prev) => [...prev, futureDateInput]);
+            setInvalidFutureDate(false);
+            setPaymentExists(false);
+            return;
+        }
+
+        const validation = validateDueDate(futureDateInput, expense, existingPayments);
+        setPaymentExists(validation.error === 'PAYMENT_EXISTS');
+        setInvalidFutureDate(!validation.valid && validation.error !== 'PAYMENT_EXISTS');
+
+        if (!validation.valid) {
+            return;
+        }
+
+        setSelectedFutureDates((prev) => (
+            prev.includes(futureDateInput) ? prev : [...prev, futureDateInput]
+        ));
+        setSelectedLateDates((prev) => prev.filter((date) => date !== futureDateInput));
+    }
+
+    const handleFutureDateRemove = (date) => {
+        if (expense.recurrenceRate === 'once') {
+            return;
+        }
+        setSelectedFutureDates((prev) => prev.filter((selected) => selected !== date));
+        setPaymentExists(false);
+        setInvalidFutureDate(false);
+    }
+
+    const handleLateDateToggle = (date, isChecked) => {
+        setSelectedLateDates((prev) => {
+            if (isChecked) {
+                return prev.includes(date) ? prev : [...prev, date];
+            }
+            return prev.filter((existingDate) => existingDate !== date);
+        });
+        if (isChecked && selectedFutureDates.includes(date)) {
+            setSelectedFutureDates((prev) => prev.filter((selected) => selected !== date));
         }
     }
 
-    const handleSelectedDueDatePaidChange = (selectedDate) => {
-        const validation = validateDueDate(selectedDate, expense, existingPayments);
-
-        setSelectedDueDatePaid(selectedDate);
-        setPaymentExists(validation.error === 'PAYMENT_EXISTS');
-        setInvalidDueDate(!validation.valid && validation.error !== 'PAYMENT_EXISTS');
-    }
-
     const handlePayAllOverdue = async () => {
-        try {
-            const result = await payAllOverdueDatesForExpense(expense.id);
+        payAllOverdueMutation.mutate(expense.id);
+    };
+
+    const dueDatesCount = selectedLateDates.length + selectedFutureDates.length;
+
+    const payAllOverdueMutation = useMutation({
+        mutationFn: (expenseId) => payAllOverdueDatesForExpense(expenseId),
+        onSuccess: (result) => {
             showSuccess(`Successfully paid ${result.count} overdue date(s)!`);
-            await qc.refetchQueries({ queryKey: ['upcomingExpenses']});
+            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
             // TODO: not refreshing next due date on table
-            await qc.refetchQueries({ queryKey: ['AllExpenses']});
+            qc.refetchQueries({ queryKey: ['AllExpenses']});
             handleClose();
-        } catch (err) {
+        },
+        onError: (err) => {
             if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
                 showError('Failed to pay all overdue dates');
             }
         }
-    };
+    });
 
     return (
         <div className="modal show d-block create-expense-modal payment-input-modal">
@@ -128,9 +180,17 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                                 Starts {expense?.startDate?.substring(0, 10)}
                             </span>
                         </div>
+                        <button
+                            type="button"
+                            className="modal-close-button"
+                            onClick={handleClose}
+                            aria-label="Close"
+                        >
+                            x
+                        </button>
                     </div>
                     <div className="modal-body">
-                        {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
+                        {expense.recurrenceRate !== 'once' && !preSelectedDueDate &&
                             <div className="payment-section">
                                 <div className="payment-section-header">
                                     <span className="payment-section-title">Late Due Dates</span>
@@ -141,9 +201,15 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                                 {lateDates.length > 0 ? (
                                     <div className="payment-dates">
                                         {lateDates.map((date, idx) => (
-                                            <div key={idx} className="payment-date-pill">
-                                                {date}
-                                            </div>
+                                            <label key={idx} className="payment-date-pill payment-date-option">
+                                                <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    checked={selectedLateDates.includes(date)}
+                                                    onChange={(e) => handleLateDateToggle(date, e.target.checked)}
+                                                />
+                                                <span>{date}</span>
+                                            </label>
                                         ))}
                                     </div>
                                 ) : (
@@ -151,11 +217,45 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                                 )}
                             </div>
                         }
-                        {(expense.recurrenceRate !== 'once' && !preSelectedDueDate) &&
+                        {expense.recurrenceRate !== 'once' && !preSelectedDueDate &&
                             <div className="payment-section">
-                                <label className={'form-label'}>Select a due date to mark as paid</label>
-                                <input className={'form-control'} type={'date'} value={selectedDueDatePaid} onChange={(e) => handleSelectedDueDatePaidChange(e.target.value)} />
-                                {invalidDueDate &&
+                                <label className={'form-label'}>Add a future due date</label>
+                                <div className="payment-future-row">
+                                    <input
+                                        className={'form-control'}
+                                        type={'date'}
+                                        value={futureDateInput}
+                                        onChange={(e) => {
+                                            setFutureDateInput(e.target.value);
+                                            setInvalidFutureDate(false);
+                                            setPaymentExists(false);
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={handleFutureDateAdd}
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                {selectedFutureDates.length > 0 && (
+                                    <div className="payment-future-list">
+                                        {selectedFutureDates.map((date) => (
+                                            <div className="payment-future-pill" key={date}>
+                                                <span>{date}</span>
+                                                <button
+                                                    type="button"
+                                                    className="payment-future-remove"
+                                                    onClick={() => handleFutureDateRemove(date)}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {invalidFutureDate &&
                                     <span className="payment-error">Invalid date.</span>
                                 }
                                 {paymentExists &&
@@ -173,12 +273,19 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
-                        {expense.recurrenceRate !== 'once' && lateDates.length > 0 && (
+                        {expense.recurrenceRate !== 'once' && lateDates.length > 0 && !preSelectedDueDate && (
                             <button type="button" className="btn btn-warning" onClick={handlePayAllOverdue}>
                                 Pay All {lateDates.length} Overdue
                             </button>
                         )}
-                        <button type="button" className="btn btn-primary" disabled={(invalidDueDate || paymentExists)} onClick={handleSaveClick}>Save</button>
+                        <button
+                            type="button"
+                            className="btn btn-success"
+                            disabled={(invalidFutureDate || paymentExists)}
+                            onClick={handleSaveClick}
+                        >
+                            Pay Selected ({dueDatesCount})
+                        </button>
                     </div>
                 </div>
             </div>

@@ -1,10 +1,10 @@
 import React, {useState} from 'react';
 import {useNavigate} from "react-router-dom";
-import {useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
+import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 import {OverlayTrigger, Tooltip} from "react-bootstrap";
 import {FaCalendarAlt, FaDollarSign} from 'react-icons/fa';
 
-import {getUpcomingExpenses, payDueDate} from "../../../api.jsx";
+import {getUpcomingExpenses, payDueDates} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 
 import '../css/upcomingList.css';
@@ -35,28 +35,29 @@ export const UpcomingList = () => {
 
             return failureCount < 2;
         },
-        throwOnError: (error) => { return getStatus(error) !== 401 },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                navigate('/login');
-            }
-        }
+        throwOnError: (error) => { return getStatus(error) !== 401 }
     })
 
-    const handleDateInputSave = async (paymentDate, dueDatePaid) => {
-        try {
-            await payDueDate(checkedExpense.id, dueDatePaid, paymentDate);
+    const handleDateInputSave = async (paymentDate, dueDates) => {
+        payDueDateMutation.mutate({ expenseId: checkedExpense.id, dueDates, paymentDate });
+    }
+
+    const payDueDateMutation = useMutation({
+        mutationFn: ({ expenseId, dueDates, paymentDate }) => payDueDates(expenseId, dueDates, paymentDate),
+        onSuccess: () => {
             showSuccess('Payment saved!');
-        } catch (err) {
-            if (err.status === 401) {
+            setShowExpenseDatePaidModal(false);
+            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
                 showError('Failed to save payment');
             }
         }
-        setShowExpenseDatePaidModal(false);
-        await qc.refetchQueries({ queryKey: ['upcomingExpenses']});
-    }
+    });
 
     return (
         <>
@@ -83,43 +84,43 @@ export const UpcomingList = () => {
                                         && checkedDueDate === date;
 
                                     return (
-                                    <div className="expense-item" key={`${date}-${expense.id}`}>
-                                        <OverlayTrigger
-                                            placement="bottom"
-                                            delay={{ show: 500, hide: 100 }}
-                                            overlay={<Tooltip>{expense.name}</Tooltip>}
-                                        >
-                                            <div className="expense-name">
-                                                <span className="expense-name-text" title={expense.name}>
-                                                    {expense.name}
-                                                </span>
+                                        <div className="expense-item" key={`${date}-${expense.id}`}>
+                                            <OverlayTrigger
+                                                placement="bottom"
+                                                delay={{ show: 500, hide: 100 }}
+                                                overlay={<Tooltip>{expense.name}</Tooltip>}
+                                            >
+                                                <div className="expense-name">
+                                                    <span className="expense-name-text" title={expense.name}>
+                                                        {expense.name}
+                                                    </span>
+                                                </div>
+                                            </OverlayTrigger>
+                                            <div className="expense-amount">
+                                                <FaDollarSign className="amount-icon" />
+                                                <span>{Number(expense.cost).toFixed(2)}</span>
                                             </div>
-                                        </OverlayTrigger>
-                                        <div className="expense-amount">
-                                            <FaDollarSign className="amount-icon" />
-                                            <span>{Number(expense.cost).toFixed(2)}</span>
-                                        </div>
-                                        <div className="expense-checkbox">
-                                            <input
-                                                type="checkbox"
-                                                className="custom-checkbox"
-                                                id={`paid-${expense.id}-${date}`}
-                                                checked={isChecked}
-                                                onChange={() => {
-                                                    if (isChecked) {
-                                                        return;
-                                                    }
+                                            <div className="expense-checkbox">
+                                                <input
+                                                    type="checkbox"
+                                                    className="custom-checkbox"
+                                                    id={`paid-${expense.id}-${date}`}
+                                                    checked={isChecked}
+                                                    onChange={() => {
+                                                        if (isChecked) {
+                                                            return;
+                                                        }
 
-                                                    setCheckedExpense(expense);
-                                                    setCheckedDueDate(date);
-                                                    setShowExpenseDatePaidModal(true);
-                                                }}
-                                            />
-                                            <label className="checkbox-label" htmlFor={`paid-${expense.id}-${date}`}>
-                                                Paid?
-                                            </label>
+                                                        setCheckedExpense(expense);
+                                                        setCheckedDueDate(date);
+                                                        setShowExpenseDatePaidModal(true);
+                                                    }}
+                                                />
+                                                <label className="checkbox-label" htmlFor={`paid-${expense.id}-${date}`}>
+                                                    Paid?
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
                                     );
                                 })
                             )}

@@ -1,0 +1,102 @@
+.manage-credit-cards-modal .modal-dialog {
+    max-width: 36rem;
+}
+
+.manage-credit-cards-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.manage-credit-cards-card {
+    padding: 1rem;
+    border-radius: 0.9rem;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.manage-credit-cards-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.manage-credit-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.manage-credit-cards-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+}
+
+.manage-credit-cards-input {
+    flex: 1;
+}
+
+.manage-credit-cards-name {
+    font-size: 0.95rem;
+    color: #111827;
+}
+
+.manage-credit-cards-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.manage-credit-cards-balance {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+}
+
+.manage-credit-cards-icon-button {
+    border: 1px solid #d1d5db;
+    background-color: #ffffff;
+    color: #4b5563;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.manage-credit-cards-icon-button:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.manage-credit-cards-muted {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.manage-credit-cards-create {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.manage-credit-cards-create-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}

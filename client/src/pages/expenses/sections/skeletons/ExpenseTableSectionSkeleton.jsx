@@ -28,9 +28,9 @@ export const ExpensesTableSectionSkeleton = ({
                 <thead className="expenses-table-head">
                     <tr>
                         {selectActive && <th key={"select"} scope={'col'}></th>}
-                        {showInactiveExpenses && <th key={'active'} scope={'col'}>Active</th>}
-                        {Object.entries(headers).map(([column, label], idx) => (
-                            <th className={"text-center"} key={idx} scope="col">{label}</th>
+                        {showInactiveExpenses && <th key={'active'} scope={'col'} className="expenses-sortable">Active</th>}
+                        {Object.entries(headers).map(([, label], idx) => (
+                            <th className={"text-center expenses-sortable"} key={idx} scope="col">{label}</th>
                         ))}
                         <th key='actions' scope="col"></th>
                     </tr>
