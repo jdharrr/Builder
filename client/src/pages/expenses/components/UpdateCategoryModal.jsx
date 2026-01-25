@@ -1,19 +1,16 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useQuery} from "@tanstack/react-query";
 
 import {Modal} from '../../../components/Modal.jsx';
-import {Dropdown} from '../../../components/Dropdown.jsx';
-import {getStatus} from "../../../util.jsx";
-import {getAllExpenseCategories} from "../../../api.jsx";
+import {CategorySelect} from "../../../components/CategorySelect.jsx";
 import '../../../css/createExpenseForm.css';
 
-export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal, handleManageCategories, isManageCategoriesOpen = false}) => {
+export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) => {
     const [selectedCategory, setSelectedCategory] = useState(null);
 
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (isManageCategoriesOpen) {
+            if (document.querySelector('.manage-categories-modal')) {
                 return;
             }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -23,24 +20,7 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal, han
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setShowUpdateCategoryModal, isManageCategoriesOpen]);
-
-    const { data: categories = [] } = useQuery({
-        queryKey: ['expenseCategories'],
-        queryFn: async () => {
-            return await getAllExpenseCategories();
-        },
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-            return failureCount < 2;
-        },
-        throwOnError: (error) => { return getStatus(error) !== 401 }
-    });
-
-    const handleCategorySelect = (e, name) => {
-        setSelectedCategory(name);
-    }
+    }, [setShowUpdateCategoryModal]);
 
     const handleCategorySave = async () => {
         handleSave(selectedCategory);
@@ -59,17 +39,11 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal, han
                 <div className="update-category-card">
                     <span className="update-category-label">Select Category</span>
                     <p className="update-category-subtext">Choose the category you want to apply to all selected expenses.</p>
-                    <div className="update-category-row">
-                        <Dropdown
-                            title={"Select a category"}
-                            options={categories.map(({ id, name }) => [id, name])}
-                            handleOptionChange={handleCategorySelect}
-                            changeTitleOnOptionChange={true}
-                        />
-                        <button className={'manageCategoriesButton'} type='button' onClick={handleManageCategories}>
-                            Manage
-                        </button>
-                    </div>
+                    <CategorySelect
+                        label={null}
+                        includeNoneOption={false}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                    />
                 </div>
             </div>
         </Modal>

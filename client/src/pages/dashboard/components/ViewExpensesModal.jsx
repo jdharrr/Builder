@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useContext, useEffect, useRef, useState} from 'react';
 import { FaPen } from 'react-icons/fa';
 import {useMutation, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "react-router-dom";
@@ -8,14 +8,16 @@ import {updateExpense} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {showError, showSuccess} from "../../../utils/toast.js";
 import {EditExpenseModal} from "../../../components/EditExpenseModal.jsx";
+import {CreateExpenseFormContext} from "../../../providers/expenses/CreateExpenseFormContext.jsx";
+import {formatCost, formatDate, formatRecurrence} from "../utils/expenseFormatters.js";
 
 import '../css/viewExpensesModal.css'
 
-export const ViewExpensesModal = ({showViewExpensesModal, setShowViewExpensesModal, setShowCreateExpenseForm}) => {
-    const { expenses, date } = showViewExpensesModal;
+export const ViewExpensesModal = ({expenses, date, handleClose}) => {
     const [viewEditExpenseModal, setViewEditExpenseModal] = useState({isShowing: false, expense: null});
     const qc = useQueryClient();
     const navigate = useNavigate();
+    const { setShowCreateExpenseForm } = useContext(CreateExpenseFormContext);
 
     const wrapperRef = useRef(null);
     useEffect(() => {
@@ -24,27 +26,13 @@ export const ViewExpensesModal = ({showViewExpensesModal, setShowViewExpensesMod
                 return;
             }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setShowViewExpensesModal((prevState) => ({
-                    ...prevState,
-                    isShowing: false,
-                    expenses: [],
-                    date: null
-                }));
+                handleClose();
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setShowViewExpensesModal, viewEditExpenseModal.isShowing]);
-    
-    const handleClose = () => {
-        setShowViewExpensesModal((prevState) => ({
-            ...prevState,
-            isShowing: false,
-            expenses: [],
-            date: null
-        }));
-    }
+    }, [handleClose, viewEditExpenseModal.isShowing]);
 
     const handleExpenseEditClick = (expense) => {
         setViewEditExpenseModal({isShowing: true, expense});
@@ -52,12 +40,7 @@ export const ViewExpensesModal = ({showViewExpensesModal, setShowViewExpensesMod
 
 
     const handleAddExpense = () => {
-        setShowViewExpensesModal((prevState) => ({
-            ...prevState,
-            isShowing: false,
-            expenses: [],
-            date: null,
-        }));
+        handleClose();
 
         setShowCreateExpenseForm((prevState) => ({
             ...prevState,
@@ -91,22 +74,6 @@ export const ViewExpensesModal = ({showViewExpensesModal, setShowViewExpensesMod
     const month = MONTHS[Number(date.substring(5, 7)) - 1];
     const year = Number(date.substring(0, 4));
     const day = Number(date.substring(8, 10));
-    const formatCost = (value) => {
-        if (value === null || value === undefined || value === '') return '$0.00';
-        if (typeof value === 'number') return `$${value.toFixed(2)}`;
-        const trimmed = value.toString().trim();
-        return trimmed.startsWith('$') ? trimmed : `$${trimmed}`;
-    };
-    const formatDate = (value) => {
-        if (!value) return 'No due date';
-        const parsed = new Date(value);
-        if (Number.isNaN(parsed.getTime())) return value;
-        return parsed.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
-    const formatRecurrence = (value) => {
-        if (!value) return 'One-time';
-        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-    };
 
     return (
         <>

@@ -6,8 +6,27 @@ import {getCategoryChartRangeOptions, getExpenseCategoriesWithTotalSpent, getTot
 import {useQuery} from "@tanstack/react-query";
 import {getStatus} from "../../util.jsx";
 import {Dropdown} from '../../components/Dropdown.jsx'
+import {formatCurrency} from "./utils/formatters.js";
 
 import './css/totalsPage.css';
+
+const PIE_COLORS = [
+    "rgb(255, 99, 132)",   // pink/red
+    "rgb(54, 162, 235)",   // blue
+    "rgb(255, 206, 86)",   // yellow
+    "rgb(75, 192, 192)",   // teal
+    "rgb(153, 102, 255)",  // purple
+    "rgb(255, 159, 64)",   // orange
+    "rgb(199, 199, 199)",  // gray
+    "rgb(255, 99, 71)",    // tomato
+    "rgb(100, 181, 246)",  // light blue
+    "rgb(129, 199, 132)",  // light green
+    "rgb(255, 238, 88)",   // bright yellow
+    "rgb(244, 143, 177)",  // pink
+    "rgb(171, 71, 188)",   // violet
+    "rgb(77, 182, 172)",   // turquoise
+    "rgb(255, 112, 67)"    // coral
+];
 
 export default function TotalsPage() {
     const [selectedCategoryChartRangeOption, setSelectedCategoryChartRangeOption] = useState("AllTime");
@@ -26,11 +45,11 @@ export default function TotalsPage() {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
-    const { data: categories = {} } = useQuery({
+    const { data: categoryTotals = {} } = useQuery({
         queryKey: ['categories', selectedCategoryChartRangeOption],
         queryFn: async () => {
             const result = await getExpenseCategoriesWithTotalSpent(selectedCategoryChartRangeOption);
-            return result ?? [];
+            return result ?? {};
         },
         staleTime: 60_000,
         retry: (failureCount, error) => {
@@ -45,8 +64,7 @@ export default function TotalsPage() {
         queryKey: ['totalSpent'],
         queryFn: async () => {
             const result = await getTotalSpent();
-            const dollarString = toDollar(result)
-            return dollarString ?? 0;
+            return result ?? 0;
         },
         staleTime: 60_000,
         retry: (failureCount, error) => {
@@ -57,30 +75,19 @@ export default function TotalsPage() {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
     
-    const categoryPieData = useMemo(() => {
-        const pieColors = [
-            "rgb(255, 99, 132)",   // pink/red
-            "rgb(54, 162, 235)",   // blue
-            "rgb(255, 206, 86)",   // yellow
-            "rgb(75, 192, 192)",   // teal
-            "rgb(153, 102, 255)",  // purple
-            "rgb(255, 159, 64)",   // orange
-            "rgb(199, 199, 199)",  // gray
-            "rgb(255, 99, 71)",    // tomato
-            "rgb(100, 181, 246)",  // light blue
-            "rgb(129, 199, 132)",  // light green
-            "rgb(255, 238, 88)",   // bright yellow
-            "rgb(244, 143, 177)",  // pink
-            "rgb(171, 71, 188)",   // violet
-            "rgb(77, 182, 172)",   // turquoise
-            "rgb(255, 112, 67)"    // coral
-        ];
+    const { categories, combinedTotalSpent } = useMemo(() => {
+        return {
+            categories: categoryTotals.categories ?? categoryTotals.Categories ?? [],
+            combinedTotalSpent: categoryTotals.combinedTotalSpend ?? categoryTotals.CombinedTotalSpend ?? 0
+        };
+    }, [categoryTotals]);
 
+    const categoryPieData = useMemo(() => {
         if (!categories.length) return { labels: [], datasets: [] };
 
         const labels = categories.map(x => x.name);
-        const data = categories.map(x => x.totalSpent);
-        const colors = pieColors.slice(0, labels.length);
+        const data = categories.map(x => x.categoryTotalSpent);
+        const colors = PIE_COLORS.slice(0, labels.length);
 
         return {
             labels,
@@ -101,13 +108,6 @@ export default function TotalsPage() {
         setSelectedCategoryChartRangeOption(name);
     }
 
-    function toDollar(amount) {
-        return amount.toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        });
-    }
-
     return (
         <div className="totals-page">
             <div className="totals-hero">
@@ -118,7 +118,7 @@ export default function TotalsPage() {
                 </div>
                 <div className="totals-stat">
                     <span className="totals-stat-label">Total Spent</span>
-                    <span className="totals-stat-value">{totalSpent.toString()}</span>
+                    <span className="totals-stat-value">{formatCurrency(totalSpent)}</span>
                 </div>
             </div>
 
@@ -138,6 +138,10 @@ export default function TotalsPage() {
                             changeTitleOnOptionChange={true}
                         />
                     </div>
+                    <div className="totals-range-total">
+                        <span className="totals-range-label">Total for range</span>
+                        <span className="totals-range-value">{formatCurrency(combinedTotalSpent)}</span>
+                    </div>
                     <div className="totals-chart">
                         <Doughnut data={categoryPieData} style={{ maxWidth: '24rem', maxHeight: '24rem' }} />
                     </div>
@@ -147,7 +151,7 @@ export default function TotalsPage() {
                     className="totals-card totals-total-card"
                     style={{width: '100%'}}
                 >
-                    <div className="totals-total-amount">{totalSpent.toString()}</div>
+                    <div className="totals-total-amount">{formatCurrency(totalSpent)}</div>
                     <div className="totals-total-subtext">Across all tracked expenses.</div>
                 </Card>
             </div>

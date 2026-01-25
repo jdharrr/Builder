@@ -96,7 +96,9 @@ public class ExpenseRepository : BuilderRepository
                     start_date,
                     end_date,
                     category_id,
-                    due_end_of_month
+                    due_end_of_month,
+                    automatic_payments,
+                    automatic_payment_credit_card_id
                 FROM expenses
                 WHERE id = @expenseId 
                     AND user_id = @userId";
@@ -116,10 +118,10 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = (double)row.Field<decimal>("cost"),
+            Cost = row.Field<decimal>("cost"),
             Description = row.Field<string?>("description") ?? string.Empty,
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = (double?)row.Field<decimal?>("last_cost"),
+            LastCost = row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
@@ -127,7 +129,9 @@ public class ExpenseRepository : BuilderRepository
             Active = row.Field<bool>("active"),
             StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
             EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
-            CategoryId = row.Field<int?>("category_id")
+            CategoryId = row.Field<int?>("category_id"),
+            AutomaticPayments = row.Field<bool>("automatic_payments"),
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
         });
     }
 
@@ -142,10 +146,10 @@ public class ExpenseRepository : BuilderRepository
             "cost_updated_at",
             "next_due_date",
             "active",
-            "start_date",
             "end_date",
             "category_id",
-            "recurrence_rate"
+            "automatic_payments",
+            "automatic_payment_credit_card_id"
         };
 
         if (updateColumns.Where(x => !allowedUpdateFields.Contains(x.Key)).Any())
@@ -208,10 +212,10 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = (double)row.Field<decimal>("cost"),
+            Cost = row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = (double?)row.Field<decimal?>("last_cost"),
+            LastCost = row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
@@ -222,7 +226,9 @@ public class ExpenseRepository : BuilderRepository
             CategoryId = row.Field<int?>("category_id"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month"),
             IsLate = Convert.ToBoolean(Convert.ToInt32(row["is_late"])),
-            CategoryName = row.Field<string>("category_name")
+            CategoryName = row.Field<string>("category_name"),
+            AutomaticPayments = row.Field<bool>("automatic_payments"),
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
         }) ?? [];
     }
 
@@ -266,10 +272,10 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = (double)row.Field<decimal>("cost"),
+            Cost = row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = (double?)row.Field<decimal?>("last_cost"),
+            LastCost = row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),
@@ -279,7 +285,9 @@ public class ExpenseRepository : BuilderRepository
             EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
             CategoryId = row.Field<int?>("category_id"),
             CategoryName = row.Field<string>("category_name"),
-            DueEndOfMonth = row.Field<bool>("due_end_of_month")
+            DueEndOfMonth = row.Field<bool>("due_end_of_month"),
+            AutomaticPayments = row.Field<bool>("automatic_payments"),
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
         }) ?? [];
     }
 
@@ -350,10 +358,10 @@ public class ExpenseRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             Name = row.Field<string>("name") ?? "Unknown Expense",
-            Cost = (double)row.Field<decimal>("cost"),
+            Cost = row.Field<decimal>("cost"),
             Description = row.Field<string?>("description"),
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
-            LastCost = (double?)row.Field<decimal?>("last_cost"),
+            LastCost = row.Field<decimal?>("last_cost"),
             CostUpdatedAt = row.Field<DateTime?>("cost_updated_at")?.ToString("yyyy-MM-dd"),
             CreatedAt = row.Field<DateTime>("created_at").ToString("yyyy-MM-dd"),
             UpdatedAt = row.Field<DateTime>("updated_at").ToString("yyyy-MM-dd"),

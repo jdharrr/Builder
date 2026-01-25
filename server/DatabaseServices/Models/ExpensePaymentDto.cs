@@ -8,7 +8,7 @@ public class ExpensePaymentDto
 
     public int UserId { get; set; } = 0;
 
-    public double Cost { get; set; } = 0.0;
+    public decimal Cost { get; set; } = 0;
 
     public string PaymentDate { get; set; } = string.Empty;
 

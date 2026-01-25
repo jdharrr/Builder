@@ -63,7 +63,7 @@ public class CreditCardRepository : BuilderRepository
         await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
     }
 
-    public async Task AddPaymentToCreditCardAsync(double cost, int creditCardId, int userId)
+    public async Task AddPaymentToCreditCardAsync(decimal cost, int creditCardId, int userId)
     {
         var sql = @"UPDATE credit_cards
                     SET running_balance = running_balance + @cost
@@ -73,6 +73,22 @@ public class CreditCardRepository : BuilderRepository
         {
             { "@cost", cost },
             { "@creditCardId", creditCardId },
+            { "@userId", userId }
+        };
+
+        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+    }
+
+    public async Task PayCreditCardBalanceAsync(int creditCardId, decimal paymentAmount, int userId)
+    {
+        var sql = @"UPDATE credit_cards
+                    SET running_balance = running_balance - @paymentAmount
+                    WHERE id = @creditCardId
+                        AND user_id = @userId";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@creditCardId", creditCardId },
+            { "@paymentAmount", paymentAmount },
             { "@userId", userId }
         };
 

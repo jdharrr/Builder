@@ -166,6 +166,18 @@
     color: #b91c1c;
 }
 
+.late-date-row--select-all {
+    border-color: transparent;
+    background-color: #ffffff;
+    color: #111827;
+    font-weight: 500;
+}
+
+.late-date-row--select-all-gray {
+    border-color: transparent;
+    background-color: #f9fafb;
+}
+
 .late-date-main {
     display: inline-flex;
     align-items: center;

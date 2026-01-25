@@ -20,6 +20,18 @@ export const Dropdown = ({title, options, handleOptionChange, maxHeight, include
         }
     }, [includeScrollbarY, maxHeight]);
 
+    useEffect(() => {
+        if (!changeTitleOnOptionChange) return;
+
+        const optionLabels = Array.isArray(options?.[0]) && options[0].length === 2
+            ? options.map(([, label]) => label)
+            : options;
+
+        if (!optionLabels?.includes(selectedOption)) {
+            setSelectedOption(null);
+        }
+    }, [options, changeTitleOnOptionChange, selectedOption]);
+
     const handleChange = (e, name, label) => {
         if (changeTitleOnOptionChange) {
             label !== undefined ? setSelectedOption(label) : setSelectedOption(name);
@@ -39,18 +51,24 @@ export const Dropdown = ({title, options, handleOptionChange, maxHeight, include
                 {Array.isArray(options[0]) && options[0].length === 2 ?
                     options.map(([name, label], idx) => (
                     <li key={idx}>
-                        <a className={"dropdown-item"} href={"#"}
-                           onClick={(e) => handleChange(e, name, label)}>
+                        <button
+                            type="button"
+                            className={"dropdown-item"}
+                            onClick={(e) => handleChange(e, name, label)}
+                        >
                             {label}
-                        </a>
+                        </button>
                     </li>
                 )) :
                    options.map((name, idx) => (
                    <li key={idx}>
-                       <a className={"dropdown-item"} href={"#"}
-                          onClick={(e) => handleChange(e, name)}>
+                       <button
+                           type="button"
+                           className={"dropdown-item"}
+                           onClick={(e) => handleChange(e, name)}
+                       >
                            {name}
-                       </a>
+                       </button>
                    </li>
                 ))}
             </ul>

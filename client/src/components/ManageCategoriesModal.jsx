@@ -7,7 +7,8 @@ import {
     createExpenseCategory,
     deleteExpenseCategory,
     getAllExpenseCategories,
-    updateExpenseCategoryName
+    updateExpenseCategoryName,
+    updateExpenseCategoryActiveStatus
 } from "../api.jsx";
 import {getStatus} from "../util.jsx";
 import {showError, showSuccess, showWarning} from "../utils/toast.js";
@@ -22,6 +23,9 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
     const [newCategoryName, setNewCategoryName] = useState('');
     const [categoryEdits, setCategoryEdits] = useState({});
     const [editingCategoryId, setEditingCategoryId] = useState(null);
+    const [showActiveOnly, setShowActiveOnly] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 5;
 
     const wrapperRef = useRef(null);
     const closeModal = useCallback(() => {
@@ -42,9 +46,9 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
     }, [closeModal]);
 
     const { data: categories = [], isLoading } = useQuery({
-        queryKey: ['expenseCategories'],
+        queryKey: ['expenseCategories', showActiveOnly],
         queryFn: async () => {
-            return await getAllExpenseCategories();
+            return await getAllExpenseCategories(showActiveOnly);
         },
         staleTime: 60_000,
         retry: (failureCount, error) => {
@@ -63,6 +67,19 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
         ));
     }, [categories]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [showActiveOnly, categories.length]);
+
+    const activeCategoryCount = categories.reduce((count, category) => {
+        if (category.active === false) return count;
+        return count + 1;
+    }, 0);
+
+    const totalPages = Math.max(1, Math.ceil(categories.length / pageSize));
+    const startIndex = (currentPage - 1) * pageSize;
+    const pagedCategories = categories.slice(startIndex, startIndex + pageSize);
+
     const createCategoryMutation = useMutation({
         mutationFn: (categoryName) => createExpenseCategory(categoryName),
         onSuccess: () => {
@@ -75,6 +92,8 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
+            } else if (activeCategoryCount >= 15) {
+                showError('Limit of active categories reached.');
             } else {
                 showError('Failed to create category.');
             }
@@ -116,6 +135,25 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                 navigate('/login');
             } else {
                 showError('Failed to remove category.');
+            }
+        }
+    });
+
+    const updateCategoryActiveMutation = useMutation({
+        mutationFn: ({categoryId, isActive}) => updateExpenseCategoryActiveStatus(categoryId, isActive),
+        onSuccess: (_data, variables) => {
+            showSuccess(`Category ${variables.isActive ? 'activated' : 'deactivated'}.`);
+            qc.invalidateQueries({ queryKey: ['expenseCategories'] });
+            qc.refetchQueries({ queryKey: ['tableExpenses'] });
+        },
+        onError: (err, variables) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else if (variables?.isActive && activeCategoryCount >= 15) {
+                showError('Limit of active categories reached.');
+            } else {
+                showError('Failed to update category status.');
             }
         }
     });
@@ -182,6 +220,17 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                             <div className="manage-categories-card">
                                 <div className="manage-categories-header">
                                     <span className="manage-categories-label">Categories</span>
+                                    <label className="manage-categories-filter">
+                                        <span>Show inactive?</span>
+                                        <span className="manage-categories-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={!showActiveOnly}
+                                                onChange={(e) => setShowActiveOnly(!e.target.checked)}
+                                            />
+                                            <span className="manage-categories-switch-track" />
+                                        </span>
+                                    </label>
                                     {!showCreateCategoryInput && (
                                         <button className={'addCategoryButton'} type='button' onClick={() => setShowCreateCategoryInput(true)}>
                                             <FaPlus size={14} />
@@ -221,7 +270,7 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                                     ) : categories.length === 0 ? (
                                         <span className="manage-categories-muted">No categories yet.</span>
                                     ) : (
-                                        categories.map((category) => {
+                                        pagedCategories.map((category) => {
                                             const updatedName = categoryEdits[category.id] ?? category.name;
                                             const isDirty = updatedName.trim() !== category.name;
 
@@ -241,6 +290,21 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                                                                     }));
                                                                 }}
                                                             />
+                                                            <label className="manage-categories-toggle">
+                                                                <span className="manage-categories-toggle-label">Active</span>
+                                                                <span className="manage-categories-switch">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={category.active ?? true}
+                                                                        disabled={updateCategoryActiveMutation.isPending}
+                                                                        onChange={(e) => updateCategoryActiveMutation.mutate({
+                                                                            categoryId: category.id,
+                                                                            isActive: e.target.checked
+                                                                        })}
+                                                                    />
+                                                                    <span className="manage-categories-switch-track" />
+                                                                </span>
+                                                            </label>
                                                             <div className="manage-categories-actions">
                                                                 <button
                                                                     className="btn btn-outline-success btn-sm"
@@ -261,7 +325,12 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <span className="manage-categories-name">{category.name}</span>
+                                                            <div className="manage-categories-name">
+                                                                <span>{category.name}</span>
+                                                                {category.active === false && (
+                                                                    <span className="manage-categories-inactive">Inactive</span>
+                                                                )}
+                                                            </div>
                                                             <div className="manage-categories-actions">
                                                                 <button
                                                                     className="manage-categories-icon-button"
@@ -287,6 +356,29 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                                         })
                                     )}
                                 </div>
+                                {categories.length > pageSize && (
+                                    <div className="manage-categories-pagination">
+                                        <button
+                                            type="button"
+                                            className="manage-categories-page-button"
+                                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                            disabled={currentPage === 1}
+                                        >
+                                            Previous
+                                        </button>
+                                        <span className="manage-categories-page-indicator">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="manage-categories-page-button"
+                                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

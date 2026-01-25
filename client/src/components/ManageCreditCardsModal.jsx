@@ -3,11 +3,13 @@ import {useNavigate} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {FaPen} from "react-icons/fa";
 
-import {createCreditCard, getCreditCards, updateCreditCardCompany} from "../api.jsx";
+import {createCreditCard, getCreditCards, payCreditCardBalance, updateCreditCardCompany} from "../api.jsx";
 import {getStatus} from "../util.jsx";
 import {showError, showSuccess, showWarning} from "../utils/toast.js";
+import {Modal} from "./Modal.jsx";
 
 import '../css/manageCreditCardsModal.css';
+import '../css/createExpenseForm.css';
 
 export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     const navigate = useNavigate();
@@ -15,6 +17,10 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     const [newCardCompany, setNewCardCompany] = useState('');
     const [cardEdits, setCardEdits] = useState({});
     const [editingCardId, setEditingCardId] = useState(null);
+    const [payModal, setPayModal] = useState({isShowing: false, card: null});
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().substring(0, 10));
+    const [paymentErrors, setPaymentErrors] = useState({amount: false, date: false});
 
     const wrapperRef = useRef(null);
     const closeModal = useCallback(() => {
@@ -25,6 +31,9 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     }, [handleClose, onClose]);
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (payModal.isShowing) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 closeModal();
             }
@@ -32,7 +41,7 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [closeModal]);
+    }, [closeModal, payModal.isShowing]);
 
     const { data: creditCards = [], isLoading } = useQuery({
         queryKey: ['creditCards'],
@@ -94,6 +103,26 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         }
     });
 
+    const payCreditCardMutation = useMutation({
+        mutationFn: ({creditCardId, amount, date}) => payCreditCardBalance(creditCardId, amount, date),
+        onSuccess: () => {
+            showSuccess('Payment recorded!');
+            qc.invalidateQueries({ queryKey: ['creditCards'] });
+            setPayModal({isShowing: false, card: null});
+            setPaymentAmount('');
+            setPaymentDate(new Date().toISOString().substring(0, 10));
+            setPaymentErrors({amount: false, date: false});
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError('Failed to record credit card payment.');
+            }
+        }
+    });
+
     const handleCreateCreditCard = () => {
         const trimmed = newCardCompany.trim();
         if (!trimmed) {
@@ -126,6 +155,37 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         }));
         setEditingCardId(null);
     }
+
+    const handleOpenPayModal = (card) => {
+        setPayModal({isShowing: true, card});
+        setPaymentAmount('');
+        setPaymentDate(new Date().toISOString().substring(0, 10));
+        setPaymentErrors({amount: false, date: false});
+    };
+
+    const handleClosePayModal = () => {
+        setPayModal({isShowing: false, card: null});
+        setPaymentErrors({amount: false, date: false});
+    };
+
+    const handlePaySave = () => {
+        const amountValue = Number(paymentAmount);
+        const nextErrors = {
+            amount: Number.isNaN(amountValue) || amountValue <= 0,
+            date: !paymentDate
+        };
+
+        setPaymentErrors(nextErrors);
+        if (nextErrors.amount || nextErrors.date || !payModal.card) {
+            return;
+        }
+
+        payCreditCardMutation.mutate({
+            creditCardId: payModal.card.id,
+            amount: amountValue,
+            date: paymentDate
+        });
+    };
 
     return (
         <div className="modal show d-block manage-credit-cards-modal">
@@ -205,6 +265,13 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                                                         >
                                                             <FaPen size={12} />
                                                         </button>
+                                                        <button
+                                                            className="btn btn-outline-primary btn-sm"
+                                                            type="button"
+                                                            onClick={() => handleOpenPayModal(card)}
+                                                        >
+                                                            Pay
+                                                        </button>
                                                     </>
                                                 )}
                                             </div>
@@ -239,6 +306,46 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                     </div>
                 </div>
             </div>
+            {payModal.isShowing && (
+                <Modal
+                    title={`Pay ${payModal.card?.company || 'Credit Card'}`}
+                    handleSave={handlePaySave}
+                    handleClose={handleClosePayModal}
+                    className="create-expense-modal"
+                    saveLabel="Pay"
+                >
+                    <div className="payment-section">
+                        <label className="form-label">Payment Amount</label>
+                        <input
+                            className={`form-control${paymentErrors.amount ? ' is-invalid' : ''}`}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={paymentAmount}
+                            onChange={(e) => {
+                                setPaymentAmount(e.target.value);
+                                if (paymentErrors.amount) {
+                                    setPaymentErrors((prev) => ({...prev, amount: false}));
+                                }
+                            }}
+                        />
+                    </div>
+                    <div className="payment-section">
+                        <label className="form-label">Payment Date</label>
+                        <input
+                            className={`form-control${paymentErrors.date ? ' is-invalid' : ''}`}
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => {
+                                setPaymentDate(e.target.value);
+                                if (paymentErrors.date) {
+                                    setPaymentErrors((prev) => ({...prev, date: false}));
+                                }
+                            }}
+                        />
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

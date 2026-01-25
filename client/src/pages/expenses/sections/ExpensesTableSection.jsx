@@ -1,9 +1,11 @@
-import React, {useEffect, useState, memo} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 
 import {
     deleteExpense,
+    getExpenseSortOptions,
+    getExpenseTableBatchActions,
     getExpenseSearchableColumns,
     updateExpenseActiveStatus,
     payDueDates,
@@ -13,25 +15,24 @@ import {
 } from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
+import {Dropdown} from "../../../components/Dropdown.jsx";
 
 import '../css/expensesTableSection.css';
 import {UnpayDatesModal} from "../components/UnpayDatesModal.jsx";
 import {EditExpenseModal} from "../../../components/EditExpenseModal.jsx";
-import {showSuccess, showError} from "../../../utils/toast.js";
+import {showSuccess, showWarning, showError} from "../../../utils/toast.js";
 import {useDebounce} from "../../../hooks/useDebounce.js";
 
 //TODO: Fix exception handling on 401 after token expires
 // Currently it causes the components to error out
 
-// Memoized search row component to prevent re-renders when table data changes
-const SearchRow = memo(({
+// Search row extracted for readability
+const SearchRow = ({
     searchableHeaders,
     selectActive,
     showInactiveExpenses,
-    activeSearchFilter,
-    handleSearchInput,
-    handleSearchSubmit,
-    handleSearchFocus
+    searchFilter,
+    handleSearchInput
 }) => (
     <tr>
         {selectActive && <th></th>}
@@ -41,20 +42,30 @@ const SearchRow = memo(({
                 <input
                     type="text"
                     className="form-control form-control-sm"
-                    value={activeSearchFilter.searchColumn === column ? activeSearchFilter.searchValue : ''}
+                    value={searchFilter.searchColumn === column ? searchFilter.searchValue : ''}
                     placeholder="Search..."
                     onChange={(e) => handleSearchInput(e, column)}
-                    onKeyDown={(e) => handleSearchSubmit(e)}
-                    onFocus={() => handleSearchFocus(column)}
                 />
             </th>
         ))}
     </tr>
-));
-export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearch, showInactiveExpenses, selectActive, selectedIds, setSelectedIds, pageSize = 10}) => {
+);
+export const ExpensesTableSection = ({
+    enableSearch,
+    setEnableSearch,
+    showInactiveExpenses,
+    setShowInactiveExpenses,
+    selectActive,
+    setSelectActive,
+    selectedIds,
+    setSelectedIds,
+    onRequestCategoryUpdate
+}) => {
     const navigate = useNavigate();
     const qc = useQueryClient();
 
+    const [selectedSort, setSelectedSort] = useState('CreatedDate');
+    const [pageSize, setPageSize] = useState(10);
     const [viewUnpayDatesModal, setViewUnpayDatesModal] = useState({isShowing: false, expenseId: null});
     const [viewDateInputModal, setViewDateInputModal] = useState({isShowing: false, expense: {}});
     const [viewEditExpenseModal, setViewEditExpenseModal] = useState({isShowing: false, expense: null});
@@ -64,11 +75,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         searchColumn: '',
         searchValue: '',
     });
-    const [activeSearchFilter, setActiveSearchFilter] = useState({
-        searchColumn: '',
-        searchValue: '',
-    });
-    const debouncedSearchFilter = useDebounce(activeSearchFilter, 500);
+    const debouncedSearchFilter = useDebounce(searchFilter, 500);
 
     const [clickedActionRowId, setClickedActionRowId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -87,10 +94,38 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         throwOnError: (error) => { return getStatus(error) !== 401 },
     });
 
-    const { data: expenses = [] } = useSuspenseQuery({
-        queryKey: ['tableExpenses', selectedSort, sortDirection, searchFilter, showInactiveExpenses],
+    const { data: sortOptions = [] } = useSuspenseQuery({
+        queryKey: ['expenseSortOptions'],
         queryFn: async () => {
-            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, searchFilter)
+            return await getExpenseSortOptions();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
+
+    const { data: batchActions = [] } = useSuspenseQuery({
+        queryKey: ['expenseBatchActions'],
+        queryFn: async () => {
+            return await getExpenseTableBatchActions();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
+
+    const { data: expenses = [] } = useSuspenseQuery({
+        queryKey: ['tableExpenses', selectedSort, sortDirection, debouncedSearchFilter, showInactiveExpenses],
+        queryFn: async () => {
+            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, debouncedSearchFilter)
                     : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses))
                 ?? [];
         },
@@ -111,20 +146,10 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
 
     // Auto-search after debounce delay
     useEffect(() => {
-        if (enableSearch && debouncedSearchFilter.searchValue) {
-            setSearchFilter(debouncedSearchFilter);
-        }
-    }, [debouncedSearchFilter, enableSearch, setSearchFilter]);
-
-    useEffect(() => {
         if (!enableSearch) {
             setSearchFilter({
                 searchColumn: '',
                 searchValue: '',
-            });
-            setActiveSearchFilter({
-               searchColumn: '',
-               searchValue: '',
             });
         }
     }, [enableSearch]);
@@ -141,7 +166,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         e.preventDefault();
         const value = e.target.value;
 
-        setActiveSearchFilter({
+        setSearchFilter({
             searchValue: value,
             searchColumn: col,
         });
@@ -151,24 +176,6 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
             setSearchFilter({ searchColumn: '', searchValue: '' });
         }
     }
-
-    const handleSearchSubmit = (e) => {
-        if (e.key !== 'Enter') {
-            return;
-        }
-
-        e.preventDefault();
-        setSearchFilter({
-            searchColumn: activeSearchFilter.searchColumn,
-            searchValue: activeSearchFilter.searchValue,
-        });
-    }
-
-    const handleSearchFocus = (col) => {
-        if (col !== activeSearchFilter.searchColumn) {
-            setActiveSearchFilter({ searchColumn: col, searchValue: '' });
-        }
-    };
 
     const deleteExpenseMutation = useDeleteExpense(navigate);
     const handleActionClick = async (e, action, expenseId) => {
@@ -190,14 +197,13 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                     break;
                 }
                 case 'Pay':
-                    await handlePaidChangeAction(true, expenseId);
+                    handlePaidChangeAction(true, expenseId);
                     break;
                 case 'Unpay':
-                    await handlePaidChangeAction(false, expenseId);
+                    handlePaidChangeAction(false, expenseId);
                     break;
                 case 'Delete':
                     if (window.confirm("Are you sure you want to delete this expense?")) {
-                        qc.clear();
                         deleteExpenseMutation.mutate(expenseId);
                     }
                     break;
@@ -216,12 +222,43 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         }
     }
 
-    const handlePaidChangeAction = async (isPay, expenseId) => {
+    const handlePaidChangeAction = (isPay, expenseId) => {
         const expense = expenses.find((expense) => expense.id === expenseId);
         if (isPay) {
             setViewDateInputModal({isShowing: true, expense: expense});
         } else {
             setViewUnpayDatesModal({isShowing: true, expenseId});
+        }
+    }
+
+    const handleSortChange = (e, name) => {
+        e.preventDefault();
+        setSelectedSort(name);
+    }
+
+    const handlePageSizeChange = (e, value) => {
+        e.preventDefault();
+        if (value === 'All') {
+            setPageSize('All');
+            return;
+        }
+
+        const parsed = Number(value);
+        setPageSize(Number.isNaN(parsed) ? 10 : parsed);
+    }
+
+    const handleBatchAction = (e, action) => {
+        if (!selectedIds || selectedIds.length === 0) {
+            showWarning("Please select at least one expense");
+            return;
+        }
+
+        switch (action) {
+            case "UpdateCategory":
+                onRequestCategoryUpdate?.();
+                break;
+            default:
+                break;
         }
     }
 
@@ -233,9 +270,9 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
         updateExpenseMutation.mutate({ expenseId, expenseData });
     };
 
-    const handleDateInputSave = async (paymentDate, dueDates) => {
+    const handleDateInputSave = async (paymentDate, dueDates, creditCardId) => {
         const expense = viewDateInputModal.expense;
-        payDueDateMutation.mutate({ expenseId: expense.id, dueDates, paymentDate });
+        payDueDateMutation.mutate({ expenseId: expense.id, dueDates, paymentDate, creditCardId });
     }
 
     const handleSelectChange = (checked, id) => {
@@ -298,11 +335,11 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
     });
 
     const payDueDateMutation = useMutation({
-        mutationFn: ({ expenseId, dueDates, paymentDate }) => payDueDates(expenseId, dueDates, paymentDate),
+        mutationFn: ({ expenseId, dueDates, paymentDate, creditCardId }) => payDueDates(expenseId, dueDates, paymentDate, false, creditCardId),
         onSuccess: () => {
             showSuccess('Payment saved!');
             setViewDateInputModal({isShowing: false, expense: null});
-            qc.refetchQueries({ queryKey: ['allExpenses']});
+            qc.refetchQueries({ queryKey: ['tableExpenses']});
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
@@ -334,6 +371,48 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
 
     return (
         <div>
+            <div className="expenses-toolbar">
+                <div className="expenses-toolbar-group">
+                    <div className="expenses-control">
+                        <Dropdown
+                            title={"Sort"}
+                            options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")}
+                            handleOptionChange={handleSortChange}
+                        />
+                    </div>
+                    <div className="expenses-control">
+                        <Dropdown
+                            title={"Rows"}
+                            options={Object.entries({10: '10', 25: '25', 50: '50', 100: '100', All: 'All'})}
+                            handleOptionChange={handlePageSizeChange}
+                            changeTitleOnOptionChange={true}
+                        />
+                    </div>
+                    { selectActive &&
+                        <div className="expenses-control">
+                            <Dropdown
+                                title={"Batch Actions"}
+                                options={Object.entries(batchActions)}
+                                handleOptionChange={handleBatchAction}
+                            />
+                        </div>
+                    }
+                </div>
+                <div className="expenses-toolbar-toggles">
+                    <label className="expenses-toggle" htmlFor="selectToggle">
+                        <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
+                        <span>Select</span>
+                    </label>
+                    <label className="expenses-toggle" htmlFor="showInactiveToggle">
+                        <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                        <span>Show Inactive</span>
+                    </label>
+                    <label className="expenses-toggle" htmlFor="searchToggle">
+                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
+                        <span>Search</span>
+                    </label>
+                </div>
+            </div>
             <div className="expenses-table-wrap">
                 <table className="table expenses-table" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
                     <thead className="expenses-table-head">
@@ -350,10 +429,8 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
                             searchableHeaders={searchableHeaders}
                             selectActive={selectActive}
                             showInactiveExpenses={showInactiveExpenses}
-                            activeSearchFilter={activeSearchFilter}
+                            searchFilter={searchFilter}
                             handleSearchInput={handleSearchInput}
-                            handleSearchSubmit={handleSearchSubmit}
-                            handleSearchFocus={handleSearchFocus}
                         />
                     }
                     </thead>
@@ -467,7 +544,7 @@ export const ExpensesTableSection = ({selectedSort, setSelectedSort, enableSearc
 
 const useDeleteExpense = (navigate) => {
     const qc = useQueryClient();
-    const queryKey = ['allExpenses'];
+    const queryKey = ['tableExpenses'];
 
     return useMutation({
         mutationFn: (expenseId) => deleteExpense(expenseId),
@@ -477,11 +554,10 @@ const useDeleteExpense = (navigate) => {
         onMutate: async (expenseId) => {
             await qc.cancelQueries({ queryKey: queryKey });
 
-            const previous = qc.getQueryData(queryKey);
+            const previous = qc.getQueriesData({ queryKey: queryKey });
 
-            qc.setQueryData(queryKey, (old) => {
-                return old ? old.filter(expense => expense.id !== expenseId)
-                           : old;
+            qc.setQueriesData({ queryKey: queryKey }, (old) => {
+                return old ? old.filter(expense => expense.id !== expenseId) : old;
             });
 
             return { previous };
@@ -494,8 +570,10 @@ const useDeleteExpense = (navigate) => {
                 showError('Failed to delete expense.');
             }
 
-            if (context?.previous) {
-                qc.setQueryData(queryKey, context.previous);
+            if (context?.previous?.length) {
+                context.previous.forEach(([key, data]) => {
+                    qc.setQueryData(key, data);
+                });
             }
         },
         onSettled: () => {

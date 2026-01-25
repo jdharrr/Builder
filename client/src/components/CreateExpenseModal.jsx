@@ -2,7 +2,7 @@ import React, {useContext, useEffect, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 
-import {getAllExpenseCategories, getCreditCards, postExpense} from "../api.jsx";
+import {postExpense} from "../api.jsx";
 import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormContext.jsx";
 import {MONTHS, getYearRange} from "../constants/dateConstants.js";
 import {RECURRENCE_RATES} from "../constants/expenseConstants.js";
@@ -12,8 +12,8 @@ import {getStatus, validateDueDate} from "../util.jsx";
 import {Dropdown} from "./Dropdown.jsx";
 import {Modal} from "./Modal.jsx";
 import {showSuccess, showError} from "../utils/toast.js";
-import {ManageCategoriesModal} from "./ManageCategoriesModal.jsx";
-import {ManageCreditCardsModal} from "./ManageCreditCardsModal.jsx";
+import {CreditCardSelect} from "./CreditCardSelect.jsx";
+import {CategorySelect} from "./CategorySelect.jsx";
 
 export const CreateExpenseModal = ({includeStartDateInput}) => {
     const years = getYearRange();
@@ -24,11 +24,6 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
     const {showCreateExpenseForm, setShowCreateExpenseForm} = useContext(CreateExpenseFormContext);
     const { date } = showCreateExpenseForm;
 
-    const [category, setCategory] = useState('');
-    const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
-    const [showManageCreditCardsModal, setShowManageCreditCardsModal] = useState(false);
-
-    const [recurrenceRate, setRecurrenceRate] = useState('once');
 
     const [endOfMonthStartDate, setEndOfMonthStartDate] = useState({year: (new Date()).getFullYear(), month: MONTHS.at((new Date()).getMonth())});
 
@@ -66,7 +61,7 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (showManageCategoriesModal || showManageCreditCardsModal) {
+            if (document.querySelector('.manage-credit-cards-modal') || document.querySelector('.manage-categories-modal')) {
                 return;
             }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -81,34 +76,8 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setShowCreateExpenseForm, showManageCategoriesModal, showManageCreditCardsModal]);
+    }, [setShowCreateExpenseForm]);
     
-    const { data: categories = [] } = useQuery({
-        queryKey: ['expenseCategories'],
-        queryFn: async () => {
-            return await getAllExpenseCategories();
-        },
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-            return failureCount < 2;
-        },
-        throwOnError: (error) => { return getStatus(error) !== 401 }
-    });
-
-    const { data: creditCards = [] } = useQuery({
-        queryKey: ['creditCards'],
-        queryFn: async () => {
-            return await getCreditCards();
-        },
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-            return failureCount < 2;
-        },
-        throwOnError: (error) => { return getStatus(error) !== 401 }
-    });
-
     const handleSaveForm = async () => {
         const monthIndex = MONTHS.indexOf(endOfMonthStartDate.month);
         const resolvedStartDate = expenseProps.dueLastDayOfMonth
@@ -156,7 +125,7 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
         if (expenseProps.dueLastDayOfMonth) {
             payload.startDate = resolvedStartDate;
         }
-        console.log(payload);
+
         createExpenseMutation.mutate(payload);
     }
 
@@ -174,7 +143,10 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
         onSuccess: (isCreated) => {
             if (isCreated) {
                 showSuccess('Expense successfully created.');
-                qc.clear();
+                qc.invalidateQueries({ queryKey: ['tableExpenses'] });
+                qc.invalidateQueries({ queryKey: ['upcomingExpenses'] });
+                qc.invalidateQueries({ queryKey: ['expenseTrackerExpenses'] });
+                qc.invalidateQueries({ queryKey: ['lateExpenses'] });
                 setShowCreateExpenseForm((prevState) => ({
                     ...prevState,
                     isShowing: false,
@@ -196,7 +168,6 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
     });
 
     const handleCategoryChange = (categoryId) => {
-        setCategory(categoryId);
         setExpenseProps((prevState) => ({
             ...prevState,
             categoryId: categoryId,
@@ -204,7 +175,6 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
     }
 
     const handleRecurrenceRateChange = (rate) => {
-        setRecurrenceRate(rate);
         setExpenseProps((prevState) => ({
             ...prevState,
             recurrenceRate: rate,
@@ -286,7 +256,7 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                     </div>
                     <div className='mb-3'>
                         <label className={'form-label'}>Recurrence Rate</label>
-                        <select className={'form-select'} value={recurrenceRate} onChange={(e) => handleRecurrenceRateChange(e.target.value)}>
+                        <select className={'form-select'} value={expenseProps.recurrenceRate} onChange={(e) => handleRecurrenceRateChange(e.target.value)}>
                             {Object.entries(RECURRENCE_RATES).map(([rate, rateLabel]) => (
                                 <option value={rate} key={rateLabel}>{rateLabel}</option>
                             ))}
@@ -382,24 +352,11 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                             />
                         </div>
                     }
-                    <div className='mb-3'>
-                    <label className={'form-label'}>Category</label>
-                    <div className={"row d-flex justify-content-center align-items-center me-2"}>
-                        <div className={'col'}>
-                            <select className={'form-select'} value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
-                                <option value={""}>No Category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>{category.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className={'col-auto'}>
-                            <button className={'manageCategoriesButton'} type='button' onClick={() => setShowManageCategoriesModal(true)}>
-                                Manage
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <CategorySelect
+                    label="Category"
+                    includeNoneOption={true}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                />
                     <div className='mb-3'>
                     <label className={'form-label'}>Description</label>
                         <textarea className={'form-control'} rows={2}
@@ -439,7 +396,7 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                                 />
                             </div>
                             <div className='mt-2'>
-                                <label className={'form-label me-2'} htmlFor="creditCheckbox">Currently on credit?</label>
+                                <label className={'form-label me-2'} htmlFor="creditCheckbox">Paid with credit?</label>
                                 <input
                                     className={'form-check-input'}
                                     type={'checkbox'}
@@ -467,38 +424,22 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                             </div>
                             {expenseProps.oneTimeExpenseIsCredit && (
                                 <div className="mt-2">
-                                    <label className="form-label">Credit Card</label>
-                                    <div className="row d-flex justify-content-center align-items-center me-2">
-                                        <div className="col">
-                                            <select
-                                                className={`form-select${fieldErrors.oneTimeExpenseCreditCardId ? ' is-invalid' : ''}`}
-                                                value={expenseProps.oneTimeExpenseCreditCardId || ""}
-                                                onChange={(e) => {
-                                                    setExpenseProps((prevState) => ({
-                                                        ...prevState,
-                                                        oneTimeExpenseCreditCardId: e.target.value
-                                                    }));
-                                                    if (fieldErrors.oneTimeExpenseCreditCardId) {
-                                                        setFieldErrors((prev) => ({...prev, oneTimeExpenseCreditCardId: false}));
-                                                    }
-                                                }}
-                                            >
-                                                <option value={""}>Select a credit card</option>
-                                                {creditCards.map((card) => (
-                                                    <option key={card.id} value={card.id}>{card.company || 'Unnamed card'}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="col-auto">
-                                            <button
-                                                className={'manageCategoriesButton'}
-                                                type='button'
-                                                onClick={() => setShowManageCreditCardsModal(true)}
-                                            >
-                                                Manage
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <CreditCardSelect
+                                        key={`one-time-${expenseProps.oneTimeExpenseIsCredit}-${expenseProps.oneTimeExpenseCreditCardId ?? 'none'}`}
+                                        label="Credit Card"
+                                        required={true}
+                                        isInvalid={fieldErrors.oneTimeExpenseCreditCardId}
+                                        initialValue={expenseProps.oneTimeExpenseCreditCardId || ''}
+                                        onChange={(e) => {
+                                            setExpenseProps((prevState) => ({
+                                                ...prevState,
+                                                oneTimeExpenseCreditCardId: e.target.value
+                                            }));
+                                            if (fieldErrors.oneTimeExpenseCreditCardId) {
+                                                setFieldErrors((prev) => ({...prev, oneTimeExpenseCreditCardId: false}));
+                                            }
+                                        }}
+                                    />
                                 </div>
                             )}
                             {(expenseProps.oneTimeExpenseIsPaid || expenseProps.oneTimeExpenseIsCredit) &&
@@ -567,37 +508,21 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                                         }}
                                     />
                                     {expenseProps.payToNowIsCredit && (
-                                        <div className="row d-flex justify-content-center align-items-center me-2 mb-1">
-                                            <div className="col">
-                                                <select
-                                                    className={`form-select${fieldErrors.payToNowCreditCardId ? ' is-invalid' : ''}`}
-                                                    value={expenseProps.payToNowCreditCardId || ""}
-                                                    onChange={(e) => {
-                                                        setExpenseProps((prevState) => ({
-                                                            ...prevState,
-                                                            payToNowCreditCardId: e.target.value
-                                                        }));
-                                                        if (fieldErrors.payToNowCreditCardId) {
-                                                            setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
-                                                        }
-                                                    }}
-                                                >
-                                                    <option value={""}>Select a credit card</option>
-                                                    {creditCards.map((card) => (
-                                                        <option key={card.id} value={card.id}>{card.company || 'Unnamed card'}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="col-auto">
-                                                <button
-                                                    className={'manageCategoriesButton'}
-                                                    type='button'
-                                                    onClick={() => setShowManageCreditCardsModal(true)}
-                                                >
-                                                    Manage
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <CreditCardSelect
+                                            key={`pay-to-now-${expenseProps.payToNowIsCredit}-${expenseProps.payToNowCreditCardId ?? 'none'}`}
+                                            required={true}
+                                            isInvalid={fieldErrors.payToNowCreditCardId}
+                                            initialValue={expenseProps.payToNowCreditCardId || ''}
+                                            onChange={(e) => {
+                                                setExpenseProps((prevState) => ({
+                                                    ...prevState,
+                                                    payToNowCreditCardId: e.target.value
+                                                }));
+                                                if (fieldErrors.payToNowCreditCardId) {
+                                                    setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
+                                                }
+                                            }}
+                                        />
                                     )}
                                 </div>
                             )}
@@ -645,65 +570,27 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                                     </div>
                                 )}
                                 {expenseProps.isAutomaticPayment && expenseProps.automaticPaymentIsCredit && (
-                                    <div className="row d-flex justify-content-center align-items-center me-2 mb-1">
-                                        <div className="col">
-                                            <select
-                                                className={`form-select${fieldErrors.automaticPaymentCreditCardId ? ' is-invalid' : ''}`}
-                                                value={expenseProps.automaticPaymentCreditCardId || ""}
-                                                onChange={(e) => {
-                                                    setExpenseProps((prevState) => ({
-                                                        ...prevState,
-                                                        automaticPaymentCreditCardId: e.target.value
-                                                    }));
-                                                    if (fieldErrors.automaticPaymentCreditCardId) {
-                                                        setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
-                                                    }
-                                                }}
-                                            >
-                                                <option value={""}>Select a credit card</option>
-                                                {creditCards.map((card) => (
-                                                    <option key={card.id} value={card.id}>{card.company || 'Unnamed card'}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="col-auto">
-                                            <button
-                                                className={'manageCategoriesButton'}
-                                                type='button'
-                                                onClick={() => setShowManageCreditCardsModal(true)}
-                                            >
-                                                Manage
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <CreditCardSelect
+                                        key={`auto-pay-${expenseProps.automaticPaymentIsCredit}-${expenseProps.automaticPaymentCreditCardId ?? 'none'}`}
+                                        required={true}
+                                        isInvalid={fieldErrors.automaticPaymentCreditCardId}
+                                        initialValue={expenseProps.automaticPaymentCreditCardId || ''}
+                                        onChange={(e) => {
+                                            setExpenseProps((prevState) => ({
+                                                ...prevState,
+                                                automaticPaymentCreditCardId: e.target.value
+                                            }));
+                                            if (fieldErrors.automaticPaymentCreditCardId) {
+                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                            }
+                                        }}
+                                    />
                                 )}
                             </div>
                         </>
                     }
                 </form>
             </Modal>
-            {showManageCategoriesModal && (
-                <ManageCategoriesModal
-                    handleClose={() => setShowManageCategoriesModal(false)}
-                    onClose={() => {
-                        setShowCreateExpenseForm((prev) => ({
-                            ...prev,
-                            isShowing: true,
-                        }));
-                    }}
-                />
-            )}
-            {showManageCreditCardsModal && (
-                <ManageCreditCardsModal
-                    handleClose={() => setShowManageCreditCardsModal(false)}
-                    onClose={() => {
-                        setShowCreateExpenseForm((prev) => ({
-                            ...prev,
-                            isShowing: true,
-                        }));
-                    }}
-                />
-            )}
         </>
     );
 }

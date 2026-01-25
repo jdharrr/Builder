@@ -1,4 +1,6 @@
-﻿namespace DatabaseServices.Models;
+﻿using System.Runtime.Intrinsics.X86;
+
+namespace DatabaseServices.Models;
 
 public class ExpenseCategoryDto
 {
@@ -10,5 +12,7 @@ public class ExpenseCategoryDto
 
     public string UpdatedAt { get; set; } = string.Empty;
 
-    public double TotalSpent { get; set; } = 0.0;
+    public decimal CategoryTotalSpent { get; set; } = 0;
+
+    public bool Active { get; set; } = true;
 }

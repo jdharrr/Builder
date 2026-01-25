@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Modal = ({children, title, wrapperRef, handleSave, handleClose, className = ''}) => {
+export const Modal = ({children, title, wrapperRef, handleSave, handleClose, className = '', saveLabel = 'Save'}) => {
     const modalClassName = `modal show d-block ${className}`.trim();
 
     return (
@@ -23,7 +23,7 @@ export const Modal = ({children, title, wrapperRef, handleSave, handleClose, cla
                     </div>
                     <div className={'modal-footer'}>
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
-                        <button type="button" className="btn btn-success" onClick={handleSave}>Save</button>
+                        <button type="button" className="btn btn-success" onClick={handleSave}>{saveLabel}</button>
                     </div>
                 </div>
             </div>

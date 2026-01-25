@@ -1,9 +1,10 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useNavigate} from 'react-router-dom';
-import {getLateDatesForExpense, payAllOverdueDatesForExpense, payDueDates} from '../../../api.jsx';
+import {getLateDatesForExpense, payDueDates} from '../../../api.jsx';
 import {getStatus} from '../../../util.jsx';
 import {showSuccess, showError} from '../../../utils/toast.js';
+import {CreditCardSelect} from "../../../components/CreditCardSelect.jsx";
 
 export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     const navigate = useNavigate();
@@ -15,6 +16,7 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     const [paymentDate, setPaymentDate] = useState('');
     const [skippingDate, setSkippingDate] = useState(null);
     const [visibleLateDates, setVisibleLateDates] = useState([]);
+    const [selectedCreditCardId, setSelectedCreditCardId] = useState('');
 
     // Fetch late dates for the expense
     const {data: lateDates = [], isLoading} = useQuery({
@@ -39,7 +41,7 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     // Mutation for paying selected dates
     const paySelectedMutation = useMutation({
         mutationFn: async () => {
-            await payDueDates(expense.id, selectedDates, paymentDate);
+            await payDueDates(expense.id, selectedDates, paymentDate, false, selectedCreditCardId || null);
         },
         onSuccess: () => {
             showSuccess(`Successfully paid ${selectedDates.length} date(s)`);
@@ -58,25 +60,9 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
         },
     });
 
-    // Mutation for paying all late dates
-    const payAllMutation = useMutation({
-        mutationFn: () => payAllOverdueDatesForExpense(expense.id),
-        onSuccess: () => {
-            showSuccess('Successfully paid all late dates');
-            qc.invalidateQueries(['lateExpenses']);
-            qc.invalidateQueries(['lateDates']);
-            onPaymentSuccess?.();
-            handleClose();
-        },
-        onError: (error) => {
-            if (getStatus(error) === 401) {
-                showError('Session expired. Please log in again.');
-                navigate('/login');
-            } else {
-                showError('Failed to pay all dates');
-            }
-        },
-    });
+    const toggleSelectAll = (isChecked) => {
+        setSelectedDates(isChecked ? visibleLateDates : []);
+    };
 
     const skipDateMutation = useMutation({
         mutationFn: (dueDate) => payDueDates(expense.id, [dueDate], undefined, true),
@@ -107,6 +93,9 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     // Click-outside detection
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (document.querySelector('.manage-credit-cards-modal')) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 handleClose();
             }
@@ -176,44 +165,65 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
                                 {visibleLateDates.length === 0 ? (
                                     <p className="modal-empty">No late dates found for this expense.</p>
                                 ) : (
-                                    <div className="late-dates-list">
-                                        {visibleLateDates.map((date, idx) => (
-                                            <div key={idx} className="late-date-row">
-                                                <label className="late-date-main">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="form-check-input"
-                                                        checked={selectedDates.includes(date)}
-                                                        onChange={(e) => handleCheckboxChange(date, e.target.checked)}
-                                                    />
-                                                    <span className="late-date-value">{date}</span>
-                                                </label>
-                                                <button
-                                                    type="button"
-                                                    className="late-date-skip"
-                                                    disabled={skippingDate === date}
-                                                    onClick={() => handleSkipDate(date)}
-                                                >
-                                                    {skippingDate === date ? 'Skipping...' : 'Skip'}
-                                                </button>
-                                            </div>
-                                        ))}
+                                    <div className="payment-section">
+                                        <div className="late-date-row late-date-row--select-all late-date-row--select-all-gray">
+                                            <label className="late-date-main">
+                                                <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    checked={selectedDates.length === visibleLateDates.length}
+                                                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                                                />
+                                                <span className="late-date-value">Select all</span>
+                                            </label>
+                                        </div>
+                                        <div className="late-dates-list">
+                                            {visibleLateDates.map((date, idx) => (
+                                                <div key={idx} className="late-date-row">
+                                                    <label className="late-date-main">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="form-check-input"
+                                                            checked={selectedDates.includes(date)}
+                                                            onChange={(e) => handleCheckboxChange(date, e.target.checked)}
+                                                        />
+                                                        <span className="late-date-value">{date}</span>
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        className="late-date-skip"
+                                                        disabled={skippingDate === date}
+                                                        onClick={() => handleSkipDate(date)}
+                                                    >
+                                                        {skippingDate === date ? 'Skipping...' : 'Skip'}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </>
                         ) : (
-                            <div className="late-dates-payment">
-                                <label className="form-label">Payment Date</label>
-                                <input
-                                    type="date"
-                                    className="form-control"
-                                    value={paymentDate}
-                                    onChange={(e) => setPaymentDate(e.target.value)}
-                                />
-                                <div className="late-dates-note">
-                                    This date will be applied to all {selectedDates.length} selected late date(s).
+                            <>
+                                <div className="payment-section late-dates-payment">
+                                    <label className="form-label">Payment Date</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={paymentDate}
+                                        onChange={(e) => setPaymentDate(e.target.value)}
+                                    />
+                                    <div className="late-dates-note">
+                                        This date will be applied to all {selectedDates.length} selected late date(s).
+                                    </div>
                                 </div>
-                            </div>
+                                <CreditCardSelect
+                                    label="Credit card (optional)"
+                                    includeNoneOption={true}
+                                    initialValue={selectedCreditCardId || ''}
+                                    onChange={(e) => setSelectedCreditCardId(e.target.value)}
+                                />
+                            </>
                         )}
                     </div>
                     <div className='modal-footer'>
@@ -221,13 +231,6 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
                             <>
                                 <button className="btn btn-secondary" onClick={handleClose}>
                                     Close
-                                </button>
-                                <button
-                                    className="btn btn-warning"
-                                    onClick={() => payAllMutation.mutate()}
-                                    disabled={visibleLateDates.length === 0 || payAllMutation.isPending}
-                                >
-                                    {payAllMutation.isPending ? 'Paying...' : 'Pay All'}
                                 </button>
                                 <button
                                     className="btn btn-primary"

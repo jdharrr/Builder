@@ -1,5 +1,7 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
+using BuilderServices.ExpensePaymentService.Responses;
+using BuilderServices.ExpenseService.Enums;
 using DatabaseServices.Models;
 
 namespace BuilderServices.ExpensePaymentService;
@@ -10,17 +12,17 @@ public class ExpensePaymentService
 
     private readonly ExpenseRepository _expenseRepo;
 
-    private readonly CreditCardRepository _creditCardRepository;
+    private readonly CreditCardRepository _creditCardRepo;
 
     private readonly ScheduledPaymentRepository _scheduledPaymentRepo;
 
     private readonly UserContext _userContext;
     
-    public ExpensePaymentService(ExpensePaymentRepository repo, ExpenseRepository expenseRepo, CreditCardRepository creditCardRepository, ScheduledPaymentRepository scheduledPaymentRepo, UserContext userContext)
+    public ExpensePaymentService(ExpensePaymentRepository repo, ExpenseRepository expenseRepo, CreditCardRepository creditCardRepo, ScheduledPaymentRepository scheduledPaymentRepo, UserContext userContext)
     {
         _paymentRepo = repo;
         _expenseRepo = expenseRepo;
-        _creditCardRepository = creditCardRepository;
+        _creditCardRepo = creditCardRepo;
         _scheduledPaymentRepo = scheduledPaymentRepo;
         _userContext = userContext;
     }
@@ -30,7 +32,7 @@ public class ExpensePaymentService
         return await _paymentRepo.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false);
     }
 
-    public async Task<double> GetTotalSpentAsync()
+    public async Task<decimal> GetTotalSpentAsync()
     {
         return await _paymentRepo.GetTotalSpentForRangeAsync(_userContext.UserId).ConfigureAwait(false);
     }
@@ -51,7 +53,7 @@ public class ExpensePaymentService
                 await _paymentRepo.CreateExpensePaymentAsync(expenseId, today.ToString("yyyy-MM-dd"), currentDueDate.ToString("yyyy-MM-dd"), false, expense.Cost, creditCardId);
 
                 if (creditCardId != null)
-                    await _creditCardRepository.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, _userContext.UserId);
+                    await _creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, _userContext.UserId);
                 
                 if (endDate != null && currentDueDate >= endDate)
                 {
@@ -101,13 +103,25 @@ public class ExpensePaymentService
         if (lastInsertedId == 0)
             throw new GenericException("Failed to create payment for expense");
 
+        if (!isSkipped && creditCardId != null)
+            await _creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, _userContext.UserId).ConfigureAwait(false);
+
         var dueDatePaidObj = DateOnly.ParseExact(dueDatePaid, "yyyy-MM-dd");
         var nextDueDateObj = DateOnly.ParseExact(expense.NextDueDate!, "yyyy-MM-dd");
         if (dueDatePaidObj >= nextDueDateObj)
         {
             try
             {
-                await UpdateNextDueDateAsync(expense, true).ConfigureAwait(false);
+                var nextDueDate = await UpdateNextDueDateAsync(expense, true).ConfigureAwait(false);
+                
+                var scheduledPayment = await _scheduledPaymentRepo.GetScheduledPaymentAsync(expenseId, dueDatePaid).ConfigureAwait(false);
+                if (scheduledPayment != null)
+                {
+                    await _scheduledPaymentRepo.DeleteScheduledPaymentByIdAsync(scheduledPayment.Id).ConfigureAwait(false);
+
+                    if (nextDueDate != null)
+                        await _scheduledPaymentRepo.SchedulePaymentAsync(expenseId, nextDueDate, creditCardId).ConfigureAwait(false);
+                }  
             }
             catch
             {
@@ -116,7 +130,7 @@ public class ExpensePaymentService
         }
     }
 
-    private async Task UpdateNextDueDateAsync(ExpenseDto dto, bool isFuture)
+    private async Task<string?> UpdateNextDueDateAsync(ExpenseDto dto, bool isFuture)
     {
         if (dto.RecurrenceRate == "once")
         {
@@ -126,7 +140,7 @@ public class ExpensePaymentService
                 { "next_due_date", null }
             };
             await _expenseRepo.UpdateExpenseAsync(updateDict1, dto.Id, _userContext.UserId).ConfigureAwait(false);
-            return;
+            return null;
         }
 
         var paymentExistsForDueDate = true;
@@ -175,7 +189,7 @@ public class ExpensePaymentService
                     { "next_due_date", null }
                 };
                 await _expenseRepo.UpdateExpenseAsync(updateDict2, dto.Id, _userContext.UserId).ConfigureAwait(false);
-                return;
+                return null;
             }
 
             paymentExistsForDueDate = await _paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), dto.Id).ConfigureAwait(false) != null;
@@ -186,36 +200,83 @@ public class ExpensePaymentService
             { "next_due_date", currentDueDate.ToString("yyyy-MM-dd") }
         };
         await _expenseRepo.UpdateExpenseAsync(updateDict3, dto.Id, _userContext.UserId).ConfigureAwait(false);
+
+        return currentDueDate.ToString("yyyy-MM-dd");
     }
     
-    //credit cards
-    public async Task CreateCreditCardAsync(string creditCardCompany)
-    {
-        await _creditCardRepository.CreateCreditCardAsync(creditCardCompany, _userContext.UserId).ConfigureAwait(false);
-    }
-
-    public async Task<List<CreditCardDto>> GetCreditCardsInfoAsync()
-    {
-        return await _creditCardRepository.GetCreditCardsInfoAsync(_userContext.UserId).ConfigureAwait(false);
-    }
-
-    public async Task UpdateCreditCardCompanyAsync(string newCompanyName, int creditCardId)
-    {
-        await _creditCardRepository.UpdateCreditCardCompanyAsync(newCompanyName, creditCardId, _userContext.UserId)
-            .ConfigureAwait(false);
-    }
-
-    public async Task AddPaymentToCreditCardAsync(double cost, int creditCardId)
-    {
-        await _creditCardRepository.AddPaymentToCreditCardAsync(cost, creditCardId, _userContext.UserId).ConfigureAwait(false);
-    }
-
     public async Task PayScheduledDueDatesAsync()
     {
-        var scheduledPayments = await _scheduledPaymentRepo.GetScheduledPaymentsForTodayAsync(_userContext.UserId);
+        var scheduledPayments = await _scheduledPaymentRepo.GetScheduledPaymentsToPayAsync(_userContext.UserId);
         foreach (var scheduledPayment in scheduledPayments)
         {
+            var expense = await _expenseRepo.GetExpenseByIdAsync(scheduledPayment.ExpenseId, _userContext.UserId).ConfigureAwait(false)
+                ?? throw new GenericException("Failed to find expense");
             
+            var currentDueDate = DateOnly.ParseExact(scheduledPayment.ScheduledDueDate, "yyyy-MM-dd");
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            while (currentDueDate <= today)
+            {
+                await _paymentRepo.CreateExpensePaymentAsync(
+                    scheduledPayment.ExpenseId,
+                    DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+                    currentDueDate.ToString("yyyy-MM-dd"),
+                    false,
+                    expense.Cost,
+                    scheduledPayment.CreditCardId,
+                    scheduledPayment.Id
+                );
+
+                if (scheduledPayment.CreditCardId != null)
+                    await _creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)scheduledPayment.CreditCardId, _userContext.UserId).ConfigureAwait(false);
+
+                var nextDueDate = await UpdateNextDueDateAsync(expense, true).ConfigureAwait(false);
+                if (nextDueDate != null)
+                    await _scheduledPaymentRepo
+                        .SchedulePaymentAsync(scheduledPayment.ExpenseId, nextDueDate, scheduledPayment.CreditCardId)
+                        .ConfigureAwait(false);
+                else
+                    break;
+                
+                currentDueDate = DateOnly.ParseExact(nextDueDate, "yyyy-MM-dd");
+            }
         }
+    }
+    
+    public async Task<CategoryTotalSpentResponse> GetCategoryTotalSpentByRangeAsync(string rangeOption)
+    {
+        var response = new CategoryTotalSpentResponse();
+        
+        if (!Enum.TryParse(typeof(CategoryChartRangeOption), rangeOption, out var option))
+            throw new GenericException("Invalid range request for category chart");
+
+        var startOfRange = DateOnly.FromDateTime(DateTime.Today);
+        var endOfRange = DateOnly.FromDateTime(DateTime.Today);
+        switch (option)
+        {
+            case CategoryChartRangeOption.ThisWeek:
+                startOfRange = startOfRange.AddDays(-(int)startOfRange.DayOfWeek);
+                endOfRange = endOfRange.AddDays(7 - (int)endOfRange.DayOfWeek);
+                break;
+            case CategoryChartRangeOption.ThisMonth:
+                startOfRange = startOfRange.AddDays(-startOfRange.Day + 1);
+                endOfRange = endOfRange.AddDays(DateTime.DaysInMonth(startOfRange.Year, startOfRange.Month) - startOfRange.Day);
+                break;
+            case CategoryChartRangeOption.ThisYear:
+                startOfRange = new DateOnly(startOfRange.Year, 1, 1);
+                endOfRange = new DateOnly(startOfRange.Year, 12, 31);
+                break;
+            case CategoryChartRangeOption.LastSixMonths:
+                startOfRange = startOfRange.AddMonths(-6);
+                break;
+            default:
+                response.Categories = await _paymentRepo.GetCategoryTotalSpentByRangeAsync(_userContext.UserId).ConfigureAwait(false);
+                response.CombinedTotalSpend = await _paymentRepo.GetTotalSpentForRangeAsync(_userContext.UserId).ConfigureAwait(false);
+                return response;
+        }
+
+        response.Categories = await _paymentRepo.GetCategoryTotalSpentByRangeAsync(_userContext.UserId, startOfRange.ToString("yyyy-MM-dd"), endOfRange.ToString("yyyy-MM-dd")).ConfigureAwait(false);
+        response.CombinedTotalSpend = await _paymentRepo.GetTotalSpentForRangeAsync(_userContext.UserId, startOfRange.ToString("yyyy-MM-dd"), endOfRange.ToString("yyyy-MM-dd")).ConfigureAwait(false);
+
+        return response;
     }
 }

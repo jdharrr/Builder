@@ -23,13 +23,13 @@ public class AuthenticationController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("validateAccessToken")]
+    [HttpGet("validate/accessToken")]
     public IActionResult ValidateAccessToken()
     {
         return Ok(true);
     }
 
-    [HttpPost("createUser")]
+    [HttpPost("creat/user")]
     public async Task<IActionResult> CreateUser([FromBody] NewUserRequest request)
     {
         if (!Regex.IsMatch(request.Email, _emailPattern, RegexOptions.IgnoreCase))
@@ -52,7 +52,7 @@ public class AuthenticationController : ControllerBase
     }
 
     [Authorize]
-    [HttpDelete("deleteUser")]
+    [HttpDelete("delete/user")]
     public async void DeleteUser()
     {
 
@@ -80,7 +80,7 @@ public class AuthenticationController : ControllerBase
     }
 
     //[Authorize]
-    //[HttpPost("changePassword")]
+    //[HttpPost("change/password")]
     //public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
     //{
     //    try
@@ -97,7 +97,7 @@ public class AuthenticationController : ControllerBase
     //    }
     //}
 
-    //[HttpPost("forgotPassword")]
+    //[HttpPost("forgot/password")]
     //public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest request)
     //{
     //    if (!Regex.IsMatch(request.Email, _emailPattern, RegexOptions.IgnoreCase))
@@ -117,7 +117,7 @@ public class AuthenticationController : ControllerBase
     //    }
     //}
 
-    //[HttpPost("resetPassword")]
+    //[HttpPost("reset/password")]
     //public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request)
     //{
     //    try

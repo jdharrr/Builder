@@ -9,4 +9,6 @@ public class PayDueDatesRequest
     public string? DatePaid { get; set; }
 
     public bool IsSkipped { get; set; } = false;
+    
+    public int? CreditCardId { get; set; }
 }

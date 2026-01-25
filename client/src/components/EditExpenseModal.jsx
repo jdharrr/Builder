@@ -1,21 +1,21 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useQuery} from "@tanstack/react-query";
 
 import {Modal} from './Modal.jsx';
-import {getAllExpenseCategories} from "../api.jsx";
-import {getStatus, validateDueDate} from "../util.jsx";
-import {ManageCategoriesModal} from "./ManageCategoriesModal.jsx";
+import {validateDueDate} from "../util.jsx";
+import {CreditCardSelect} from "./CreditCardSelect.jsx";
+import {CategorySelect} from "./CategorySelect.jsx";
 import '../css/createExpenseForm.css';
 
 export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
-    const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
-
     const [expenseProps, setExpenseProps] = useState({
         name: expense.name || null,
         cost: expense.cost || null,
         categoryId: expense.categoryId || null,
         description: expense.description || '',
         endDate: expense.endDate || null,
+        automaticPayments: expense.automaticPayments || false,
+        automaticPaymentsUseCredit: Boolean(expense.automaticPaymentCreditCardId),
+        automaticPaymentsCreditCardId: expense.automaticPaymentCreditCardId || null,
     });
     const [fieldErrors, setFieldErrors] = useState({
         name: false,
@@ -26,7 +26,7 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (showManageCategoriesModal) {
+            if (document.querySelector('.manage-categories-modal') || document.querySelector('.manage-credit-cards-modal')) {
                 return;
             }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -36,20 +36,7 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [handleClose, showManageCategoriesModal]);
-
-    const { data: categories = [] } = useQuery({
-        queryKey: ['expenseCategories'],
-        queryFn: async () => {
-            return await getAllExpenseCategories();
-        },
-        staleTime: 60_000,
-        retry: (failureCount, error) => {
-            if (getStatus(error) === 401) return false;
-            return failureCount < 2;
-        },
-        throwOnError: (error) => { return getStatus(error) !== 401 }
-    });
+    }, [handleClose]);
 
     const handleSaveForm = () => {
         const costValue = Number(expenseProps.cost);
@@ -70,10 +57,11 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
             name: !expenseProps.name?.trim(),
             cost: Number.isNaN(costValue) || costValue <= 0,
             endDate: !endDateValid,
+            creditCardId: expenseProps.automaticPaymentsUseCredit && expenseProps.automaticPaymentsCreditCardId === null,
         };
 
         setFieldErrors(nextErrors);
-        if (nextErrors.name || nextErrors.cost || nextErrors.endDate) {
+        if (nextErrors.name || nextErrors.cost || nextErrors.endDate || nextErrors.creditCardId) {
             return;
         }
 
@@ -83,6 +71,10 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
             categoryId: expenseProps.categoryId,
             description: expenseProps.description,
             endDate: expenseProps.endDate,
+            automaticPayments: expenseProps.automaticPayments,
+            automaticPaymentsCreditCardId: expenseProps.automaticPaymentsUseCredit
+                ? expenseProps.automaticPaymentsCreditCardId
+                : null,
         });
     };
 
@@ -173,32 +165,68 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                     </div>
                 }
                 <div className='mb-3'>
-                    <label className={'form-label'}>Category</label>
-                    <div className={"row d-flex justify-content-center align-items-center me-2"}>
-                        <div className={'col'}>
-                            <select
-                                className={'form-select'}
-                                value={expenseProps.categoryId || ""}
+                    <label className={'form-label me-2'} htmlFor="automaticPayments">
+                        Automatic Payments?
+                    </label>
+                    <input
+                        className={'form-check-input'}
+                        type={'checkbox'}
+                        id="automaticPayments"
+                        checked={expenseProps.automaticPayments}
+                        onChange={() => {
+                            setExpenseProps((prevState) => ({
+                                ...prevState,
+                                automaticPayments: !prevState.automaticPayments,
+                                automaticPaymentsUseCredit: false,
+                                automaticPaymentsCreditCardId: null,
+                            }));
+                        }}
+                    />
+                </div>
+                {expenseProps.automaticPayments && (
+                    <div className='mb-3'>
+                        <label className={'form-label me-2'} htmlFor="automaticPaymentsCredit">
+                            Automatically pay with credit?
+                        </label>
+                        <input
+                            className={'form-check-input'}
+                            type={'checkbox'}
+                            id="automaticPaymentsCredit"
+                            checked={expenseProps.automaticPaymentsUseCredit}
+                            onChange={() => {
+                                setExpenseProps((prevState) => ({
+                                    ...prevState,
+                                    automaticPaymentsUseCredit: !prevState.automaticPaymentsUseCredit,
+                                    automaticPaymentsCreditCardId: prevState.automaticPaymentsUseCredit ? null : prevState.automaticPaymentsCreditCardId,
+                                }));
+                            }}
+                        />
+                        {expenseProps.automaticPaymentsUseCredit && (
+                            <CreditCardSelect
+                                required={true}
+                                isInvalid={fieldErrors.creditCardId}
+                                initialValue={expenseProps.automaticPaymentsCreditCardId || ''}
                                 onChange={(e) => {
                                     setExpenseProps((prevState) => ({
                                         ...prevState,
-                                        categoryId: e.target.value
+                                        automaticPaymentsCreditCardId: e.target.value || null
                                     }));
                                 }}
-                            >
-                                <option value={""}>No Category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>{category.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className={'col-auto'}>
-                            <button className={'manageCategoriesButton'} type='button' onClick={() => setShowManageCategoriesModal(true)}>
-                                Manage
-                            </button>
-                        </div>
+                            />
+                        )}
                     </div>
-                </div>
+                )}
+                <CategorySelect
+                    label="Category"
+                    includeNoneOption={true}
+                    initialValue={expenseProps.categoryId || ''}
+                    onChange={(e) => {
+                        setExpenseProps((prevState) => ({
+                            ...prevState,
+                            categoryId: e.target.value || null
+                        }));
+                    }}
+                />
                 <div className='mb-3'>
                     <label className={'form-label'}>Description</label>
                     <textarea
@@ -215,11 +243,6 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                 </div>
                 </form>
             </Modal>
-            {showManageCategoriesModal && (
-                <ManageCategoriesModal
-                    handleClose={() => setShowManageCategoriesModal(false)}
-                />
-            )}
         </>
     );
 };

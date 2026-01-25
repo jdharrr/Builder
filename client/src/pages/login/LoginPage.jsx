@@ -3,7 +3,7 @@ import Cookies from "js-cookie";
 import {useNavigate} from "react-router-dom";
 import {useMutation} from "@tanstack/react-query";
 
-import {login} from "../../api.jsx";
+import {login, payScheduledPayments} from "../../api.jsx";
 import {getStatus} from "../../util.jsx";
 import {showSuccess, showError} from "../../utils/toast.js";
 
@@ -21,9 +21,14 @@ export const LoginPage = ({setAuthenticated}) =>  {
 
     const loginMutation = useMutation({
         mutationFn: ({ email, password }) => login(email, password),
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             Cookies.set('access_token', data.token);
             setAuthenticated(true);
+            try {
+                await payScheduledPayments();
+            } catch (error) {
+                showError('Automatic payments could not be processed.');
+            }
             showSuccess('Welcome back!');
             navigate('/dashboard');
         },

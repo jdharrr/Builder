@@ -52,7 +52,7 @@ public class ExpenseService
 
         var currentDueDate = DateOnly.ParseExact(expenseDto.StartDate, "yyyy-MM-dd");
         var today = DateOnly.FromDateTime(DateTime.Today);
-        while (currentDueDate < today)
+        while (expenseDto.RecurrenceRate != "once" && currentDueDate < today)
         {
             currentDueDate = expenseDto.RecurrenceRate switch
             {
@@ -63,8 +63,6 @@ public class ExpenseService
                 "monthly" => currentDueDate.AddMonths(1),
 
                 "yearly" => currentDueDate.AddYears(1),
-
-                _ => currentDueDate,
             };
         }
 
@@ -189,31 +187,45 @@ public class ExpenseService
         };
     }
 
-    public async Task UpdateExpenseAsync(int expenseId, string? name = null, double? cost = null,
-        string? startDate = null, string? endDate = null, int? categoryId = null, string? description = null, int? active = null)
+    public async Task UpdateExpenseAsync(int expenseId, string? name = null, decimal? cost = null,
+        string? endDate = null, int? categoryId = null, string? description = null, 
+        int? active = null, int? automaticPayments = null, int? automaticPaymentsCreditCardId = null)
     {
-        if (active != null && active != 1 && active != 0)
-            throw new GenericException("Invalid value for active field");
-        
+        var expense = await _expenseRepo.GetExpenseByIdAsync(expenseId, _userContext.UserId).ConfigureAwait(false)
+            ?? throw new GenericException("Failed to find expense");
+
+        if (automaticPayments == 1 && !expense.AutomaticPayments && expense.NextDueDate != null)
+            await _scheduledPaymentRepo.SchedulePaymentAsync(expenseId, expense.NextDueDate, automaticPaymentsCreditCardId).ConfigureAwait(false);
+
+        if (automaticPayments == 1 && expense.AutomaticPayments &&
+            expense.AutomaticPaymentCreditCardId != automaticPaymentsCreditCardId &&
+            expense.NextDueDate != null)
+        {
+            var scheduledPayment = await _scheduledPaymentRepo.GetScheduledPaymentAsync(expenseId, expense.NextDueDate).ConfigureAwait(false);
+            if (scheduledPayment != null)
+                await _scheduledPaymentRepo.UpdateCreditCardIdAsync(scheduledPayment.Id, automaticPaymentsCreditCardId);
+        }
+
+        if (automaticPayments == 0 && expense.AutomaticPayments && expense.NextDueDate != null)
+            await _scheduledPaymentRepo.DeleteScheduledPaymentByDueDateAsync(expenseId, expense.NextDueDate).ConfigureAwait(false);
+
         var values = new
         {
             name,
             cost,
-            start_date = startDate,
             end_date = endDate,
             category_id = categoryId,
             description,
-            active
+            active = active ?? (expense.Active ? 1 : 0),
+            automatic_payments = automaticPayments,
+            automatic_payment_credit_card_id = automaticPaymentsCreditCardId
         };
 
         var updateDict = new Dictionary<string, object?>();
         foreach (var prop in values.GetType().GetProperties())
         {
             var value = prop.GetValue(values);
-            if (value != null)
-            {
-                updateDict[prop.Name] = value;
-            }
+            updateDict[prop.Name] = value;
         }
 
         await _expenseRepo.UpdateExpenseAsync(updateDict, expenseId, _userContext.UserId);

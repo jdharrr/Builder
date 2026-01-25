@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useMemo} from 'react';
 
 import { Selector } from "./Selector.jsx"
 import {CreateExpenseFormContext} from "../../../providers/expenses/CreateExpenseFormContext.jsx";
@@ -11,11 +11,7 @@ import '../css/calendar.css';
 
 export const Calendar = ({selectedYear, selectedMonth}) => {
     const { setShowCreateExpenseForm } = useContext(CreateExpenseFormContext);
-    const [showViewExpensesModal, setShowViewExpensesModal] = useState({
-        isShowing: false,
-        expenses: [],
-        date: null
-    });
+    const [showViewExpensesModal, setShowViewExpensesModal] = useState(false);
 
     const actionOptions = ['View Expenses', 'Create Expense'];
     const [showActionSelector, setShowActionSelector] = useState(false);
@@ -35,15 +31,14 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
-    const [emptyDaysInMonth, setEmptyDaysInMonth] = useState([]);
-    useEffect(() => {
+    const emptyDaysInMonth = useMemo(() => {
         const emptyDays = [];
         const firstDayOfFirstWeek = new Date(selectedYear, selectedMonth, 1).getDay();
         for (let i = 0; i < firstDayOfFirstWeek; i++) {
             emptyDays.push('');
         }
 
-        setEmptyDaysInMonth(emptyDays);
+        return emptyDays;
     }, [selectedMonth, selectedYear]);
 
     const handleDayClick = (e) => {
@@ -59,12 +54,7 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
 
         const option = e.target.value;
         if (option === 'View Expenses') {
-            setShowViewExpensesModal((prevState) => ({
-                ...prevState,
-                expenses: expenses[selectedDate],
-                isShowing: true,
-                date: selectedDate
-            }));
+            setShowViewExpensesModal(true);
         } else if (option === 'Create Expense') {
             setShowCreateExpenseForm((prevState) => ({
                 ...prevState,
@@ -155,11 +145,11 @@ export const Calendar = ({selectedYear, selectedMonth}) => {
                     })}
                 </div>
             </div>
-            {showViewExpensesModal.isShowing &&
+            {showViewExpensesModal &&
                 <ViewExpensesModal
-                    showViewExpensesModal={showViewExpensesModal}
-                    setShowViewExpensesModal={setShowViewExpensesModal}
-                    setShowCreateExpenseForm={setShowCreateExpenseForm}
+                    date={selectedDate}
+                    expenses={selectedDate ? (expenses[selectedDate] ?? []) : []}
+                    handleClose={() => setShowViewExpensesModal(false)}
                 />
             }
         </>

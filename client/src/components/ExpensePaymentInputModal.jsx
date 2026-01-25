@@ -1,16 +1,13 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useNavigate} from "react-router-dom";
+import {useQuery} from "@tanstack/react-query";
 
-import {getLateDatesForExpense, getPaymentsForExpense, payAllOverdueDatesForExpense} from "../api.jsx";
+import {getLateDatesForExpense, getPaymentsForExpense} from "../api.jsx";
 import {getStatus} from "../util.jsx";
-import {showError, showSuccess} from "../utils/toast.js";
+import {showError} from "../utils/toast.js";
 import {validateDueDate} from "../util.jsx";
+import {CreditCardSelect} from "./CreditCardSelect.jsx";
 
 export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preSelectedDueDate = null}) => {
-    const navigate = useNavigate();
-    const qc = useQueryClient()
-
     const [selectedDatePaid, setSelectedDatePaid] = useState(new Date().toISOString().substring(0,10));
     const [selectedLateDates, setSelectedLateDates] = useState([]);
     const [selectedFutureDates, setSelectedFutureDates] = useState(
@@ -19,11 +16,18 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     const [futureDateInput, setFutureDateInput] = useState(preSelectedDueDate || new Date().toISOString().substring(0,10));
     const [invalidFutureDate, setInvalidFutureDate] = useState(false);
     const [paymentExists, setPaymentExists] = useState(false);
+    const todayDateString = new Date().toISOString().substring(0, 10);
+    const hasStarted = expense?.startDate && expense.startDate.substring(0, 10) <= todayDateString;
+    const [selectedCreditCardId, setSelectedCreditCardId] = useState('');
 
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (event.target.closest('.Toastify')) {
+                return;
+            }
+
+            if (document.querySelector('.manage-credit-cards-modal')) {
                 return;
             }
 
@@ -88,7 +92,7 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
             return;
         }
 
-        handleSave(selectedDatePaid, dueDates);
+        handleSave(selectedDatePaid, dueDates, selectedCreditCardId || null);
     }
 
     const handleFutureDateAdd = () => {
@@ -141,30 +145,7 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
         }
     }
 
-    const handlePayAllOverdue = async () => {
-        payAllOverdueMutation.mutate(expense.id);
-    };
-
     const dueDatesCount = selectedLateDates.length + selectedFutureDates.length;
-
-    const payAllOverdueMutation = useMutation({
-        mutationFn: (expenseId) => payAllOverdueDatesForExpense(expenseId),
-        onSuccess: (result) => {
-            showSuccess(`Successfully paid ${result.count} overdue date(s)!`);
-            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
-            // TODO: not refreshing next due date on table
-            qc.refetchQueries({ queryKey: ['AllExpenses']});
-            handleClose();
-        },
-        onError: (err) => {
-            if (getStatus(err) === 401) {
-                showError('Session expired. Please log in again.');
-                navigate('/login');
-            } else {
-                showError('Failed to pay all overdue dates');
-            }
-        }
-    });
 
     return (
         <div className="modal show d-block create-expense-modal payment-input-modal">
@@ -177,8 +158,17 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                                 {expense?.name ?? 'Expense'} Payment
                             </h5>
                             <span className="payment-modal-meta">
-                                Starts {expense?.startDate?.substring(0, 10)}
+                                {hasStarted ? 'Started' : 'Starts'} {expense?.startDate?.substring(0, 10)}
                             </span>
+                            {expense?.automaticPayments ? (
+                                <span className="payment-modal-meta">
+                                    Automatic payment scheduled for {expense?.nextDueDate?.substring(0, 10) || 'the next due date'}.
+                                </span>
+                            ) : (
+                                <span className="payment-modal-meta">
+                                    Next due date on {expense?.nextDueDate?.substring(0, 10) || 'TBD'}.
+                                </span>
+                            )}
                         </div>
                         <button
                             type="button"
@@ -270,14 +260,15 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                                 {expense.dueEndOfMonth ? 'End of month schedule' : `Recurs ${expense.recurrenceRate}`}
                             </span>
                         </div>
+        <CreditCardSelect
+            label="Credit card (optional)"
+            includeNoneOption={true}
+            initialValue={selectedCreditCardId || ''}
+            onChange={(e) => setSelectedCreditCardId(e.target.value)}
+        />
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
-                        {expense.recurrenceRate !== 'once' && lateDates.length > 0 && !preSelectedDueDate && (
-                            <button type="button" className="btn btn-warning" onClick={handlePayAllOverdue}>
-                                Pay All {lateDates.length} Overdue
-                            </button>
-                        )}
                         <button
                             type="button"
                             className="btn btn-success"

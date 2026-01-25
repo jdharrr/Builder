@@ -4,7 +4,7 @@ public class CreateExpenseRequest
 {
     public string Name { get; set; } = string.Empty;
 
-    public double Cost { get; set; } = 0.0;
+    public decimal Cost { get; set; } = 0;
 
     public string? Description { get; set; } = string.Empty;
 

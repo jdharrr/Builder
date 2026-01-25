@@ -17,7 +17,7 @@ public class ExpensePaymentRepository: BuilderRepository
         _dbService = dbService;
     }
 
-    public async Task<long> CreateExpensePaymentAsync(int expenseId, string paymentDate, string dueDatePaid, bool isSkipped, double cost, int? creditCardId = null)
+    public async Task<long> CreateExpensePaymentAsync(int expenseId, string paymentDate, string dueDatePaid, bool isSkipped, decimal cost, int? creditCardId = null, int? scheduledPaymentId = null)
     {
         var sql = @"INSERT INTO expense_payments (
                     expense_id,
@@ -25,14 +25,16 @@ public class ExpensePaymentRepository: BuilderRepository
                     payment_date,
                     due_date_paid,
                     skipped,
-                    credit_card_id
+                    credit_card_id,
+                    scheduled_payment_id
                 ) VALUES(
                     @expenseId,
                     @cost,
                     @paymentDate,
                     @dueDatePaid,
                     @isSkipped,
-                    @creditCardId
+                    @creditCardId,
+                    @scheduledPaymentId
                 )";
         var parameters = new Dictionary<string, object?>()
         {
@@ -41,7 +43,8 @@ public class ExpensePaymentRepository: BuilderRepository
             { "@paymentDate", paymentDate },
             { "@dueDatePaid", dueDatePaid },
             { "@isSkipped", isSkipped ? 1 : 0 },
-            { "@creditCardId", creditCardId }
+            { "@creditCardId", creditCardId },
+            { "@scheduledPaymentId", scheduledPaymentId }
         };
 
         var result = new ExecuteResponse();
@@ -87,7 +90,7 @@ public class ExpensePaymentRepository: BuilderRepository
         {
             Id = row.Field<int>("id"),
             ExpenseId = row.Field<int>("expense_id"),
-            Cost = (double)row.Field<decimal>("cost"),
+            Cost = row.Field<decimal>("cost"),
             PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd") ?? string.Empty,
             DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd") ?? string.Empty
         });
@@ -112,7 +115,7 @@ public class ExpensePaymentRepository: BuilderRepository
         {
             Id = row.Field<int>("id"),
             ExpenseId = Convert.ToInt32(row["expense_id"]),
-            Cost = Convert.ToDouble(row["cost"]),
+            Cost = row.Field<decimal>("cost"),
             PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
             DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd")
         }) ?? [];
@@ -134,16 +137,16 @@ public class ExpensePaymentRepository: BuilderRepository
         {
             Id = row.Field<int>("id"),
             ExpenseId = Convert.ToInt32(row["expense_id"]),
-            Cost = Convert.ToDouble(row["cost"]),
+            Cost = row.Field<decimal>("cost"),
             PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
             DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd"),
             Skipped = row.Field<bool>("skipped")
         }) ?? [];
     }
 
-    public async Task<double> GetTotalSpentForRangeAsync(int userId, DateOnly? startDate = null, DateOnly? endDate = null)
+    public async Task<decimal> GetTotalSpentForRangeAsync(int userId, string? startDate = null, string? endDate = null)
     {
-        var sql = @"SELECT COALESCE(SUM(cost), 0.0) AS total_spent 
+        var sql = @"SELECT COALESCE(SUM(ep.cost), 0.0) AS total_spent 
                     FROM expense_payments ep
                     INNER JOIN expenses e
                         ON e.user_id = @userId
@@ -158,12 +161,55 @@ public class ExpensePaymentRepository: BuilderRepository
         if (startDate != null && endDate != null)
         {
             sql += " AND payment_date >= @startDate AND payment_date <= @endDate";
-            parameters.Add("@startDate", startDate?.ToString("yyyy-MM-dd"));
-            parameters.Add("@endDate", endDate?.ToString("yyyy-MM-dd"));
+            parameters.Add("@startDate", startDate);
+            parameters.Add("@endDate", endDate);
         }
 
         var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
 
-        return dataTable?.MapSingle(row => (double)row.Field<decimal>("total_spent")) ?? 0.0;
+        return dataTable?.MapSingle(row => row.Field<decimal>("total_spent")) ?? 0;
+    }
+    
+    public async Task<List<ExpenseCategoryDto>> GetCategoryTotalSpentByRangeAsync(int userId, string? startOfRange = null, string? endOfRange = null)
+    {
+        var rangeSql = startOfRange != null && endOfRange != null
+            ? @"AND DATE(ep.payment_date) >= @startOfRange
+                AND DATE(ep.payment_date) <= @endOfRange
+               "
+            : "";
+        var sql = $@"SELECT 
+                        COALESCE(ec.name, 'No Category') AS name, 
+                        COALESCE(ec.id, 0) AS id, 
+                        COALESCE(SUM(ep.cost), 0.0) AS category_total_spent
+                     FROM expense_payments ep
+                     INNER JOIN expenses e
+                        ON ep.expense_id = e.id
+                        AND e.user_id = @userId
+                     LEFT JOIN expense_categories ec
+                        ON e.category_id = ec.id
+                        AND ec.active = 1
+                     WHERE ep.skipped = 0
+                        {rangeSql}
+                     GROUP BY ec.id, ec.name";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@userId", userId }
+            
+        };
+
+        if (startOfRange != null & endOfRange != null)
+        {
+            parameters["@startOfRange"] = startOfRange;
+            parameters["@endOfRange"] = endOfRange;
+        }
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapList(row => new ExpenseCategoryDto
+        {
+            Id = Convert.ToInt32(row["id"]),
+            Name = row.Field<string>("name") ?? string.Empty,
+            CategoryTotalSpent = row.Field<decimal>("category_total_spent")
+        }) ?? [];
     }
 }

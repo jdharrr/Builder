@@ -2,13 +2,9 @@ namespace BuilderServices.ExpenseService.Requests;
 
 public class UpdateExpenseRequest
 {
-    public required int ExpenseId { get; set; }
-    
     public string? Name { get; set; }
     
-    public double? Cost { get; set; }
-    
-    public string? StartDate { get; set; }
+    public decimal? Cost { get; set; }
     
     public string? EndDate { get; set; }
     
@@ -17,4 +13,8 @@ public class UpdateExpenseRequest
     public string? Description { get; set; }
     
     public bool? Active { get; set; }
+
+    public bool? AutomaticPayments { get; set; } = false;
+    
+    public int? AutomaticPaymentsCreditCardId { get; set; }
 }

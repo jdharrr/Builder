@@ -6,7 +6,7 @@ public class ScheduledPaymentDto
     
     public int ExpenseId { get; set; }
     
-    public int CreditCardId { get; set; }
+    public int? CreditCardId { get; set; }
     
-    public string ScheduledDueDate { get; set; }
+    public required string ScheduledDueDate { get; set; }
 }

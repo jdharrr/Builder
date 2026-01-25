@@ -29,40 +29,9 @@ public class ExpenseCategoryService
         }
     }
 
-    public async Task<List<ExpenseCategoryDto>> GetExpenseCategoriesAsync()
+    public async Task<List<ExpenseCategoryDto>> GetExpenseCategoriesAsync(bool active)
     {
-        return await _categoryRepo.GetExpenseCategoriesAsync(_userContext.UserId).ConfigureAwait(false);
-    }
-
-    public async Task<List<ExpenseCategoryDto>> GetExpenseCategoriesWithTotalSpentAsync(string rangeOption)
-    {
-        if (!Enum.TryParse(typeof(CategoryChartRangeOption), rangeOption, out var option))
-            throw new GenericException("Invalid range request for category chart");
-
-        DateOnly startOfRange = DateOnly.FromDateTime(DateTime.Today);
-        DateOnly endOfRange = DateOnly.FromDateTime(DateTime.Today);
-        switch (option)
-        {
-            case CategoryChartRangeOption.ThisWeek:
-                startOfRange.AddDays(-(int)startOfRange.DayOfWeek);
-                endOfRange.AddDays(7 - (int)endOfRange.DayOfWeek);
-                break;
-            case CategoryChartRangeOption.ThisMonth:
-                startOfRange.AddDays(-(DateTime.DaysInMonth(startOfRange.Year, startOfRange.Month) - startOfRange.Day));
-                endOfRange.AddDays(DateTime.DaysInMonth(startOfRange.Year, startOfRange.Month) - startOfRange.Day);
-                break;
-            case CategoryChartRangeOption.ThisYear:
-                startOfRange = new DateOnly(startOfRange.Year, 1, 1);
-                endOfRange = new DateOnly(startOfRange.Year, 12, 31);
-                break;
-            case CategoryChartRangeOption.LastSixMonths:
-                startOfRange = startOfRange.AddMonths(-6);
-                break;
-            default:
-                return await _categoryRepo.GetExpenseCategoriesWithTotalSpentAsync(_userContext.UserId).ConfigureAwait(false);
-        }
-
-        return await _categoryRepo.GetExpenseCategoriesWithTotalSpentAsync(_userContext.UserId, startOfRange, endOfRange).ConfigureAwait(false);
+        return await _categoryRepo.GetExpenseCategoriesAsync(_userContext.UserId, active).ConfigureAwait(false);
     }
 
     public static Dictionary<string, string> GetCategoryChartRangeOptions()
@@ -90,5 +59,10 @@ public class ExpenseCategoryService
     public async Task DeleteExpenseCategoryAsync(int categoryId)
     {
         await _categoryRepo.DeleteExpenseCategoryAsync(categoryId, _userContext.UserId).ConfigureAwait(false);
+    }
+
+    public async Task SetExpenseCategoryActiveStatusAsync(int categoryId, bool active)
+    {
+        await _categoryRepo.SetExpenseCategoryActiveStatusAsync(categoryId, active, _userContext.UserId).ConfigureAwait(false);
     }
 }

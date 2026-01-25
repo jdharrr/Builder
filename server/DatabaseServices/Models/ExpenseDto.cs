@@ -6,13 +6,13 @@ public class ExpenseDto
 
     public string Name { get; set; } = string.Empty;
 
-    public double Cost { get; set; } = 0.0;
+    public decimal Cost { get; set; } = 0;
 
     public string? Description { get; set; } = string.Empty;
 
     public string RecurrenceRate { get; set; } = "once";
 
-    public double? LastCost { get; set; } = null;
+    public decimal? LastCost { get; set; } = null;
 
     public string? CostUpdatedAt { get; set; } = null;
 

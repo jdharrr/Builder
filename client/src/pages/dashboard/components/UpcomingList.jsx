@@ -20,6 +20,7 @@ export const UpcomingList = () => {
     const [showExpenseDatePaidModal, setShowExpenseDatePaidModal] = useState(false);
     const [checkedExpense, setCheckedExpense] = useState(null);
     const [checkedDueDate, setCheckedDueDate] = useState(null);
+    const [skippingDate, setSkippingDate] = useState(null);
 
     const weekDays = ['Sun', 'Mon', 'Tues', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentWeekDay = new Date().getDay();
@@ -38,12 +39,12 @@ export const UpcomingList = () => {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     })
 
-    const handleDateInputSave = async (paymentDate, dueDates) => {
-        payDueDateMutation.mutate({ expenseId: checkedExpense.id, dueDates, paymentDate });
+    const handleDateInputSave = async (paymentDate, dueDates, creditCardId) => {
+        payDueDateMutation.mutate({ expenseId: checkedExpense.id, dueDates, paymentDate, creditCardId });
     }
 
     const payDueDateMutation = useMutation({
-        mutationFn: ({ expenseId, dueDates, paymentDate }) => payDueDates(expenseId, dueDates, paymentDate),
+        mutationFn: ({ expenseId, dueDates, paymentDate, creditCardId }) => payDueDates(expenseId, dueDates, paymentDate, false, creditCardId),
         onSuccess: () => {
             showSuccess('Payment saved!');
             setShowExpenseDatePaidModal(false);
@@ -56,6 +57,28 @@ export const UpcomingList = () => {
             } else {
                 showError('Failed to save payment');
             }
+        }
+    });
+
+    const skipDueDateMutation = useMutation({
+        mutationFn: ({ expenseId, dueDate }) => payDueDates(expenseId, [dueDate], undefined, true),
+        onMutate: ({ dueDate }) => {
+            setSkippingDate(dueDate);
+        },
+        onSuccess: () => {
+            showSuccess('Payment skipped.');
+            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
+        },
+        onError: (err) => {
+            if (getStatus(err) === 401) {
+                showError('Session expired. Please log in again.');
+                navigate('/login');
+            } else {
+                showError('Failed to skip payment');
+            }
+        },
+        onSettled: () => {
+            setSkippingDate(null);
         }
     });
 
@@ -90,11 +113,14 @@ export const UpcomingList = () => {
                                                 delay={{ show: 500, hide: 100 }}
                                                 overlay={<Tooltip>{expense.name}</Tooltip>}
                                             >
-                                                <div className="expense-name">
-                                                    <span className="expense-name-text" title={expense.name}>
-                                                        {expense.name}
-                                                    </span>
-                                                </div>
+                                            <div className="expense-name">
+                                                <span className="expense-name-text" title={expense.name}>
+                                                    {expense.name}
+                                                </span>
+                                                {expense.automaticPayments && (
+                                                    <span className="expense-scheduled-pill">Scheduled</span>
+                                                )}
+                                            </div>
                                             </OverlayTrigger>
                                             <div className="expense-amount">
                                                 <FaDollarSign className="amount-icon" />
@@ -119,6 +145,18 @@ export const UpcomingList = () => {
                                                 <label className="checkbox-label" htmlFor={`paid-${expense.id}-${date}`}>
                                                     Paid?
                                                 </label>
+                                                <button
+                                                    type="button"
+                                                    className="expense-skip-button"
+                                                    disabled={skippingDate === date}
+                                                    onClick={() => {
+                                                        const confirmed = window.confirm('Skip this payment?');
+                                                        if (!confirmed) return;
+                                                        skipDueDateMutation.mutate({ expenseId: expense.id, dueDate: date });
+                                                    }}
+                                                >
+                                                    {skippingDate === date ? 'Skipping...' : 'Skip'}
+                                                </button>
                                             </div>
                                         </div>
                                     );

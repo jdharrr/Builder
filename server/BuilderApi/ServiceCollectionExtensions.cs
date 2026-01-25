@@ -5,6 +5,7 @@ using AuthenticationServices;
 using EmailServices;
 using BuilderServices.ExpenseService;
 using BuilderRepositories;
+using BuilderServices.CreditCardService;
 using BuilderServices.ExpenseCategoryService;
 using BuilderServices.UserService;
 using BuilderServices.ExpensePaymentService;
@@ -48,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ExpenseCategoryRepository>();
         services.AddScoped<UserSettingsRepository>();
         services.AddScoped<CreditCardRepository>();
+        services.AddScoped<CreditCardPaymentsRepository>();
         services.AddScoped<ScheduledPaymentRepository>();
 
         return services;
@@ -59,6 +61,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ExpenseService>();
         services.AddScoped<ExpenseCategoryService>();
         services.AddScoped<ExpensePaymentService>();
+        services.AddScoped<CreditCardService>();
 
         return services;
     }
