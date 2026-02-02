@@ -21,7 +21,7 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     }, [handleClose]);
 
     const handleSaveClick = () => {
-        handleSave(selectedIds);
+        handleSave(selectedIds, expenseId);
     }
 
     const handleCheckboxClick = (checked, id) => {
@@ -47,7 +47,7 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     });
 
     return (
-        <div className="modal show d-block create-expense-modal select-payments-modal">
+        <div className="modal show d-block app-modal select-payments-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">

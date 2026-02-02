@@ -11,4 +11,7 @@
     <ProjectReference Include="..\BuilderRepositories\BuilderRepositories.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="ExpensePayments\" />
+  </ItemGroup>
 </Project>

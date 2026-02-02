@@ -32,4 +32,27 @@ public static class BuilderUtils
                 return false;
         }
     }
+
+    public static string GetNextFutureDueDate(string recurrenceRate, string currentDueDate)
+    {
+        var nextDueDate = DateOnly.ParseExact(currentDueDate, "yyyy-MM-dd");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        while (nextDueDate < today)
+        {
+            nextDueDate = recurrenceRate switch
+            {
+                "daily" => nextDueDate.AddDays(1),
+
+                "weekly" => nextDueDate.AddDays(7),
+
+                "monthly" => nextDueDate.AddMonths(1),
+
+                "yearly" => nextDueDate.AddYears(1),
+
+                _ => nextDueDate,
+            };
+        }
+
+        return nextDueDate.ToString("yyyy-MM-dd");
+    }
 }

@@ -1,6 +1,6 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
-import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useMutation, useQueryClient} from "@tanstack/react-query";
 
 import {postExpense} from "../api.jsx";
 import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormContext.jsx";
@@ -36,16 +36,22 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
         startDate: includeStartDateInput ? null : date,
         endDate: null,
         dueLastDayOfMonth: false,
-        oneTimeExpenseIsPaid: false,
-        oneTimeExpenseIsCredit: false,
-        oneTimeExpensePaymentDate: null,
-        oneTimeExpenseCreditCardId: null,
-        isAutomaticPayment: false,
-        automaticPaymentIsCredit: false,
-        automaticPaymentCreditCardId: null,
-        payToNowIsCredit: false,
-        payToNowCreditCardId: null,
-        payToNow: false,
+        oneTimePayment: {
+            isPaid: false,
+            isCredit: false,
+            paymentDate: null,
+            creditCardId: null,
+        },
+        automaticPayment: {
+            enabled: false,
+            isCredit: false,
+            creditCardId: null,
+        },
+        payToNowPayment: {
+            enabled: false,
+            isCredit: false,
+            creditCardId: null,
+        },
     });
     const [fieldErrors, setFieldErrors] = useState({
         name: false,
@@ -57,6 +63,7 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
         payToNowCreditCardId: false,
         automaticPaymentCreditCardId: false,
     });
+    const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 
     const wrapperRef = useRef(null);
     useEffect(() => {
@@ -103,11 +110,11 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
             cost: Number.isNaN(costValue) || costValue <= 0,
             startDate: !startDateValid,
             endDate: !endDateValid,
-            oneTimeExpenseCreditCardId: expenseProps.oneTimeExpenseIsCredit && !expenseProps.oneTimeExpenseCreditCardId,
-            oneTimeExpensePaymentDate: (expenseProps.oneTimeExpenseIsCredit || expenseProps.oneTimeExpenseIsPaid)
-                && !expenseProps.oneTimeExpensePaymentDate,
-            payToNowCreditCardId: expenseProps.payToNowIsCredit && !expenseProps.payToNowCreditCardId,
-            automaticPaymentCreditCardId: expenseProps.automaticPaymentIsCredit && !expenseProps.automaticPaymentCreditCardId,
+            oneTimeExpenseCreditCardId: expenseProps.oneTimePayment.isCredit && !expenseProps.oneTimePayment.creditCardId,
+            oneTimeExpensePaymentDate: (expenseProps.oneTimePayment.isCredit || expenseProps.oneTimePayment.isPaid)
+                && !expenseProps.oneTimePayment.paymentDate,
+            payToNowCreditCardId: expenseProps.payToNowPayment.isCredit && !expenseProps.payToNowPayment.creditCardId,
+            automaticPaymentCreditCardId: expenseProps.automaticPayment.isCredit && !expenseProps.automaticPayment.creditCardId,
         };
 
         setFieldErrors(nextErrors);
@@ -140,8 +147,8 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
 
     const createExpenseMutation = useMutation({
         mutationFn: (payload) => postExpense(payload),
-        onSuccess: (isCreated) => {
-            if (isCreated) {
+        onSuccess: (response) => {
+            if (response?.isCreated ?? response?.IsCreated) {
                 showSuccess('Expense successfully created.');
                 qc.invalidateQueries({ queryKey: ['tableExpenses'] });
                 qc.invalidateQueries({ queryKey: ['upcomingExpenses'] });
@@ -214,381 +221,595 @@ export const CreateExpenseModal = ({includeStartDateInput}) => {
                 wrapperRef={wrapperRef}
                 handleSave={handleSaveForm}
                 handleClose={handleCloseForm}
-                className="create-expense-modal"
+                className={`app-modal${isManageModalOpen ? ' create-expense-modal--suppressed' : ''}`}
             >
                 <form className="create-expense-form">
-                    <div className='mb-3'>
-                        <label className={'form-label'}>Name</label>
-                        <input
-                            className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`}
-                            type='text'
-                               onChange={
-                                   (e) => {
-                                       setExpenseProps((prevState) => ({
-                                           ...prevState,
-                                           name: e.target.value
-                                       }));
-                                       if (fieldErrors.name) {
-                                           setFieldErrors((prev) => ({...prev, name: false}));
-                                       }
-                                   }
-                               }
-                        />
-                    </div>
-                    <div className='mb-3'>
-                        <label className={'form-label'}>Cost</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className={`form-control${fieldErrors.cost ? ' is-invalid' : ''}`}
-                            onChange={(e) => {
-                                const { value } = e.target;
-                                setExpenseProps((prev) => ({
-                                    ...prev,
-                                    cost: value === '' ? '' : Number(value).toFixed(2),
-                                }));
-                                if (fieldErrors.cost) {
-                                    setFieldErrors((prev) => ({...prev, cost: false}));
-                                }
-                            }}
-                        />
-                    </div>
-                    <div className='mb-3'>
-                        <label className={'form-label'}>Recurrence Rate</label>
-                        <select className={'form-select'} value={expenseProps.recurrenceRate} onChange={(e) => handleRecurrenceRateChange(e.target.value)}>
-                            {Object.entries(RECURRENCE_RATES).map(([rate, rateLabel]) => (
-                                <option value={rate} key={rateLabel}>{rateLabel}</option>
-                            ))}
-                        </select>
-
-                        {!includeStartDateInput
-                        && expenseProps.recurrenceRate === 'monthly'
-                        && expenseProps.startDate.substring(8,10) == new Date(new Date(expenseProps.startDate).getFullYear(), new Date(expenseProps.startDate).getMonth() + 1, 0).getDate()
-                        &&
-                            <div className='ms-1'>
-                                <label className={'form-label me-2'} htmlFor="dueEndOfMonth1">Due on the last day of the month?</label>
-                                <input className={'form-check-input mt-2'} type={'checkbox'} id="dueEndOfMonth1"
-                                       onChange={() => {
-                                           setExpenseProps((prevState) => ({
-                                               ...prevState,
-                                               dueLastDayOfMonth: !prevState.dueLastDayOfMonth
-                                           }));
-                                       }}
-                                />
-                            </div>
-                        }
-                    </div>
-                    {includeStartDateInput && (
-                        <div className={'mb-3'}>
-                            {expenseProps.dueLastDayOfMonth ? (
-                                <>
-                                    <label className={'form-label'}>{expenseProps.recurrenceRate === 'once' ? 'Due Date' : 'Start Date'}</label>
-                                    <div className="d-flex gap-2">
-                                        <Dropdown title={endOfMonthStartDate.month} options={MONTHS} handleOptionChange={handleMonthChange} maxHeight={'20rem'} includeScrollbarY={true} />
-                                        <Dropdown title={endOfMonthStartDate.year} options={years} handleYearChange={handleYearChange} maxHeight={'20rem'} includeScrollbarY={true} />
+                    <div className="expense-form-grid">
+                        <div className="expense-form-column">
+                            <section className="expense-form-card">
+                                <header className="expense-card-header">
+                                    <h6 className="expense-card-title">Essentials</h6>
+                                </header>
+                                <div className="expense-card-body">
+                                    <div className="expense-input-grid">
+                                        <div className="expense-input">
+                                            <label className={'form-label'}>Name</label>
+                                            <input
+                                                className={`form-control${fieldErrors.name ? ' is-invalid' : ''}`}
+                                                type='text'
+                                                onChange={(e) => {
+                                                    setExpenseProps((prevState) => ({
+                                                        ...prevState,
+                                                        name: e.target.value
+                                                    }));
+                                                    if (fieldErrors.name) {
+                                                        setFieldErrors((prev) => ({...prev, name: false}));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="expense-input">
+                                            <label className={'form-label'}>Cost</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                className={`form-control${fieldErrors.cost ? ' is-invalid' : ''}`}
+                                                onChange={(e) => {
+                                                    const { value } = e.target;
+                                                    setExpenseProps((prev) => ({
+                                                        ...prev,
+                                                        cost: value === '' ? '' : Number(value).toFixed(2),
+                                                    }));
+                                                    if (fieldErrors.cost) {
+                                                        setFieldErrors((prev) => ({...prev, cost: false}));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="expense-input expense-input-span">
+                                            <CategorySelect
+                                                label="Category"
+                                                includeNoneOption={true}
+                                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                                onManageOpen={() => setIsManageModalOpen(true)}
+                                                onManageClose={() => setIsManageModalOpen(false)}
+                                            />
+                                        </div>
+                                        <div className="expense-input expense-input-span">
+                                            <label className={'form-label'}>Description</label>
+                                            <textarea
+                                                className={'form-control'}
+                                                rows={2}
+                                                onChange={(e) => {
+                                                    setExpenseProps((prevState) => ({
+                                                        ...prevState,
+                                                        description: e.target.value
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    <label className={'form-label'}>{expenseProps.recurrenceRate === 'once' ? 'Due Date' : 'Start Date'}</label>
-                                    <input
-                                           className={`form-control${fieldErrors.startDate ? ' is-invalid' : ''}`}
-                                           type='date'
-                                           disabled={expenseProps.dueLastDayOfMonth}
-                                           value={expenseProps.startDate || ""}
-                                           onChange={
-                                               (e) => {
-                                                   setExpenseProps((prevState) => ({
-                                                       ...prevState,
-                                                       startDate: e.target.value
-                                                   }));
-                                                   if (fieldErrors.startDate) {
-                                                       setFieldErrors((prev) => ({...prev, startDate: false}));
-                                                   }
-                                               }
-                                           }
-                                    />
-                                </>
-                            )}
+                                </div>
+                            </section>
 
-                            {expenseProps.recurrenceRate === 'monthly' &&
-                                <div className='ms-1'>
-                                    <label className={'form-label me-2'} htmlFor="dueEndOfMonth2">Due on the last day of the month?</label>
-                                    <input className={'form-check-input mt-2'} type={'checkbox'} id="dueEndOfMonth2"
-                                           onChange={() => {
-                                               setExpenseProps((prevState) => ({
-                                                   ...prevState,
-                                                   startDate: null,
-                                                   dueLastDayOfMonth: !prevState.dueLastDayOfMonth
-                                               }));
-                                               if (fieldErrors.startDate) {
-                                                   setFieldErrors((prev) => ({...prev, startDate: false}));
-                                               }
-                                           }}
-                                    />
+                            <section className="expense-form-card">
+                                <header className="expense-card-header">
+                                    <h6 className="expense-card-title">Timeline</h6>
+                                </header>
+                                <div className="expense-card-body">
+                                    <div className="expense-input-grid">
+                                        <div className="expense-input">
+                                            <label className={'form-label'}>Recurrence Rate</label>
+                                            <select
+                                                className={'form-select'}
+                                                value={expenseProps.recurrenceRate}
+                                                onChange={(e) => handleRecurrenceRateChange(e.target.value)}
+                                            >
+                                                {Object.entries(RECURRENCE_RATES).map(([rate, rateLabel]) => (
+                                                    <option value={rate} key={rateLabel}>{rateLabel}</option>
+                                                ))}
+                                            </select>
 
-                                </div>
-                            }
-                        </div>
-                    )}
-                    { expenseProps.recurrenceRate !== 'once' &&
-                        <div className='mb-3'>
-                            <label className={'form-label'}>End Date</label>
-                            <input
-                                   className={`form-control${fieldErrors.endDate ? ' is-invalid' : ''}`}
-                                   type='date'
-                                   onChange={
-                                       (e) => {
-                                           setExpenseProps((prevState) => ({
-                                               ...prevState,
-                                               endDate: e.target.value
-                                           }));
-                                           if (fieldErrors.endDate) {
-                                               setFieldErrors((prev) => ({...prev, endDate: false}));
-                                           }
-                                       }
-                                   }
-                            />
-                        </div>
-                    }
-                <CategorySelect
-                    label="Category"
-                    includeNoneOption={true}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                />
-                    <div className='mb-3'>
-                    <label className={'form-label'}>Description</label>
-                        <textarea className={'form-control'} rows={2}
-                               onChange={
-                                   (e) => {
-                                       setExpenseProps((prevState) => ({
-                                           ...prevState,
-                                           description: e.target.value
-                                       }));
-                                   }
-                               }
-                        />
-                    </div>
-                    {expenseProps.recurrenceRate === 'once' &&
-                        <div className='mb-3'>
-                            <div className=''>
-                                <label className={'form-label me-2'} htmlFor="paidCheckbox">Paid?</label>
-                                <input
-                                    className={'form-check-input'}
-                                    type={'checkbox'}
-                                    id="paidCheckbox"
-                                    checked={expenseProps.oneTimeExpenseIsPaid}
-                                    onChange={() => {
-                                        setExpenseProps((prevState) => {
-                                            const isPaid = !prevState.oneTimeExpenseIsPaid;
-                                            if (fieldErrors.oneTimeExpensePaymentDate && !isPaid) {
-                                                setFieldErrors((prev) => ({...prev, oneTimeExpensePaymentDate: false}));
-                                            }
-                                            return {
-                                                ...prevState,
-                                                oneTimeExpenseIsPaid: isPaid,
-                                                oneTimeExpenseIsCredit: false,
-                                                oneTimeExpenseCreditCardId: null,
-                                            };
-                                        });
-                                    }}
-                                />
-                            </div>
-                            <div className='mt-2'>
-                                <label className={'form-label me-2'} htmlFor="creditCheckbox">Paid with credit?</label>
-                                <input
-                                    className={'form-check-input'}
-                                    type={'checkbox'}
-                                    id="creditCheckbox"
-                                    checked={expenseProps.oneTimeExpenseIsCredit}
-                                    onChange={() => {
-                                        setExpenseProps((prevState) => {
-                                            const nextCredit = !prevState.oneTimeExpenseIsCredit;
-                                            if (fieldErrors.oneTimeExpenseCreditCardId || fieldErrors.oneTimeExpensePaymentDate) {
-                                                setFieldErrors((prev) => ({
-                                                    ...prev,
-                                                    oneTimeExpenseCreditCardId: false,
-                                                    oneTimeExpensePaymentDate: false
-                                                }));
-                                            }
-                                            return {
-                                                ...prevState,
-                                                oneTimeExpenseIsCredit: nextCredit,
-                                                oneTimeExpenseIsPaid: false,
-                                                oneTimeExpenseCreditCardId: nextCredit ? prevState.oneTimeExpenseCreditCardId : null,
-                                            };
-                                        });
-                                    }}
-                                />
-                            </div>
-                            {expenseProps.oneTimeExpenseIsCredit && (
-                                <div className="mt-2">
-                                    <CreditCardSelect
-                                        key={`one-time-${expenseProps.oneTimeExpenseIsCredit}-${expenseProps.oneTimeExpenseCreditCardId ?? 'none'}`}
-                                        label="Credit Card"
-                                        required={true}
-                                        isInvalid={fieldErrors.oneTimeExpenseCreditCardId}
-                                        initialValue={expenseProps.oneTimeExpenseCreditCardId || ''}
-                                        onChange={(e) => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                oneTimeExpenseCreditCardId: e.target.value
-                                            }));
-                                            if (fieldErrors.oneTimeExpenseCreditCardId) {
-                                                setFieldErrors((prev) => ({...prev, oneTimeExpenseCreditCardId: false}));
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            {(expenseProps.oneTimeExpenseIsPaid || expenseProps.oneTimeExpenseIsCredit) &&
-                                <div className='mt-2'>
-                                    <label className={'form-label'}>Paid on:</label>
-                                    <input
-                                        className={`form-control${fieldErrors.oneTimeExpensePaymentDate ? ' is-invalid' : ''}`}
-                                        type='date'
-                                        value={expenseProps.oneTimeExpensePaymentDate || ''}
-                                        onChange={(e) => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                oneTimeExpensePaymentDate: e.target.value
-                                            }));
-                                            if (fieldErrors.oneTimeExpensePaymentDate) {
-                                                setFieldErrors((prev) => ({...prev, oneTimeExpensePaymentDate: false}));
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            }
-                        </div>
-                    }
-                    { expenseProps.recurrenceRate !== 'once' &&
-                        <>
-                            {isStartDateBeforeToday() && (
-                                <div className='mb-0'>
-                                    <label className={'form-label me-2'} htmlFor='payToNow'>
-                                        Pay all due dates from start to today?
-                                    </label>
-                                    <input
-                                        className={'form-check-input'}
-                                        type={'checkbox'}
-                                        id='payToNow'
-                                        checked={expenseProps.payToNow}
-                                        onChange={() => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                payToNow: !prevState.payToNow,
-                                                payToNowIsCredit: false,
-                                                payToNowCreditCardId: null,
-                                            }));
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            {expenseProps.payToNow && (
-                                <div className="mb-0">
-                                    <label className={'form-label me-2'} htmlFor='payToNowCredit'>
-                                        Pay to now with credit?
-                                    </label>
-                                    <input
-                                        className={'form-check-input'}
-                                        type={'checkbox'}
-                                        id='payToNowCredit'
-                                        checked={expenseProps.payToNowIsCredit}
-                                        onChange={() => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                payToNowIsCredit: !prevState.payToNowIsCredit,
-                                                payToNowCreditCardId: null
-                                            }));
-                                            if (fieldErrors.payToNowCreditCardId) {
-                                                setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
-                                            }
-                                        }}
-                                    />
-                                    {expenseProps.payToNowIsCredit && (
-                                        <CreditCardSelect
-                                            key={`pay-to-now-${expenseProps.payToNowIsCredit}-${expenseProps.payToNowCreditCardId ?? 'none'}`}
-                                            required={true}
-                                            isInvalid={fieldErrors.payToNowCreditCardId}
-                                            initialValue={expenseProps.payToNowCreditCardId || ''}
-                                            onChange={(e) => {
-                                                setExpenseProps((prevState) => ({
-                                                    ...prevState,
-                                                    payToNowCreditCardId: e.target.value
-                                                }));
-                                                if (fieldErrors.payToNowCreditCardId) {
-                                                    setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
-                                                }
-                                            }}
-                                        />
+                                            {!includeStartDateInput
+                                            && expenseProps.recurrenceRate === 'monthly'
+                                            && expenseProps.startDate.substring(8,10)
+                                                == new Date(
+                                                    new Date(expenseProps.startDate).getFullYear(),
+                                                    new Date(expenseProps.startDate).getMonth() + 1,
+                                                    0
+                                                ).getDate()
+                                            && (
+                                                <div className="expense-toggle-row">
+                                                    <label className={'form-label'} htmlFor="dueEndOfMonth1">
+                                                        Due on the last day of the month?
+                                                    </label>
+                                                    <input
+                                                        className={'form-check-input'}
+                                                        type={'checkbox'}
+                                                        id="dueEndOfMonth1"
+                                                        onChange={() => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                dueLastDayOfMonth: !prevState.dueLastDayOfMonth
+                                                            }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {includeStartDateInput && (
+                                            <div className="expense-input">
+                                                {expenseProps.dueLastDayOfMonth ? (
+                                                    <>
+                                                        <label className={'form-label'}>
+                                                            {expenseProps.recurrenceRate === 'once' ? 'Due Date' : 'Start Date'}
+                                                        </label>
+                                                        <div className="expense-dropdown-row">
+                                                            <Dropdown
+                                                                title={endOfMonthStartDate.month}
+                                                                options={MONTHS}
+                                                                handleOptionChange={handleMonthChange}
+                                                                maxHeight={'20rem'}
+                                                                includeScrollbarY={true}
+                                                            />
+                                                            <Dropdown
+                                                                title={endOfMonthStartDate.year}
+                                                                options={years}
+                                                                handleYearChange={handleYearChange}
+                                                                maxHeight={'20rem'}
+                                                                includeScrollbarY={true}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <label className={'form-label'}>
+                                                            {expenseProps.recurrenceRate === 'once' ? 'Due Date' : 'Start Date'}
+                                                        </label>
+                                                        <input
+                                                            className={`form-control${fieldErrors.startDate ? ' is-invalid' : ''}`}
+                                                            type='date'
+                                                            disabled={expenseProps.dueLastDayOfMonth}
+                                                            value={expenseProps.startDate || ""}
+                                                            onChange={(e) => {
+                                                                setExpenseProps((prevState) => ({
+                                                                    ...prevState,
+                                                                    startDate: e.target.value
+                                                                }));
+                                                                if (fieldErrors.startDate) {
+                                                                    setFieldErrors((prev) => ({...prev, startDate: false}));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {expenseProps.recurrenceRate !== 'once' && (
+                                            <div className="expense-input">
+                                                <label className={'form-label'}>End Date</label>
+                                                <input
+                                                    className={`form-control${fieldErrors.endDate ? ' is-invalid' : ''}`}
+                                                    type='date'
+                                                    onChange={(e) => {
+                                                        setExpenseProps((prevState) => ({
+                                                            ...prevState,
+                                                            endDate: e.target.value
+                                                        }));
+                                                        if (fieldErrors.endDate) {
+                                                            setFieldErrors((prev) => ({...prev, endDate: false}));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {includeStartDateInput && expenseProps.recurrenceRate === 'monthly' && (
+                                        <div className="expense-toggle-row">
+                                            <label className={'form-label'} htmlFor="dueEndOfMonth2">
+                                                Due on the last day of the month?
+                                            </label>
+                                            <input
+                                                className={'form-check-input'}
+                                                type={'checkbox'}
+                                                id="dueEndOfMonth2"
+                                                onChange={() => {
+                                                    setExpenseProps((prevState) => ({
+                                                        ...prevState,
+                                                        startDate: null,
+                                                        dueLastDayOfMonth: !prevState.dueLastDayOfMonth
+                                                    }));
+                                                    if (fieldErrors.startDate) {
+                                                        setFieldErrors((prev) => ({...prev, startDate: false}));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
                                     )}
                                 </div>
-                            )}
-                            <div className="mb-2">
-                                <div className="mb-1">
-                                    <label className={'form-label me-2'} htmlFor='automaticPayment'>
-                                        Start automatic payments?
-                                    </label>
-                                    <input
-                                        className={'form-check-input'}
-                                        type={'checkbox'}
-                                        id='automaticPayment'
-                                        checked={expenseProps.isAutomaticPayment}
-                                        onChange={() => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                isAutomaticPayment: !prevState.isAutomaticPayment,
-                                                automaticPaymentIsCredit: false,
-                                                automaticPaymentCreditCardId: null,
-                                            }));
-                                        }}
-                                    />
+                            </section>
+                        </div>
+
+                        <div className="expense-form-column">
+                            <section className="expense-form-card">
+                                <header className="expense-card-header">
+                                    <h6 className="expense-card-title">Payments</h6>
+                                </header>
+                                <div className="expense-card-body">
+                                    {expenseProps.recurrenceRate === 'once' ? (
+                                        <>
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor="paidCheckbox">Paid?</label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id="paidCheckbox"
+                                                    checked={expenseProps.oneTimePayment.isPaid}
+                                                    onChange={() => {
+                                                        setExpenseProps((prevState) => {
+                                                            const isPaid = !prevState.oneTimePayment.isPaid;
+                                                            if (fieldErrors.oneTimeExpensePaymentDate && !isPaid) {
+                                                                setFieldErrors((prev) => ({...prev, oneTimeExpensePaymentDate: false}));
+                                                            }
+                                                            return {
+                                                                ...prevState,
+                                                                oneTimePayment: {
+                                                                    ...prevState.oneTimePayment,
+                                                                    isPaid,
+                                                                    isCredit: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    enabled: false,
+                                                                    isCredit: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                            };
+                                                        });
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor="creditCheckbox">Paid with credit?</label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id="creditCheckbox"
+                                                    checked={expenseProps.oneTimePayment.isCredit}
+                                                    onChange={() => {
+                                                        setExpenseProps((prevState) => {
+                                                            const nextCredit = !prevState.oneTimePayment.isCredit;
+                                                            if (fieldErrors.oneTimeExpenseCreditCardId || fieldErrors.oneTimeExpensePaymentDate) {
+                                                                setFieldErrors((prev) => ({
+                                                                    ...prev,
+                                                                    oneTimeExpenseCreditCardId: false,
+                                                                    oneTimeExpensePaymentDate: false
+                                                                }));
+                                                            }
+                                                            return {
+                                                                ...prevState,
+                                                                oneTimePayment: {
+                                                                    ...prevState.oneTimePayment,
+                                                                    isCredit: nextCredit,
+                                                                    isPaid: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    enabled: false,
+                                                                    isCredit: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                            };
+                                                        });
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor="scheduledCheckbox">Scheduled?</label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id="scheduledCheckbox"
+                                                    checked={expenseProps.automaticPayment.enabled}
+                                                    onChange={() => {
+                                                        setExpenseProps((prevState) => {
+                                                            const nextScheduled = !prevState.automaticPayment.enabled;
+                                                            return {
+                                                                ...prevState,
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    enabled: nextScheduled,
+                                                                    isCredit: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                                oneTimePayment: {
+                                                                    ...prevState.oneTimePayment,
+                                                                    isPaid: nextScheduled ? false : prevState.oneTimePayment.isPaid,
+                                                                    isCredit: nextScheduled ? false : prevState.oneTimePayment.isCredit,
+                                                                    creditCardId: nextScheduled ? null : prevState.oneTimePayment.creditCardId,
+                                                                    paymentDate: nextScheduled ? null : prevState.oneTimePayment.paymentDate,
+                                                                },
+                                                            };
+                                                        });
+                                                        if (fieldErrors.automaticPaymentCreditCardId) {
+                                                            setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                                        }
+                                                        if (fieldErrors.oneTimeExpenseCreditCardId || fieldErrors.oneTimeExpensePaymentDate) {
+                                                            setFieldErrors((prev) => ({
+                                                                ...prev,
+                                                                oneTimeExpenseCreditCardId: false,
+                                                                oneTimeExpensePaymentDate: false,
+                                                            }));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            {expenseProps.automaticPayment.enabled && (
+                                                <div className="expense-toggle-row">
+                                                    <label className={'form-label'} htmlFor="scheduledCreditCheckbox">
+                                                        Schedule with credit?
+                                                    </label>
+                                                    <input
+                                                        className={'form-check-input'}
+                                                        type={'checkbox'}
+                                                        id="scheduledCreditCheckbox"
+                                                        checked={expenseProps.automaticPayment.isCredit}
+                                                        onChange={() => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    isCredit: !prevState.automaticPayment.isCredit,
+                                                                    creditCardId: null,
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.automaticPaymentCreditCardId) {
+                                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {(expenseProps.oneTimePayment.isCredit
+                                                || expenseProps.oneTimePayment.isPaid
+                                                || expenseProps.automaticPayment.isCredit) && (
+                                                <div className="expense-divider" />
+                                            )}
+                                            {expenseProps.automaticPayment.isCredit && (
+                                                <div className="expense-input">
+                                                    <CreditCardSelect
+                                                        key={`once-schedule-${expenseProps.automaticPayment.isCredit}-${expenseProps.automaticPayment.creditCardId ?? 'none'}`}
+                                                        required={true}
+                                                        isInvalid={fieldErrors.automaticPaymentCreditCardId}
+                                                        initialValue={expenseProps.automaticPayment.creditCardId || ''}
+                                                        onChange={(e) => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    creditCardId: e.target.value
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.automaticPaymentCreditCardId) {
+                                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {expenseProps.oneTimePayment.isCredit && (
+                                                <div className="expense-input">
+                                                    <CreditCardSelect
+                                                        key={`one-time-${expenseProps.oneTimePayment.isCredit}-${expenseProps.oneTimePayment.creditCardId ?? 'none'}`}
+                                                        label="Credit Card"
+                                                        required={true}
+                                                        isInvalid={fieldErrors.oneTimeExpenseCreditCardId}
+                                                        initialValue={expenseProps.oneTimePayment.creditCardId || ''}
+                                                        onManageOpen={() => setIsManageModalOpen(true)}
+                                                        onManageClose={() => setIsManageModalOpen(false)}
+                                                        onChange={(e) => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                oneTimePayment: {
+                                                                    ...prevState.oneTimePayment,
+                                                                    creditCardId: e.target.value
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.oneTimeExpenseCreditCardId) {
+                                                                setFieldErrors((prev) => ({...prev, oneTimeExpenseCreditCardId: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {(expenseProps.oneTimePayment.isPaid || expenseProps.oneTimePayment.isCredit) && (
+                                                <div className="expense-input">
+                                                    <label className={'form-label'}>Paid on:</label>
+                                                    <input
+                                                        className={`form-control${fieldErrors.oneTimeExpensePaymentDate ? ' is-invalid' : ''}`}
+                                                        type='date'
+                                                        value={expenseProps.oneTimePayment.paymentDate || ''}
+                                                        onChange={(e) => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                oneTimePayment: {
+                                                                    ...prevState.oneTimePayment,
+                                                                    paymentDate: e.target.value
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.oneTimeExpensePaymentDate) {
+                                                                setFieldErrors((prev) => ({...prev, oneTimeExpensePaymentDate: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {isStartDateBeforeToday() && (
+                                                <div className="expense-toggle-row">
+                                                    <label className={'form-label'} htmlFor='payToNow'>
+                                                        Pay all due dates from start to today?
+                                                    </label>
+                                                    <input
+                                                        className={'form-check-input'}
+                                                        type={'checkbox'}
+                                                        id='payToNow'
+                                                        checked={expenseProps.payToNowPayment.enabled}
+                                                        onChange={() => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                payToNowPayment: {
+                                                                    ...prevState.payToNowPayment,
+                                                                    enabled: !prevState.payToNowPayment.enabled,
+                                                                    isCredit: false,
+                                                                    creditCardId: null,
+                                                                },
+                                                            }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {expenseProps.payToNowPayment.enabled && (
+                                                <>
+                                                    <div className="expense-toggle-row">
+                                                        <label className={'form-label'} htmlFor='payToNowCredit'>
+                                                            Put past payments on credit?
+                                                        </label>
+                                                        <input
+                                                            className={'form-check-input'}
+                                                            type={'checkbox'}
+                                                            id='payToNowCredit'
+                                                            checked={expenseProps.payToNowPayment.isCredit}
+                                                            onChange={() => {
+                                                                setExpenseProps((prevState) => ({
+                                                                    ...prevState,
+                                                                    payToNowPayment: {
+                                                                        ...prevState.payToNowPayment,
+                                                                        isCredit: !prevState.payToNowPayment.isCredit,
+                                                                        creditCardId: null,
+                                                                    },
+                                                                }));
+                                                                if (fieldErrors.payToNowCreditCardId) {
+                                                                    setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    {expenseProps.payToNowPayment.isCredit && (
+                                                        <div className="expense-input">
+                                                            <CreditCardSelect
+                                                                key={`pay-to-now-${expenseProps.payToNowPayment.isCredit}-${expenseProps.payToNowPayment.creditCardId ?? 'none'}`}
+                                                                required={true}
+                                                                isInvalid={fieldErrors.payToNowCreditCardId}
+                                                                initialValue={expenseProps.payToNowPayment.creditCardId || ''}
+                                                                onManageOpen={() => setIsManageModalOpen(true)}
+                                                                onManageClose={() => setIsManageModalOpen(false)}
+                                                                onChange={(e) => {
+                                                                    setExpenseProps((prevState) => ({
+                                                                        ...prevState,
+                                                                        payToNowPayment: {
+                                                                            ...prevState.payToNowPayment,
+                                                                            creditCardId: e.target.value
+                                                                        },
+                                                                    }));
+                                                                    if (fieldErrors.payToNowCreditCardId) {
+                                                                        setFieldErrors((prev) => ({...prev, payToNowCreditCardId: false}));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {expenseProps.payToNowPayment.isCredit && (
+                                                        <div className="expense-divider" />
+                                                    )}
+                                                </>
+                                            )}
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor='automaticPayment'>
+                                                    Start automatic payments?
+                                                </label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id='automaticPayment'
+                                                    checked={expenseProps.automaticPayment.enabled}
+                                                    onChange={() => {
+                                                        setExpenseProps((prevState) => ({
+                                                            ...prevState,
+                                                            automaticPayment: {
+                                                                ...prevState.automaticPayment,
+                                                                enabled: !prevState.automaticPayment.enabled,
+                                                                isCredit: false,
+                                                                creditCardId: null,
+                                                            },
+                                                        }));
+                                                    }}
+                                                />
+                                            </div>
+                                            {expenseProps.automaticPayment.enabled && (
+                                                <div className="expense-toggle-row">
+                                                    <label className={'form-label'} htmlFor='automaticPaymentCredit'>
+                                                        Put automatic payments on credit?
+                                                    </label>
+                                                    <input
+                                                        className={'form-check-input'}
+                                                        type={'checkbox'}
+                                                        id='automaticPaymentCredit'
+                                                        checked={expenseProps.automaticPayment.isCredit}
+                                                        onChange={() => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    isCredit: !prevState.automaticPayment.isCredit,
+                                                                    creditCardId: null,
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.automaticPaymentCreditCardId) {
+                                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {expenseProps.automaticPayment.enabled && expenseProps.automaticPayment.isCredit && (
+                                                <div className="expense-input">
+                                                    <CreditCardSelect
+                                                        key={`auto-pay-${expenseProps.automaticPayment.isCredit}-${expenseProps.automaticPayment.creditCardId ?? 'none'}`}
+                                                        required={true}
+                                                        isInvalid={fieldErrors.automaticPaymentCreditCardId}
+                                                        initialValue={expenseProps.automaticPayment.creditCardId || ''}
+                                                        onManageOpen={() => setIsManageModalOpen(true)}
+                                                        onManageClose={() => setIsManageModalOpen(false)}
+                                                        onChange={(e) => {
+                                                            setExpenseProps((prevState) => ({
+                                                                ...prevState,
+                                                                automaticPayment: {
+                                                                    ...prevState.automaticPayment,
+                                                                    creditCardId: e.target.value
+                                                                },
+                                                            }));
+                                                            if (fieldErrors.automaticPaymentCreditCardId) {
+                                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
-                                {expenseProps.isAutomaticPayment && (
-                                    <div className="mb-1">
-                                        <label className={'form-label me-2'} htmlFor='automaticPaymentCredit'>
-                                            Automatically pay with credit?
-                                        </label>
-                                        <input
-                                            className={'form-check-input'}
-                                            type={'checkbox'}
-                                            id='automaticPaymentCredit'
-                                            checked={expenseProps.automaticPaymentIsCredit}
-                                            onChange={() => {
-                                                setExpenseProps((prevState) => ({
-                                                    ...prevState,
-                                                    automaticPaymentIsCredit: !prevState.automaticPaymentIsCredit,
-                                                    automaticPaymentCreditCardId: null,
-                                                }));
-                                                if (fieldErrors.automaticPaymentCreditCardId) {
-                                                    setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                                {expenseProps.isAutomaticPayment && expenseProps.automaticPaymentIsCredit && (
-                                    <CreditCardSelect
-                                        key={`auto-pay-${expenseProps.automaticPaymentIsCredit}-${expenseProps.automaticPaymentCreditCardId ?? 'none'}`}
-                                        required={true}
-                                        isInvalid={fieldErrors.automaticPaymentCreditCardId}
-                                        initialValue={expenseProps.automaticPaymentCreditCardId || ''}
-                                        onChange={(e) => {
-                                            setExpenseProps((prevState) => ({
-                                                ...prevState,
-                                                automaticPaymentCreditCardId: e.target.value
-                                            }));
-                                            if (fieldErrors.automaticPaymentCreditCardId) {
-                                                setFieldErrors((prev) => ({...prev, automaticPaymentCreditCardId: false}));
-                                            }
-                                        }}
-                                    />
-                                )}
-                            </div>
-                        </>
-                    }
+                            </section>
+                        </div>
+                    </div>
                 </form>
             </Modal>
         </>

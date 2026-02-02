@@ -1,7 +1,7 @@
 .dashboard-cards {
     gap: 1.5rem;
     flex-wrap: wrap;
-    align-items: stretch;
+    align-items: flex-start;
 }
 
 .dashboard-card {

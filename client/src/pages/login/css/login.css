@@ -101,3 +101,11 @@
     color: #9ca3af;
     text-align: center;
 }
+
+.loginLinkButton {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #4f46e5;
+    font-weight: 600;
+}

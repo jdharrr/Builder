@@ -10,7 +10,7 @@ export const UpcomingExpensesSection = () => {
     const [activeTab, setActiveTab] = useState('upcoming');
 
     return (
-        <div className="card">
+        <div className="card upcoming-expenses-panel">
             <div className="tab-pills-container">
                 <div className="tab-pills">
                     <button

@@ -8,12 +8,18 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import {
     Chart as ChartJS,
     ArcElement,
+    BarElement,
+    CategoryScale,
+    LinearScale,
     Tooltip,
     Legend,
 } from 'chart.js';
 
 ChartJS.register(
     ArcElement,
+    BarElement,
+    CategoryScale,
+    LinearScale,
     Tooltip,
     Legend,
 );

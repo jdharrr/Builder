@@ -33,7 +33,7 @@ export const UpdateCategoryModal = ({handleSave, setShowUpdateCategoryModal}) =>
             wrapperRef={wrapperRef}
             handleSave={handleCategorySave}
             handleClose={() => setShowUpdateCategoryModal(false)}
-            className="create-expense-modal update-category-modal"
+            className="app-modal update-category-modal"
         >
             <div className="update-category-body">
                 <div className="update-category-card">

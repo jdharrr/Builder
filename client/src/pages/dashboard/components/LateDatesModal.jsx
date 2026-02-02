@@ -133,7 +133,7 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     };
 
     return (
-        <div className='modal show d-block create-expense-modal late-dates-modal'>
+        <div className='modal show d-block app-modal late-dates-modal'>
             <div className='modal-dialog'>
                 <div className='modal-content' ref={wrapperRef}>
                     <div className='modal-header'>

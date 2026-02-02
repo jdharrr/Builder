@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 
@@ -6,6 +6,7 @@ import {
     deleteExpense,
     getExpenseSortOptions,
     getExpenseTableBatchActions,
+    getExpenseTableFilterOptions,
     getExpenseSearchableColumns,
     updateExpenseActiveStatus,
     payDueDates,
@@ -16,12 +17,15 @@ import {
 import {getStatus} from "../../../util.jsx";
 import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
 import {Dropdown} from "../../../components/Dropdown.jsx";
+import {DateRangeFilterInput} from "../components/filters/DateRangeFilterInput.jsx";
+import {NumberRangeFilterInput} from "../components/filters/NumberRangeFilterInput.jsx";
+import {TextFilterInput} from "../components/filters/TextFilterInput.jsx";
 
 import '../css/expensesTableSection.css';
 import {UnpayDatesModal} from "../components/UnpayDatesModal.jsx";
 import {EditExpenseModal} from "../../../components/EditExpenseModal.jsx";
 import {showSuccess, showWarning, showError} from "../../../utils/toast.js";
-import {useDebounce} from "../../../hooks/useDebounce.js";
+import {FaSearch} from "react-icons/fa";
 
 //TODO: Fix exception handling on 401 after token expires
 // Currently it causes the components to error out
@@ -32,20 +36,37 @@ const SearchRow = ({
     selectActive,
     showInactiveExpenses,
     searchFilter,
-    handleSearchInput
+    handleSearchInput,
+    handleSearchApply
 }) => (
     <tr>
         {selectActive && <th></th>}
         {showInactiveExpenses && <th></th>}
         {Object.entries(searchableHeaders).map(([column], idx) => (
             <th key={idx}>
-                <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={searchFilter.searchColumn === column ? searchFilter.searchValue : ''}
-                    placeholder="Search..."
-                    onChange={(e) => handleSearchInput(e, column)}
-                />
+                <div className="table-search-input-wrap">
+                    <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={searchFilter.searchColumn === column ? searchFilter.searchValue : ''}
+                        placeholder="Search..."
+                        onChange={(e) => handleSearchInput(e, column)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSearchApply(column);
+                            }
+                        }}
+                    />
+                    <button
+                        type="button"
+                        className="table-search-apply-button"
+                        onClick={() => handleSearchApply(column)}
+                        aria-label={`Search ${column}`}
+                    >
+                        <FaSearch size={11} />
+                    </button>
+                </div>
             </th>
         ))}
     </tr>
@@ -75,10 +96,98 @@ export const ExpensesTableSection = ({
         searchColumn: '',
         searchValue: '',
     });
-    const debouncedSearchFilter = useDebounce(searchFilter, 500);
+    const [appliedSearchFilter, setAppliedSearchFilter] = useState({
+        searchColumn: '',
+        searchValue: '',
+    });
 
     const [clickedActionRowId, setClickedActionRowId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+    const [selectedFilters, setSelectedFilters] = useState([]);
+    const [filterValues, setFilterValues] = useState({});
+    const filterMenuRef = useRef(null);
+
+    const { data: filterOptionsResponse } = useSuspenseQuery({
+        queryKey: ['expenseFilterOptions'],
+        queryFn: async () => {
+            return await getExpenseTableFilterOptions();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
+
+    const filterOptions = filterOptionsResponse?.filterOptions ?? [];
+
+    const mappedFilters = useMemo(() => {
+        return selectedFilters
+            .map((filterName) => {
+                const selectedOption = filterOptions.find((option) => option.filter === filterName);
+                if (!selectedOption) return null;
+
+                const value = filterValues[filterName];
+                const filterType = selectedOption.filterType?.toLowerCase();
+
+                if (filterType === 'daterange') {
+                    if (!value?.startDate) return null;
+                    return {
+                        filter: filterName,
+                        value1: value.startDate,
+                        value2: value.endDate || null,
+                    };
+                }
+
+                if (filterType === 'numberrange') {
+                    if (!value?.min) return null;
+                    return {
+                        filter: filterName,
+                        value1: value.min,
+                        value2: value.max || null,
+                    };
+                }
+
+                if (!value) return null;
+                return {
+                    filter: filterName,
+                    value1: value,
+                    value2: null,
+                };
+            })
+            .filter(Boolean);
+    }, [selectedFilters, filterOptions, filterValues]);
+
+    useEffect(() => {
+        if (!clickedActionRowId) return;
+
+        const handleClickOutside = (event) => {
+            if (event.target.closest('.cell-actions')) {
+                return;
+            }
+            setClickedActionRowId(null);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [clickedActionRowId]);
+
+    useEffect(() => {
+        if (!filterMenuOpen) return;
+
+        const handleClickOutside = (event) => {
+            if (filterMenuRef.current?.contains(event.target)) {
+                return;
+            }
+            setFilterMenuOpen(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [filterMenuOpen]);
 
     const {data: searchableHeaders = []} = useSuspenseQuery({
         queryKey: ['expenseTableHeaders'],
@@ -123,10 +232,11 @@ export const ExpensesTableSection = ({
     });
 
     const { data: expenses = [] } = useSuspenseQuery({
-        queryKey: ['tableExpenses', selectedSort, sortDirection, debouncedSearchFilter, showInactiveExpenses],
+        queryKey: ['tableExpenses', selectedSort, sortDirection, appliedSearchFilter, showInactiveExpenses, mappedFilters],
         queryFn: async () => {
-            return (enableSearch ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, debouncedSearchFilter)
-                    : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses))
+            return (enableSearch
+                    ? await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, appliedSearchFilter, mappedFilters)
+                    : await getAllExpenses(selectedSort, sortDirection, showInactiveExpenses, undefined, mappedFilters))
                 ?? [];
         },
         staleTime: 60_000,
@@ -144,10 +254,13 @@ export const ExpensesTableSection = ({
         }
     }, [selectActive, setSelectedIds])
 
-    // Auto-search after debounce delay
     useEffect(() => {
         if (!enableSearch) {
             setSearchFilter({
+                searchColumn: '',
+                searchValue: '',
+            });
+            setAppliedSearchFilter({
                 searchColumn: '',
                 searchValue: '',
             });
@@ -170,11 +283,14 @@ export const ExpensesTableSection = ({
             searchValue: value,
             searchColumn: col,
         });
+    }
 
-        // Instantly clear if empty
-        if (value === '') {
-            setSearchFilter({ searchColumn: '', searchValue: '' });
-        }
+    const handleSearchApply = (column) => {
+        const nextValue = searchFilter.searchColumn === column ? searchFilter.searchValue : '';
+        setAppliedSearchFilter({
+            searchColumn: nextValue ? column : '',
+            searchValue: nextValue,
+        });
     }
 
     const deleteExpenseMutation = useDeleteExpense(navigate);
@@ -187,6 +303,14 @@ export const ExpensesTableSection = ({
                 case 'Active':
                 case 'Inactive': {
                     const isActive = action === 'Active';
+                    if (isActive) {
+                        const expense = expenses.find((item) => item.id === expenseId);
+                        const today = new Date().toISOString().substring(0, 10);
+                        if (expense?.endDate && expense.endDate < today) {
+                            showWarning('End date must be today or later before marking this expense active.');
+                            return;
+                        }
+                    }
                     const confirmMessage = isActive
                         ? 'Mark this expense as active?'
                         : 'Mark this expense as inactive?';
@@ -262,8 +386,8 @@ export const ExpensesTableSection = ({
         }
     }
 
-    const handleExpenseSelectSave = async (selectedIds) => {
-        deletePaymentsMutation.mutate(selectedIds);
+    const handleExpenseSelectSave = async (selectedIds, expenseId) => {
+        deletePaymentsMutation.mutate({ selectedIds, expenseId });
     }
 
     const handleEditExpenseSave = async (expenseId, expenseData) => {
@@ -283,6 +407,30 @@ export const ExpensesTableSection = ({
         );
     }
 
+    const handleFilterToggle = (filterId) => {
+        setSelectedFilters((prev) => (
+            prev.includes(filterId)
+                ? prev.filter((id) => id !== filterId)
+                : [...prev, filterId]
+        ));
+    };
+
+    const handleFilterValueChange = (filterId, value) => {
+        setFilterValues((prev) => ({
+            ...prev,
+            [filterId]: value
+        }));
+    };
+
+    const handleRemoveFilter = (filterId) => {
+        setSelectedFilters((prev) => prev.filter((id) => id !== filterId));
+        setFilterValues((prev) => {
+            const next = {...prev};
+            delete next[filterId];
+            return next;
+        });
+    };
+
 
     const updateActiveMutation = useMutation({
         mutationFn: ({ isActive, expenseId }) => updateExpenseActiveStatus(isActive, expenseId),
@@ -301,9 +449,9 @@ export const ExpensesTableSection = ({
     });
 
     const deletePaymentsMutation = useMutation({
-        mutationFn: (ids) => deletePayments(ids),
-        onSuccess: (_data, ids) => {
-            showSuccess(`Successfully deleted ${ids.length} payment(s)!`);
+        mutationFn: ({ selectedIds, expenseId }) => deletePayments(selectedIds, expenseId),
+        onSuccess: (_data, variables) => {
+            showSuccess(`Successfully deleted ${variables.selectedIds.length} payment(s)!`);
             setViewUnpayDatesModal({isShowing: false, expenseId: null});
             qc.refetchQueries({ queryKey: ['lateDates']});
         },
@@ -368,50 +516,118 @@ export const ExpensesTableSection = ({
     const startIndex = pageSize === 'All' ? 0 : (currentPage - 1) * pageSizeValue;
     const endIndex = pageSize === 'All' ? expenses.length : startIndex + pageSizeValue;
     const displayedExpenses = expenses.slice(startIndex, endIndex);
+    const selectedFilterOptions = filterOptions.filter((option) => selectedFilters.includes(option.filter));
 
     return (
         <div>
             <div className="expenses-toolbar">
-                <div className="expenses-toolbar-group">
-                    <div className="expenses-control">
-                        <Dropdown
-                            title={"Sort"}
-                            options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")}
-                            handleOptionChange={handleSortChange}
-                        />
-                    </div>
-                    <div className="expenses-control">
-                        <Dropdown
-                            title={"Rows"}
-                            options={Object.entries({10: '10', 25: '25', 50: '50', 100: '100', All: 'All'})}
-                            handleOptionChange={handlePageSizeChange}
-                            changeTitleOnOptionChange={true}
-                        />
-                    </div>
-                    { selectActive &&
+                <div className="expenses-toolbar-row">
+                    <div className="expenses-toolbar-group">
                         <div className="expenses-control">
                             <Dropdown
-                                title={"Batch Actions"}
-                                options={Object.entries(batchActions)}
-                                handleOptionChange={handleBatchAction}
+                                title={"Sort"}
+                                options={showInactiveExpenses ? Object.entries(sortOptions) : Object.entries(sortOptions).filter(([name]) => name !== "Active")}
+                                handleOptionChange={handleSortChange}
                             />
                         </div>
-                    }
+                        <div className="expenses-control">
+                            <Dropdown
+                                title={"Rows"}
+                                options={Object.entries({10: '10', 25: '25', 50: '50', 100: '100', All: 'All'})}
+                                handleOptionChange={handlePageSizeChange}
+                                changeTitleOnOptionChange={true}
+                            />
+                        </div>
+                        { selectActive &&
+                            <div className="expenses-control">
+                                <Dropdown
+                                    title={"Batch Actions"}
+                                    options={Object.entries(batchActions)}
+                                    handleOptionChange={handleBatchAction}
+                                />
+                            </div>
+                        }
+                        <div className="expenses-control expenses-filter" ref={filterMenuRef}>
+                            <button
+                                type="button"
+                                className={`btn dropdown-toggle border-dark-subtle expenses-filter-button${filterMenuOpen ? ' expenses-filter-button--active' : ''}`}
+                                onClick={() => setFilterMenuOpen((prev) => !prev)}
+                            >
+                                Filters{selectedFilters.length ? ` (${selectedFilters.length})` : ''}
+                            </button>
+                            {filterMenuOpen && (
+                                <div className="expenses-filter-menu">
+                                    <div className="expenses-filter-options">
+                                        {filterOptions.map((option) => (
+                                            <label className="expenses-filter-option" key={option.filter}>
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={selectedFilters.includes(option.filter)}
+                                                    onChange={() => handleFilterToggle(option.filter)}
+                                                />
+                                                <span>{option.displayText}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="expenses-toolbar-toggles">
+                        <label className="expenses-toggle" htmlFor="selectToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
+                            <span>Select</span>
+                        </label>
+                        <label className="expenses-toggle" htmlFor="showInactiveToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                            <span>Show Inactive</span>
+                        </label>
+                        <label className="expenses-toggle" htmlFor="searchToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
+                            <span>Search</span>
+                        </label>
+                    </div>
                 </div>
-                <div className="expenses-toolbar-toggles">
-                    <label className="expenses-toggle" htmlFor="selectToggle">
-                        <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
-                        <span>Select</span>
-                    </label>
-                    <label className="expenses-toggle" htmlFor="showInactiveToggle">
-                        <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
-                        <span>Show Inactive</span>
-                    </label>
-                    <label className="expenses-toggle" htmlFor="searchToggle">
-                        <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
-                        <span>Search</span>
-                    </label>
-                </div>
+                {selectedFilterOptions.length > 0 && (
+                    <div className="expenses-filter-inputs">
+                        {selectedFilterOptions.map((option) => {
+                            const filterType = option.filterType?.toLowerCase();
+                            const onChange = (value) => handleFilterValueChange(option.filter, value);
+
+                            if (filterType === 'daterange') {
+                                return (
+                                    <DateRangeFilterInput
+                                        key={option.filter}
+                                        label={option.displayText}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            if (filterType === 'numberrange') {
+                                return (
+                                    <NumberRangeFilterInput
+                                        key={option.filter}
+                                        label={option.displayText}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            return (
+                                <TextFilterInput
+                                    key={option.filter}
+                                    label={option.displayText}
+                                    onChange={onChange}
+                                    onRemove={() => handleRemoveFilter(option.filter)}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
             </div>
             <div className="expenses-table-wrap">
                 <table className="table expenses-table" style={{cursor: "default", tableLayout: "fixed", width: "100%"}}>
@@ -431,11 +647,21 @@ export const ExpensesTableSection = ({
                             showInactiveExpenses={showInactiveExpenses}
                             searchFilter={searchFilter}
                             handleSearchInput={handleSearchInput}
+                            handleSearchApply={handleSearchApply}
                         />
                     }
                     </thead>
                     <tbody className="expenses-table-body" >
-                    {displayedExpenses.map((exp, idx) => (
+                    {displayedExpenses.length === 0 ? (
+                        <tr className="expenses-table-row">
+                            <td
+                                className="text-center cell"
+                                colSpan={Object.keys(searchableHeaders).length + (selectActive ? 1 : 0) + (showInactiveExpenses ? 1 : 0) + 1}
+                            >
+                                No expenses found.
+                            </td>
+                        </tr>
+                    ) : displayedExpenses.map((exp, idx) => (
                         <tr key={idx} className="expenses-table-row">
                             {selectActive &&
                                 <td className="cell cell-select">
@@ -467,7 +693,7 @@ export const ExpensesTableSection = ({
                                 <div className="dropdown">
                                     <button
                                         type="button"
-                                        className="actions-button dropdown-toggle"
+                                        className={`actions-button dropdown-toggle${clickedActionRowId === exp.id ? ' actions-button--active' : ''}`}
                                         data-bs-toggle="dropdown"
                                         aria-expanded="false"
                                        onClick={(e) => {

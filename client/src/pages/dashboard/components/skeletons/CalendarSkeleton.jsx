@@ -3,7 +3,7 @@ import React from 'react';
 import '../../css/calendar.css';
 
 export const CalendarSkeleton = () => {
-    const cells = Array.from({ length: 42 });
+    const cells = Array.from({ length: 35 });
 
     return (
         <div className="calendar">
@@ -17,20 +17,11 @@ export const CalendarSkeleton = () => {
                 {cells.map((_, idx) => (
                     <div
                         key={idx}
-                        className="dayBox placeholder-glow"
+                        className="dayBox dayBox--skeleton placeholder-glow"
                         aria-hidden="true"
-                        style={{
-                            height: '3rem',
-                            width: '3rem'
-                        }}
                     >
                         <span
                             className="placeholder"
-                            style={{
-                                width: '1.5rem',
-                                height: '1.2rem',
-                                alignSelf: 'flex-start'
-                            }}
                         />
                     </div>
                 ))}

@@ -72,6 +72,30 @@
     color: #111827;
 }
 
+.table-search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.table-search-apply-button {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #6b7280;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.table-search-apply-button:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
 .cell-name {
     font-weight: 600;
 }
@@ -124,6 +148,12 @@
 .actions-button:hover {
     background-color: #f3f4f6;
     color: #111827;
+}
+
+.actions-button--active {
+    color: #2563eb;
+    border-color: #bfdbfe;
+    background-color: #eff6ff;
 }
 
 .actions-menu {

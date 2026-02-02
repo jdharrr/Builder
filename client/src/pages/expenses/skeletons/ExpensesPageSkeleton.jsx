@@ -25,6 +25,9 @@ export default function ExpensesPageSkeleton() {
                             <div className="expenses-control placeholder-glow">
                                 <span className="placeholder col-5" />
                             </div>
+                            <div className="expenses-control placeholder-glow">
+                                <span className="placeholder col-5" />
+                            </div>
                         </div>
                         <div className="expenses-toolbar-toggles">
                             {['Select', 'Show Inactive', 'Search'].map((label) => (

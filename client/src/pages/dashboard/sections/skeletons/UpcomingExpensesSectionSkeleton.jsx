@@ -1,8 +1,8 @@
 import React from 'react';
 
 export const UpcomingExpensesSectionSkeleton = () => {
-    const daysToShow = 4;
-    const avgExpensesPerDay = 2;
+    const daysToShow = 3;
+    const avgExpensesPerDay = 1;
 
     return (
         <div>

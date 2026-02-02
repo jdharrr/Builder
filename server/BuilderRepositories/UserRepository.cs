@@ -19,7 +19,7 @@ public class UserRepository
     {  
         await _dbService.BeginTransactionAsync().ConfigureAwait(false);
 
-        var userSql = "INSERT INTO users (username,email,password_hash, salt) VALUES@username,@email,@password_hash,@salt)";
+        var userSql = "INSERT INTO users (username,email,password_hash, salt) VALUES (@username,@email,@password_hash,@salt)";
         var userParams = new Dictionary<string, object?>()
         {
             { "@username", dto.Username! },
@@ -50,7 +50,7 @@ public class UserRepository
             throw new GenericException("Failed to create user");
         }
 
-        var settingsSql = "INSERT INTO settings (user_id) VALUES @userId)";
+        var settingsSql = "INSERT INTO user_settings (user_id) VALUES (@userId)";
         var settingsParams = new Dictionary<string, object?>()
         {
             { "@userId", lastInsertedUserId }

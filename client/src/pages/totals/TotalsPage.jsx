@@ -1,12 +1,19 @@
 import React, {useMemo, useState} from 'react';
-import { Doughnut } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 
 import {Card} from "../../components/Card.jsx";
-import {getCategoryChartRangeOptions, getExpenseCategoriesWithTotalSpent, getTotalSpent} from "../../api.jsx";
+import {
+    getAllExpenseCategories,
+    getCategoryChartRangeOptions,
+    getExpenseCategoriesWithTotalSpent,
+    getMonthlyTotals,
+    getTotalSpent
+} from "../../api.jsx";
 import {useQuery} from "@tanstack/react-query";
 import {getStatus} from "../../util.jsx";
 import {Dropdown} from '../../components/Dropdown.jsx'
 import {formatCurrency} from "./utils/formatters.js";
+import {MONTHS, getYearRange} from "../../constants/dateConstants.js";
 
 import './css/totalsPage.css';
 
@@ -29,7 +36,10 @@ const PIE_COLORS = [
 ];
 
 export default function TotalsPage() {
-    const [selectedCategoryChartRangeOption, setSelectedCategoryChartRangeOption] = useState("AllTime");
+    const [selectedCategoryChartRangeOption, setSelectedCategoryChartRangeOption] = useState("ThisMonth");
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedMonthlyCategoryId, setSelectedMonthlyCategoryId] = useState('');
+    const years = getYearRange();
     const { data: categoryChartRangeOptions = [] } = useQuery({
         queryKey: ['categoryChartRangeOptions'],
         queryFn: async () => {
@@ -74,6 +84,34 @@ export default function TotalsPage() {
         },
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
+
+    const { data: monthlyCategories = [] } = useQuery({
+        queryKey: ['expenseCategories', 'monthlyTotals'],
+        queryFn: async () => {
+            const result = await getAllExpenseCategories();
+            return result ?? [];
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
+
+    const { data: monthlyTotals = {} } = useQuery({
+        queryKey: ['monthlyTotals', selectedYear, selectedMonthlyCategoryId],
+        queryFn: async () => {
+            const result = await getMonthlyTotals(selectedYear, selectedMonthlyCategoryId || null);
+            return result ?? {};
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
     
     const { categories, combinedTotalSpent } = useMemo(() => {
         return {
@@ -103,10 +141,77 @@ export default function TotalsPage() {
         };
     }, [categories]);
 
+    const monthlyTotalsData = useMemo(() => {
+        const totals = monthlyTotals.monthlyTotals ?? monthlyTotals.MonthlyTotals ?? [];
+        const totalsByMonth = totals.reduce((acc, item) => {
+            acc[item.month ?? item.Month] = item.totalSpent ?? item.TotalSpent ?? 0;
+            return acc;
+        }, {});
+
+        const data = MONTHS.map((month) => totalsByMonth[month] ?? 0);
+
+        return {
+            labels: MONTHS,
+            datasets: [
+                {
+                    label: `Monthly Total (${selectedYear})`,
+                    data,
+                    backgroundColor: "rgba(59, 130, 246, 0.5)",
+                    borderColor: "rgba(59, 130, 246, 0.9)",
+                    borderWidth: 1,
+                    borderRadius: 8,
+                }
+            ]
+        };
+    }, [monthlyTotals, selectedYear]);
+
+    const yearTotalSpent = useMemo(() => {
+        return monthlyTotals.yearTotalSpent ?? monthlyTotals.YearTotalSpent ?? 0;
+    }, [monthlyTotals]);
+
+    const monthlyTotalsOptions = useMemo(() => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: (context) => formatCurrency(context.raw ?? 0)
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: { display: false }
+            },
+            y: {
+                ticks: {
+                    callback: (value) => formatCurrency(value)
+                }
+            }
+        }
+    }), []);
+
     const handleRangeChange = (e, name) => {
         e.preventDefault();
         setSelectedCategoryChartRangeOption(name);
     }
+
+    const handleYearChange = (e, year) => {
+        e.preventDefault();
+        setSelectedYear(year);
+    }
+
+    const handleMonthlyCategoryChange = (e, categoryId) => {
+        e.preventDefault();
+        setSelectedMonthlyCategoryId(categoryId);
+    }
+
+    const monthlyCategoryOptions = useMemo(() => {
+        const base = [['', 'All Categories']];
+        const mapped = monthlyCategories.map((category) => [category.id, category.name]);
+        return base.concat(mapped);
+    }, [monthlyCategories]);
 
     return (
         <div className="totals-page">
@@ -132,7 +237,7 @@ export default function TotalsPage() {
                     <div className="totals-range">
                         <span className="totals-stat-label">Range</span>
                         <Dropdown
-                            title={"Range"}
+                            title={"This Month"}
                             options={Object.entries(categoryChartRangeOptions)}
                             handleOptionChange={handleRangeChange}
                             changeTitleOnOptionChange={true}
@@ -147,12 +252,40 @@ export default function TotalsPage() {
                     </div>
                 </Card>
                 <Card
-                    title={"Total Spent"}
-                    className="totals-card totals-total-card"
+                    title={"Monthly Spend"}
+                    className="totals-card"
+                    bodyClassName="totals-card-body"
                     style={{width: '100%'}}
                 >
-                    <div className="totals-total-amount">{formatCurrency(totalSpent)}</div>
-                    <div className="totals-total-subtext">Across all tracked expenses.</div>
+                    <div className="totals-range">
+                        <span className="totals-stat-label">Year</span>
+                        <Dropdown
+                            title={selectedYear}
+                            options={years}
+                            handleOptionChange={handleYearChange}
+                            maxHeight={'16rem'}
+                            includeScrollbarY={true}
+                            changeTitleOnOptionChange={true}
+                        />
+                    </div>
+                    <div className="totals-range">
+                        <span className="totals-stat-label">Category</span>
+                        <Dropdown
+                            title="All Categories"
+                            options={monthlyCategoryOptions}
+                            handleOptionChange={handleMonthlyCategoryChange}
+                            maxHeight={'16rem'}
+                            includeScrollbarY={true}
+                            changeTitleOnOptionChange={true}
+                        />
+                    </div>
+                    <div className="totals-year-total">
+                        <span className="totals-range-label">Year total</span>
+                        <span className="totals-range-value">{formatCurrency(yearTotalSpent)}</span>
+                    </div>
+                    <div className="totals-chart totals-chart--wide">
+                        <Bar data={monthlyTotalsData} options={monthlyTotalsOptions} />
+                    </div>
                 </Card>
             </div>
         </div>

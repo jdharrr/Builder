@@ -1,0 +1,111 @@
+.createUserWrapper {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(1200px 600px at 10% -10%, #e6eaf0 0%, #f0f2f6 45%, #e9edf2 100%);
+}
+
+.createUserCard {
+    width: min(28rem, 100%);
+    padding: 2rem 2rem 1.75rem;
+    border-radius: 1.25rem;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow: 0 20px 40px -30px rgba(15, 23, 42, 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.createUserHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.createUserEyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.createUserTitle {
+    margin: 0;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.createUserSubtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.createUserForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.createUserLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.createUserInput {
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-weight: 500;
+    color: #111827;
+}
+
+.createUserInput:focus {
+    outline: none;
+    border-color: #c7d2fe;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.createUserSubmit {
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #6366f1, #4338ca);
+    border: none;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.6rem 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.createUserSubmit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -16px rgba(67, 56, 202, 0.8);
+}
+
+.createUserFootnote {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-align: center;
+}
+
+.createUserLink {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #4f46e5;
+    font-weight: 600;
+}

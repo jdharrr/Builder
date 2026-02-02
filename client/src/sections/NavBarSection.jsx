@@ -40,12 +40,32 @@ export const NavBarSection = () => {
                     </div>
                     <div className={'navItem'}>
                         <NavLink
+                            to="/payments"
+                            className={({ isActive }) =>
+                                isActive ? "nav-link-item active" : "nav-link-item"
+                            }
+                        >
+                            Payments
+                        </NavLink>
+                    </div>
+                    <div className={'navItem'}>
+                        <NavLink
                             to="/totals"
                             className={({ isActive }) =>
                                 isActive ? "nav-link-item active" : "nav-link-item"
                             }
                         >
                             Totals
+                        </NavLink>
+                    </div>
+                    <div className={'navItem'}>
+                        <NavLink
+                            to="/budgets"
+                            className={({ isActive }) =>
+                                isActive ? "nav-link-item active" : "nav-link-item"
+                            }
+                        >
+                            Budgets
                         </NavLink>
                     </div>
                     <div

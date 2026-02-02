@@ -148,7 +148,7 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     const dueDatesCount = selectedLateDates.length + selectedFutureDates.length;
 
     return (
-        <div className="modal show d-block create-expense-modal payment-input-modal">
+        <div className="modal show d-block app-modal payment-input-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">

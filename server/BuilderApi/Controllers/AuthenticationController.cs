@@ -1,5 +1,6 @@
 ﻿using AuthenticationServices;
 using AuthenticationServices.Requests;
+using AuthenticationServices.Responses;
 using BuilderRepositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,27 +10,25 @@ namespace BuilderApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthenticationController : ControllerBase
+public class AuthenticationController(
+    AuthenticationService authService
+) : ControllerBase
 {
-    private readonly AuthenticationService _authService;
-
     private readonly string _emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
 
     private readonly string _genericProblemResponse = "An error occurred while processing the request.";
-
-    public AuthenticationController(AuthenticationService authService)
-    {
-        _authService = authService;
-    }
 
     [Authorize]
     [HttpGet("validate/accessToken")]
     public IActionResult ValidateAccessToken()
     {
-        return Ok(true);
+        return Ok(new ValidateAccessTokenResponse
+        {
+            IsValid = true
+        });
     }
 
-    [HttpPost("creat/user")]
+    [HttpPost("create/user")]
     public async Task<IActionResult> CreateUser([FromBody] NewUserRequest request)
     {
         if (!Regex.IsMatch(request.Email, _emailPattern, RegexOptions.IgnoreCase))
@@ -38,7 +37,7 @@ public class AuthenticationController : ControllerBase
         bool userCreated;
         try
         {
-            userCreated = await _authService.CreateNewUserAsync(request).ConfigureAwait(false);
+            userCreated = await authService.CreateNewUserAsync(request).ConfigureAwait(false);
         }
         catch (Exception)
         {
@@ -48,7 +47,10 @@ public class AuthenticationController : ControllerBase
         if (!userCreated)
             return BadRequest("Email already exists.");
 
-        return Ok();
+        return Ok(new CreateUserResponse
+        {
+            IsCreated = true
+        });
     }
 
     [Authorize]
@@ -63,7 +65,7 @@ public class AuthenticationController : ControllerBase
     {
         try
         {
-            return Ok(await _authService.LoginAsync(request).ConfigureAwait(false));
+            return Ok(await authService.LoginAsync(request).ConfigureAwait(false));
         }
         catch (UserNotFoundException)
         {

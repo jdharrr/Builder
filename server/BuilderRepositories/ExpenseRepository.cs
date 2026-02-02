@@ -1,6 +1,8 @@
 ﻿using DatabaseServices;
 using DatabaseServices.Models;
 using DatabaseServices.Repsonses;
+using BuilderRepositories.Requests;
+using BuilderServices.Enums;
 using MySql.Data.MySqlClient;
 using System.Data;
 
@@ -190,6 +192,7 @@ public class ExpenseRepository : BuilderRepository
                     FROM expenses e
                     LEFT JOIN expense_categories c ON e.category_id = c.id
                     WHERE e.user_id = @userId
+                        AND e.active = 1
                         AND DATE(e.start_date) <= @lastDate
                         AND (e.end_date IS NULL OR e.end_date >= @firstDate)
                         AND (
@@ -232,15 +235,12 @@ public class ExpenseRepository : BuilderRepository
         }) ?? [];
     }
 
-    public async Task<List<ExpenseDto>> GetAllExpensesForTableAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive)
+    public async Task<List<ExpenseDto>> GetAllExpensesForTableAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showInactive, List<TableFilter> filters)
     {
         var parameters = new Dictionary<string, object?>()
         {
             { "@userId", userId }
         };
-
-        var sort = sortColumn == "category_name" ? "c.name" : $"e.{sortColumn}";
-        var sortDirection = sortDir.ToLower() == "asc" ? "ASC" : "DESC";
 
         var selectFrom = "SELECT e.*, c.name as category_name FROM expenses e";
 
@@ -251,18 +251,9 @@ public class ExpenseRepository : BuilderRepository
         if (!showInactive)
             where += " AND e.active = 1";
 
-        // Column searching
-        if (!string.IsNullOrEmpty(searchColumn) && !string.IsNullOrEmpty(searchValue))
-        {
-            // TODO: sanitize search value to prevent
-            var searchCol = searchColumn == "category_name" ? "c.name" : "e." + searchColumn;
-            where += $" AND {searchCol} LIKE @searchValue";
-
-            var escapedSearchValue = searchValue.Replace("%", "\\%").Replace("_", "\\_");
-            parameters["@searchValue"] = $"%{escapedSearchValue}%";
-        }
-
-        var orderBy = $" ORDER BY {sort} {sortDir}, e.id DESC";
+        AddTableSearch(ref where, ref parameters, searchColumn, searchValue);
+        AddTableFilters(ref where, ref parameters, filters);
+        var orderBy = AddTableSort(sortDir, sortColumn);
 
         var sql = selectFrom + join + where + orderBy;
 
@@ -289,6 +280,76 @@ public class ExpenseRepository : BuilderRepository
             AutomaticPayments = row.Field<bool>("automatic_payments"),
             AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
         }) ?? [];
+    }
+
+    private static void AddTableSearch(ref string where, ref Dictionary<string, object?> parameters, string? searchColumn, string? searchValue)
+    {
+        if (string.IsNullOrEmpty(searchColumn) || string.IsNullOrEmpty(searchValue)) return;
+
+        var searchCol = searchColumn == "category_name" ? "c.name" : $"e.{searchColumn}";
+        where += $" AND {searchCol} LIKE @searchValue";
+
+        var escapedSearchValue = searchValue.Replace("%", "\\%").Replace("_", "\\_");
+        parameters["@searchValue"] = $"%{escapedSearchValue}%";
+    }
+
+    private static void AddTableFilters(ref string where, ref Dictionary<string, object?> parameters, List<TableFilter> filters)
+    {
+        if (filters.Count <= 0) return;
+
+        var i = 0;
+        foreach (var filter in filters)
+        {
+            if (string.IsNullOrEmpty(filter.Value1))
+                continue;
+
+            switch (filter.FilterType)
+            {
+                case TableFilterType.Text:
+                    var filterCol = filter.FilterColumn == "category_name" ? "c.name" : $"e.{filter.FilterColumn}";
+                    where += $" AND {filterCol} LIKE @filterValue{i}";
+
+                    var escapedFilterValue = filter.Value1.Replace("%", "\\%").Replace("_", "\\_");
+                    parameters[$"@filterValue{i}"] = $"%{escapedFilterValue}%";
+                    break;
+                case TableFilterType.DateRange:
+                    if (!DateOnly.TryParse(filter.Value1, out var _))
+                        continue;
+
+                    where += $" AND e.{filter.FilterColumn} >= @dateFrom{i}";
+                    parameters[$"@dateFrom{i}"] = filter.Value1;
+
+                    if (string.IsNullOrEmpty(filter.Value2) || !DateOnly.TryParse(filter.Value2, out var _))
+                        break;
+
+                    where += $" AND e.{filter.FilterColumn} <= @dateTo{i}";
+                    parameters[$"@dateTo{i}"] = filter.Value2;
+                    break;
+                case TableFilterType.NumberRange:
+                    if (!double.TryParse(filter.Value1, out var _))
+                        continue;
+
+                    where += $" AND e.{filter.FilterColumn} >= @numMin{i}";
+                    parameters[$"@numMin{i}"] = filter.Value1;
+
+                    if (string.IsNullOrEmpty(filter.Value2) || !double.TryParse(filter.Value2, out var _))
+                        break;
+
+                    where += $" AND e.{filter.FilterColumn} <= @numMax{i}";
+                    parameters[$"@numMax{i}"] = filter.Value2;
+                    break;
+            }
+
+            i++;
+        }
+    }
+
+    private static string AddTableSort(string sortDir, string sortColumn)
+    {
+        var sort = sortColumn == "category_name" ? "c.name" : $"e.{sortColumn}";
+        var sortDirection = sortDir.ToLower() == "asc" ? "ASC" : "DESC";
+
+        return $" ORDER BY {sort} {sortDirection}, e.id DESC";
     }
 
     public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId)

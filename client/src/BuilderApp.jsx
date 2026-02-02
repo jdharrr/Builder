@@ -7,12 +7,16 @@ import { PrivateRoute } from "./components/PrivateRoute.jsx";
 import {fetchUser, validateToken} from "./api.jsx";
 import {BuilderLayout} from "./layouts/BuilderLayout.jsx";
 import ExpensesPageSkeleton from "./pages/expenses/skeletons/ExpensesPageSkeleton.jsx";
+import PaymentsPageSkeleton from "./pages/payments/skeletons/PaymentsPageSkeleton.jsx";
 
 import './css/app.css';
 
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage.jsx"));
 const ExpensesPage = lazy(() => import("./pages/expenses/ExpensesPage.jsx"));
+const BudgetsPage = lazy(() => import("./pages/budgets/BudgetsPage.jsx"));
+const PaymentsPage = lazy(() => import("./pages/payments/PaymentsPage.jsx"));
 const TotalsPage = lazy(() => import('./pages/totals/TotalsPage.jsx'));
+const CreateUserPage = lazy(() => import("./pages/createUser/CreateUserPage.jsx"));
 
 export const BuilderApp = () => {
     const [authenticated, setAuthenticated] = useState(null);
@@ -20,11 +24,12 @@ export const BuilderApp = () => {
     useEffect(() => {
         async function validate() {
             const isValidated = await validateToken();
-            if (!isValidated && window.location.pathname !== "/login") {
+            const isPublicRoute = window.location.pathname === "/login" || window.location.pathname === "/create-user";
+            if (!isValidated && !isPublicRoute) {
                 window.location.assign('/login');
-            } else {
-                setAuthenticated(true);
+                return;
             }
+            setAuthenticated(isValidated);
         }
 
         validate();
@@ -55,6 +60,11 @@ export const BuilderApp = () => {
                                    <LoginPage setAuthenticated={setAuthenticated} />
                                }
                         />
+                        <Route path="/create-user"
+                               element={
+                                   <CreateUserPage />
+                               }
+                        />
                         <Route element={<PrivateRoute authenticated={authenticated} />} >
                             <Route
                                 exact path="/dashboard"
@@ -77,6 +87,22 @@ export const BuilderApp = () => {
                                    element={
                                        <BuilderLayout>
                                            <TotalsPage />
+                                       </BuilderLayout>
+                                   }
+                            />
+                            <Route path="/budgets"
+                                   element={
+                                       <BuilderLayout>
+                                           <BudgetsPage />
+                                       </BuilderLayout>
+                                   }
+                            />
+                            <Route path="/payments"
+                                   element={
+                                       <BuilderLayout>
+                                           <Suspense fallback={<PaymentsPageSkeleton />}>
+                                               <PaymentsPage />
+                                           </Suspense>
                                        </BuilderLayout>
                                    }
                             />

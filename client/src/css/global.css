@@ -21,3 +21,117 @@
 .modal-close-button:hover {
     color: #111827;
 }
+
+.app-modal {
+    position: fixed;
+    inset: 0;
+}
+
+.app-modal::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.create-expense-modal--suppressed::before {
+    opacity: 0;
+}
+
+.app-modal .modal-dialog {
+    max-width: 68rem;
+    width: min(92vw, 68rem);
+    margin-top: 6vh;
+    position: relative;
+    z-index: 1;
+}
+
+.app-modal .modal-content {
+    border-radius: 1.5rem;
+    border: 1px solid #e5e7eb;
+    background: radial-gradient(1200px 600px at 10% -10%, #e6eaf0 0%, #f0f2f6 45%, #e9edf2 100%);
+    box-shadow: 0 30px 60px -35px rgba(15, 23, 42, 0.6);
+    overflow: hidden;
+    height: 77vh;
+    max-height: 77vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalLiftIn 0.35s ease both;
+}
+
+.app-modal .modal-header {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    padding: 1.35rem 1.75rem 1rem;
+    background: #ffffff;
+}
+
+.app-modal .modal-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.app-modal .modal-body {
+    padding: 1.5rem 1.75rem 1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.app-modal .modal-body > * {
+    animation: cardFloatIn 0.4s ease both;
+}
+
+.app-modal .modal-body > *:nth-child(2) {
+    animation-delay: 0.05s;
+}
+
+.app-modal .modal-body > *:nth-child(3) {
+    animation-delay: 0.1s;
+}
+
+.app-modal .modal-footer {
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    padding: 1rem 1.75rem 1.35rem;
+    gap: 0.75rem;
+    background-color: #ffffff;
+}
+
+.app-modal .btn-primary,
+.app-modal .btn-secondary,
+.app-modal .btn-success {
+    border-radius: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+}
+
+@media (max-width: 640px) {
+    .app-modal .modal-dialog {
+        width: 94vw;
+        margin-top: 4vh;
+    }
+
+    .app-modal .modal-body {
+        max-height: 72vh;
+        padding: 1.1rem 1.1rem 0.85rem;
+    }
+
+    .app-modal .modal-header,
+    .app-modal .modal-footer {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+    }
+}
+
+@keyframes modalLiftIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

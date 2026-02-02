@@ -1,15 +1,15 @@
-.manage-credit-cards-modal .modal-dialog {
-    max-width: 36rem;
-}
 
 .manage-credit-cards-body {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
+    max-width: 52rem;
+    margin: 0 auto;
 }
 
+
 .manage-credit-cards-card {
-    padding: 1rem;
+    padding: 1.3rem 1.4rem;
     border-radius: 0.9rem;
     border: 1px solid #e5e7eb;
     background-color: #f9fafb;

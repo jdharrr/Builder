@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {FaPen} from "react-icons/fa";
@@ -187,8 +188,8 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         });
     };
 
-    return (
-        <div className="modal show d-block manage-credit-cards-modal">
+    const modalContent = (
+        <div className="modal show d-block manage-credit-cards-modal app-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div
                     className={"modal-content"}
@@ -311,7 +312,7 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                     title={`Pay ${payModal.card?.company || 'Credit Card'}`}
                     handleSave={handlePaySave}
                     handleClose={handleClosePayModal}
-                    className="create-expense-modal"
+                    className="app-modal"
                     saveLabel="Pay"
                 >
                     <div className="payment-section">
@@ -348,4 +349,5 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
             )}
         </div>
     );
+    return createPortal(modalContent, document.body);
 }

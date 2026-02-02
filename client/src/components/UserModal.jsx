@@ -1,4 +1,5 @@
 import React, {useEffect, useRef} from 'react';
+import Cookies from "js-cookie";
 
 import '../css/userModal.css';
 import {fetchUser, updateDarkMode} from "../api.jsx";
@@ -9,6 +10,7 @@ import {showSuccess, showError} from "../utils/toast.js";
 
 export const UserModal = ({handleClose}) => {
     const navigate = useNavigate();
+    const qc = useQueryClient();
 
     const { data: user = {}, isLoading } = useQuery({
         queryKey: ['user'],
@@ -40,9 +42,18 @@ export const UserModal = ({handleClose}) => {
     const handleDarkModeChange = (isChecked) => {
         toggleDarkMode.mutate(isChecked);
     }
+    const hasUserProfileData = Boolean(user?.username && user?.email);
+
+    const handleLogout = () => {
+        Cookies.remove('access_token');
+        qc.clear();
+        handleClose();
+        showSuccess('Logged out.');
+        window.location.assign('/login');
+    };
 
     return (
-        <div className="modal show d-block user-modal">
+        <div className="modal show d-block user-modal app-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                 <div className={"modal-content"}>
                     <div className="modal-header">
@@ -87,7 +98,7 @@ export const UserModal = ({handleClose}) => {
 
                         <div className={'tab-content user-modal-content'} >
                             <div className="tab-pane show active" id={'general-tab-content'} role={'tabpanel'}>
-                                { !isLoading ?
+                                { !isLoading && hasUserProfileData ?
                                     (
                                         <div className={'user-modal-list'}>
                                             <div className={'user-modal-row'}>
@@ -100,11 +111,11 @@ export const UserModal = ({handleClose}) => {
                                             </div>
                                             <div className={'user-modal-row'}>
                                                 <span className="user-modal-label">Created</span>
-                                                <span className="user-modal-value">{user.createdAt.substring(0, 10)}</span>
+                                                <span className="user-modal-value">{user.createdAt ? user.createdAt.substring(0, 10) : '—'}</span>
                                             </div>
                                             <div className={'user-modal-row'}>
                                                 <span className="user-modal-label">Last Updated</span>
-                                                <span className="user-modal-value">{user.updatedAt.substring(0,10)}</span>
+                                                <span className="user-modal-value">{user.updatedAt ? user.updatedAt.substring(0,10) : '—'}</span>
                                             </div>
                                         </div>
                                     ) : (
@@ -119,7 +130,7 @@ export const UserModal = ({handleClose}) => {
                                 }
                             </div>
                             <div className="tab-pane" id={'settings-tab-content'} role={'tabpanel'}>
-                                { !isLoading ?
+                                { !isLoading && user?.settings ?
                                     (
                                         <div className={'user-modal-setting'}>
                                             <span className="user-modal-label">Dark Mode</span>
@@ -144,6 +155,7 @@ export const UserModal = ({handleClose}) => {
                         </div>
                     </div>
                     <div className="modal-footer">
+                        <button type="button" className="btn btn-outline-danger" onClick={handleLogout}>Logout</button>
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
                     </div>
                 </div>

@@ -2,76 +2,74 @@
 using BuilderServices.ExpenseCategoryService;
 using BuilderServices.ExpenseCategoryService.Request;
 using BuilderServices.CreditCardService;
-using BuilderServices.ExpensePaymentService;
-using BuilderServices.ExpenseService;
-using BuilderServices.ExpenseService.Enums;
-using BuilderServices.ExpenseService.Requests;
-using DatabaseServices.Models;
+using BuilderServices.ExpensePayments.ExpensePaymentService;
+using BuilderServices.ExpensePayments.ExpensePaymentService.Requests;
+using BuilderServices.Expenses.ExpenseService;
+using BuilderServices.Expenses.ExpenseService.Requests;
+using BuilderServices.Expenses.ExpenseService.Responses;
+using BuilderServices.Expenses.ExpenseTableService;
+using BuilderServices.Expenses.ExpenseTableService.Enums;
+using BuilderServices.Expenses.ExpenseTableService.Requests;
+using BuilderServices.Expenses.ExpenseTableService.Responses;
+using BuilderServices.ExpenseCategoryService.Responses;
+using BuilderRepositories.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace BuilderApi.Controllers;
 
 [ApiController]
 [Route("api/expenses")]
 [Authorize]
-public class ExpenseController : ControllerBase
+public class ExpenseController(
+    ExpenseService expenseService,
+    ExpenseTableService expenseTableService,
+    ExpenseCategoryService categoryService,
+    ExpensePaymentService paymentService,
+    CreditCardService creditCardService
+) : ControllerBase
 {
-    private readonly ExpenseService _expenseService;
-
-    private readonly ExpenseCategoryService _categoryService;
-
-    private readonly ExpensePaymentService _paymentService;
-    private readonly CreditCardService _creditCardService;
-
     private readonly List<string> _sortDirs = ["asc", "desc"];
-
-    public ExpenseController(ExpenseService expenseService, ExpenseCategoryService categoryService, ExpensePaymentService paymentService, CreditCardService creditCardService)
-    {
-        _expenseService = expenseService;
-        _categoryService = categoryService;
-        _paymentService = paymentService;
-        _creditCardService = creditCardService;
-    }
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseRequest request)
     {
-        //TODO: Validate request
-        if (request is { OneTimeExpenseIsCredit: true, OneTimeExpenseIsPaid: true })
+        var oneTimePayment = request.OneTimePayment;
+        var payToNowPayment = request.PayToNowPayment;
+        var automaticPayment = request.AutomaticPayment;
+        var hasOneTimePayment = oneTimePayment.IsPaid || oneTimePayment.IsCredit;
+
+        if (oneTimePayment is { IsCredit: true, IsPaid: true })
             throw new GenericException("Cannot provide both credit and payment");
         
-        if ((request.OneTimeExpenseIsCredit && request.OneTimeExpenseCreditCardId == null) 
-            || (request.PayToNowIsCredit && request.PayToNowCreditCardId == null)
-            || (request.IsAutomaticPayment && request.AutomaticPaymentCreditCardId == null))
+        if (oneTimePayment is { IsCredit: true, CreditCardId: null } 
+            || payToNowPayment is { Enabled: true, IsCredit: true, CreditCardId: null } 
+            || automaticPayment is { Enabled: true, CreditCardId: null })
             throw new GenericException("Must provide a credit card for payment");
 
-        if ((request.OneTimeExpenseIsPaid || request.OneTimeExpenseIsCredit) &&
-            request.OneTimeExpensePaymentDate == null)
+        if (hasOneTimePayment && string.IsNullOrWhiteSpace(oneTimePayment.PaymentDate))
             throw new GenericException("Must provide a payment date for expense");
         
-        if (request.RecurrenceRate != "once" && (request.OneTimeExpenseIsCredit || request.OneTimeExpenseIsPaid))
+        if (request.RecurrenceRate != "once" && hasOneTimePayment)
             throw new GenericException("Payment requires a recurrence rate of once");
 
-        if (request.RecurrenceRate == "once" && request.PayToNow)
+        if (request.RecurrenceRate == "once" && payToNowPayment.Enabled)
             throw new GenericException("Pay to now cannot have recurrence rate of once");
 
-        var expenseId = await _expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
+        var expenseId = await expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
 
-        if (request.OneTimeExpenseIsPaid || request.OneTimeExpenseIsCredit)
-            await _paymentService
-                .PayDueDateAsync((int)expenseId, request.StartDate, false, request.OneTimeExpenseCreditCardId, request.OneTimeExpensePaymentDate)
-                .ConfigureAwait(false);
-
-        if (request.OneTimeExpenseIsCredit)
-            await _creditCardService.AddPaymentToCreditCardAsync(request.Cost, (int)request.OneTimeExpenseCreditCardId!)
+        if (hasOneTimePayment && !automaticPayment.Enabled)
+            await paymentService
+                .PayDueDateAsync((int)expenseId, request.StartDate, false, oneTimePayment.CreditCardId, oneTimePayment.PaymentDate)
                 .ConfigureAwait(false);
         
-        if (request.PayToNow)
-            await _paymentService.PayAllOverdueDatesAsync((int)expenseId, request.PayToNowCreditCardId).ConfigureAwait(false);
+        if (payToNowPayment.Enabled)
+            await paymentService.PayAllOverdueDatesAsync((int)expenseId, payToNowPayment.CreditCardId).ConfigureAwait(false);
         
-        return Ok(new { ExpenseId = expenseId });
+        return Ok(new CreateExpenseResponse
+        {
+            IsCreated = expenseId > 0
+        });
     }
 
     [HttpGet("dashboard/calendar")]
@@ -79,7 +77,7 @@ public class ExpenseController : ControllerBase
     {
         // TODO: Validate request
 
-        var expenses = await _expenseService.GetExpensesForDashboardCalendarAsync(request.Year, request.Month).ConfigureAwait(false);
+        var expenses = await expenseService.GetExpensesForDashboardCalendarAsync(request.Year, request.Month).ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -87,7 +85,7 @@ public class ExpenseController : ControllerBase
     [HttpGet("dashboard/upcoming")]
     public async Task<IActionResult> GetUpcomingExpenses()
     {
-        var expenses = await _expenseService.GetUpcomingExpensesAsync().ConfigureAwait(false);
+        var expenses = await expenseService.GetUpcomingExpensesAsync().ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -110,7 +108,25 @@ public class ExpenseController : ControllerBase
         if (!string.IsNullOrEmpty(request.SearchColumn) && !Enum.TryParse(typeof(ExpenseSearchColumn), request.SearchColumn, true, out searchColumn))
             return BadRequest("Invalid search column.");
 
-        var expenses = await _expenseService.GetAllExpensesForTableAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses).ConfigureAwait(false);
+        List<TableFilter> filters = [];
+        if (request.Filters.Count > 0)
+        {
+            foreach (var filter in request.Filters)
+            {
+                if (!Enum.TryParse(typeof(ExpenseTableFilterOption), filter.Filter, true, out var filterEnum))
+                    return BadRequest("Invalid filter.");
+
+                filters.Add(new TableFilter
+                {
+                    FilterType = ((ExpenseTableFilterOption)filterEnum).GetFilterType(),
+                    FilterColumn = ((ExpenseTableFilterOption)filterEnum).GetFilterColumn(),
+                    Value1 = filter.Value1,
+                    Value2 = filter.Value2
+                });
+            }
+        }
+
+        var expenses = await expenseTableService.GetAllExpensesForTableAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses, filters).ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -118,15 +134,18 @@ public class ExpenseController : ControllerBase
     [HttpDelete("{id:int}/delete")]
     public async Task<IActionResult> DeleteExpense(int id)
     {
-        await _expenseService.DeleteExpenseAsync(id).ConfigureAwait(false);
+        await expenseService.DeleteExpenseAsync(id).ConfigureAwait(false);
         
-        return Ok();
+        return Ok(new DeleteExpenseResponse
+        {
+            IsDeleted = true
+        });
     }
 
     [HttpGet("late")]
     public async Task<IActionResult> GetLateExpenses()
     {
-        var expenses = await _expenseService.GetLateExpensesAsync().ConfigureAwait(false);
+        var expenses = await expenseService.GetLateExpensesAsync().ConfigureAwait(false);
         
         return Ok(expenses);
     }
@@ -134,9 +153,12 @@ public class ExpenseController : ControllerBase
     [HttpGet("{id:int}/lateDates")]
     public async Task<IActionResult> GetLateDatesForExpense(int id)
     {
-        var lateDates = await _expenseService.GetLateDatesForExpense(id).ConfigureAwait(false);
+        var lateDates = await expenseService.GetLateDatesForExpense(id).ConfigureAwait(false);
 
-        return Ok(lateDates);
+        return Ok(new ExpenseLateDatesResponse
+        {
+            LateDates = lateDates
+        });
     }
 
     //expense updates
@@ -151,7 +173,7 @@ public class ExpenseController : ControllerBase
         if (request.AutomaticPayments != null)
             isAutomaticPayments = (bool)request.AutomaticPayments ? 1 : 0;
             
-        await _expenseService.UpdateExpenseAsync(
+        await expenseService.UpdateExpenseAsync(
             id,
             request.Name, 
             request.Cost,
@@ -163,22 +185,28 @@ public class ExpenseController : ControllerBase
             request.AutomaticPaymentsCreditCardId
         ).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new UpdateExpenseResponse
+        {
+            IsUpdated = true
+        });
     }
     
     [HttpPatch("update/batch/category")]
     public async Task<IActionResult> CategoryBatchUpdate([FromBody] CategoryBatchUpdateRequest request)
     {
-        await _categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
+        await categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new CategoryBatchUpdateResponse
+        {
+            IsUpdated = true
+        });
     }
     
     //categories
     [HttpGet("categories")]
-    public async Task<IActionResult> GetExpenseCategories([FromQuery] bool active)
+    public async Task<IActionResult> GetExpenseCategories([FromQuery] GetExpenseCategoriesRequest request)
     {
-        var categories = await _categoryService.GetExpenseCategoriesAsync(active).ConfigureAwait(false);
+        var categories = await categoryService.GetExpenseCategoriesAsync(request.Active).ConfigureAwait(false);
 
         return Ok(categories);
     }
@@ -188,23 +216,29 @@ public class ExpenseController : ControllerBase
     {
         // TODO: validate request
 
-        await _categoryService.CreateExpenseCategoryAsync(request.CategoryName).ConfigureAwait(false);
+        var isCreated = await categoryService.CreateExpenseCategoryAsync(request.CategoryName).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new CreateExpenseCategoryResponse
+        {
+            IsCreated = isCreated
+        });
     }
 
     [HttpPatch("categories/{id:int}/update/active")]
-    public async Task<IActionResult> SetExpenseCategoryActiveStatus([FromBody] bool active, int id)
+    public async Task<IActionResult> SetExpenseCategoryActiveStatus([FromBody] SetExpenseCategoryActiveStatusRequest request, int id)
     {
-        await _categoryService.SetExpenseCategoryActiveStatusAsync(id, active).ConfigureAwait(false);
+        await categoryService.SetExpenseCategoryActiveStatusAsync(id, request.Active).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new SetExpenseCategoryActiveStatusResponse
+        {
+            IsUpdated = true
+        });
     }
     
     [HttpGet("categories/totalSpent")]
-    public async Task<IActionResult> GetCategoryTotalSpentByRangeAsync([FromQuery] string rangeOption)
+    public async Task<IActionResult> GetCategoryTotalSpentByRangeAsync([FromQuery] CategoryTotalSpentRequest request)
     {
-        var categories = await _paymentService.GetCategoryTotalSpentByRangeAsync(rangeOption).ConfigureAwait(false);
+        var categories = await paymentService.GetCategoryTotalSpentByRangeAsync(request.RangeOption).ConfigureAwait(false);
 
         return Ok(categories);
     }
@@ -214,47 +248,76 @@ public class ExpenseController : ControllerBase
     {
         var options = ExpenseCategoryService.GetCategoryChartRangeOptions();
 
-        return Ok(options);
+        return Ok(new CategoryChartRangeOptionsResponse
+        {
+            RangeOptions = options
+        });
     }
 
     [HttpPatch("categories/update/name")]
     public async Task<IActionResult> UpdateCategoryName(UpdateCategoryNameRequest request)
     {
-        await _categoryService.UpdateCategoryNameAsync(request.CategoryId, request.NewCategoryName).ConfigureAwait(false);
+        await categoryService.UpdateCategoryNameAsync(request.CategoryId, request.NewCategoryName).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new UpdateCategoryNameResponse
+        {
+            IsUpdated = true
+        });
     }
 
     [HttpDelete("categories/{id:int}/delete")]
     public async Task<IActionResult> DeleteExpenseCategory(int id)
     {
-        await _categoryService.DeleteExpenseCategoryAsync(id).ConfigureAwait(false);
+        await categoryService.DeleteExpenseCategoryAsync(id).ConfigureAwait(false);
 
-        return Ok();
+        return Ok(new DeleteExpenseCategoryResponse
+        {
+            IsDeleted = true
+        });
     }
     
     //expense table
     [HttpGet("table/options/sort")]
     public IActionResult GetSortOptions()
     {
-        var options = ExpenseService.GetSortOptions();
+        var options = ExpenseTableService.GetSortOptions();
 
-        return Ok(options);
+        return Ok(new ExpenseTableSortOptionsResponse
+        {
+            SortOptions = options
+        });
     }
 
     [HttpGet("table/options/searchableColumns")]
     public IActionResult GetSearchableColumns()
     {
-        var columns = ExpenseService.GetSearchColumns();
+        var columns = ExpenseTableService.GetSearchColumns();
 
-        return Ok(columns);
+        return Ok(new ExpenseTableSearchableColumnsResponse
+        {
+            SearchableColumns = columns
+        });
     }
     
     [HttpGet("table/options/batchActions")]
     public IActionResult GetExpenseTableBatchActions()
     {
-        var actions = ExpenseService.GetExpenseTableBatchActions();
+        var actions = ExpenseTableService.GetExpenseTableBatchActions();
 
-        return Ok(actions);
+        return Ok(new ExpenseTableBatchActionsResponse
+        {
+            BatchActions = actions
+        });
+    }
+
+    [HttpGet("table/options/filters")]
+    public IActionResult GetExpenseTableFilterOptions()
+    {
+        var filters = ExpenseTableService.GetExpenseTableFilterOptions();
+
+        return Ok(new ExpenseTableFilterOptionsResponse
+        {
+            FilterOptions = filters
+        });
     }
 }

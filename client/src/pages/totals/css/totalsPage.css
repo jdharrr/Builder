@@ -94,6 +94,10 @@
     justify-content: center;
 }
 
+.totals-chart--wide {
+    min-height: 20rem;
+}
+
 .totals-range {
     display: flex;
     align-items: center;
@@ -106,6 +110,17 @@
 }
 
 .totals-range-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.9rem;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+}
+
+.totals-year-total {
     display: flex;
     align-items: center;
     justify-content: space-between;

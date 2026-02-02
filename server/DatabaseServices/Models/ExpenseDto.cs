@@ -35,12 +35,12 @@ public class ExpenseDto
     public bool IsLate { get; set; } = false;
 
     public string? CategoryName { get; set; } = string.Empty;
-
-    public string? DueDatePaid { get; set; }
-
+    
     public bool AutomaticPayments { get; set; } = false;
     
     public int? AutomaticPaymentCreditCardId { get; set; }
+
+    public bool OneTimeExpenseIsPaid { get; set; } = false;
 
     public Dictionary<string, string>? TableActions { get; set; }
 }

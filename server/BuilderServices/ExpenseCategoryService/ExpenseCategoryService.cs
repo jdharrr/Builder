@@ -1,6 +1,7 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
-using BuilderServices.ExpenseService.Enums;
+using BuilderServices.Expenses.ExpenseService.Enums;
+using BuilderServices.ExpenseCategoryService.Responses;
 using DatabaseServices.Models;
 
 namespace BuilderServices.ExpenseCategoryService;
@@ -20,18 +21,27 @@ public class ExpenseCategoryService
         _userContext = userContext;
     }
 
-    public async Task CreateExpenseCategoryAsync(string categoryName)
+    public async Task<bool> CreateExpenseCategoryAsync(string categoryName)
     {
         var rowsAffected = await _categoryRepo.CreateExpenseCategoryAsync(categoryName, _userContext.UserId).ConfigureAwait(false);
         if (rowsAffected == 0)
         {
             throw new GenericException("Failed to create expense category.");
         }
+
+        return true;
     }
 
-    public async Task<List<ExpenseCategoryDto>> GetExpenseCategoriesAsync(bool active)
+    public async Task<List<ExpenseCategoryResponse>> GetExpenseCategoriesAsync(bool active)
     {
-        return await _categoryRepo.GetExpenseCategoriesAsync(_userContext.UserId, active).ConfigureAwait(false);
+        var categories = await _categoryRepo.GetExpenseCategoriesAsync(_userContext.UserId, active).ConfigureAwait(false);
+
+        return categories.Select(category => new ExpenseCategoryResponse
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Active = category.Active
+        }).ToList();
     }
 
     public static Dictionary<string, string> GetCategoryChartRangeOptions()

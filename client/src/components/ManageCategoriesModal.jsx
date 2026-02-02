@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {FaPen, FaPlus} from "react-icons/fa";
@@ -200,8 +201,8 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
         setNewCategoryName('');
     }
 
-    return (
-        <div className="modal show d-block manage-categories-modal">
+    const modalContent = (
+        <div className="modal show d-block manage-categories-modal app-modal">
             <div className="modal-dialog" ref={wrapperRef}>
                     <div className={"modal-content"}>
                     <div className="modal-header">
@@ -389,4 +390,5 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
             </div>
         </div>
     );
+    return createPortal(modalContent, document.body);
 }

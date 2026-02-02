@@ -12,7 +12,9 @@ export const CreditCardSelect = ({
     isInvalid = false,
     includeNoneOption = false,
     noneLabel = 'No credit card',
-    initialValue = ''
+    initialValue = '',
+    onManageOpen = () => {},
+    onManageClose = () => {}
 }) => {
     const [showManageCreditCardsModal, setShowManageCreditCardsModal] = useState(false);
     const [selectedCard, setSelectedCard] = useState(initialValue ?? '');
@@ -70,7 +72,10 @@ export const CreditCardSelect = ({
                         <button
                             className="manageCategoriesButton"
                             type="button"
-                            onClick={() => setShowManageCreditCardsModal(true)}
+                            onClick={() => {
+                                setShowManageCreditCardsModal(true);
+                                onManageOpen();
+                            }}
                         >
                             Manage
                         </button>
@@ -79,7 +84,10 @@ export const CreditCardSelect = ({
             </div>
             {showManageCreditCardsModal && (
                 <ManageCreditCardsModal
-                    handleClose={() => setShowManageCreditCardsModal(false)}
+                    handleClose={() => {
+                        setShowManageCreditCardsModal(false);
+                        onManageClose();
+                    }}
                 />
             )}
         </>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Cookies from "js-cookie";
 import {useNavigate} from "react-router-dom";
-import {useMutation} from "@tanstack/react-query";
+import {useMutation, useQueryClient} from "@tanstack/react-query";
 
-import {login, payScheduledPayments} from "../../api.jsx";
+import {fetchUser, login, payScheduledPayments} from "../../api.jsx";
 import {getStatus} from "../../util.jsx";
 import {showSuccess, showError} from "../../utils/toast.js";
 
@@ -11,6 +11,7 @@ import './css/login.css';
 
 export const LoginPage = ({setAuthenticated}) =>  {
     const navigate = useNavigate();
+    const qc = useQueryClient();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -23,6 +24,15 @@ export const LoginPage = ({setAuthenticated}) =>  {
         mutationFn: ({ email, password }) => login(email, password),
         onSuccess: async (data) => {
             Cookies.set('access_token', data.token);
+            try {
+                await qc.fetchQuery({
+                    queryKey: ['user'],
+                    queryFn: fetchUser,
+                    staleTime: 60_000,
+                });
+            } catch {
+                // If profile prefetch fails, modal query can retry later.
+            }
             setAuthenticated(true);
             try {
                 await payScheduledPayments();
@@ -69,7 +79,9 @@ export const LoginPage = ({setAuthenticated}) =>  {
                   />
               </div>
               <button className="loginSubmit" type="submit" onClick={handleSubmitClick}>Login</button>
-              <p className="loginFootnote">Use your existing credentials to continue.</p>
+              <p className="loginFootnote">
+                  Need an account? <button type="button" className="loginLinkButton" onClick={() => navigate('/create-user')}>Create one</button>
+              </p>
           </div>
       </div>
     );

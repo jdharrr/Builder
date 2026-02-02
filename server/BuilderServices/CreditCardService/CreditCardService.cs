@@ -1,50 +1,46 @@
 using AuthenticationServices;
 using BuilderRepositories;
-using DatabaseServices.Models;
+using BuilderServices.CreditCardService.Responses;
 
 namespace BuilderServices.CreditCardService;
 
-public class CreditCardService
+public class CreditCardService(
+    CreditCardRepository creditCardRepo,
+    CreditCardPaymentsRepository creditCardPaymentsRepo,
+    UserContext userContext
+)
 {
-    private readonly CreditCardRepository _creditCardRepo;
-
-    private readonly CreditCardPaymentsRepository _creditCardPaymentsRepo;
-    
-    private readonly UserContext _userContext;
-
-    public CreditCardService(CreditCardRepository creditCardRepo, CreditCardPaymentsRepository creditCardPaymentsRepo, UserContext userContext)
-    {
-        _creditCardRepo = creditCardRepo;
-        _creditCardPaymentsRepo = creditCardPaymentsRepo;
-        _userContext = userContext;
-    }
-
     public async Task CreateCreditCardAsync(string creditCardCompany)
     {
-        await _creditCardRepo.CreateCreditCardAsync(creditCardCompany, _userContext.UserId).ConfigureAwait(false);
+        await creditCardRepo.CreateCreditCardAsync(creditCardCompany, userContext.UserId).ConfigureAwait(false);
     }
 
-    public async Task<List<CreditCardDto>> GetCreditCardsInfoAsync()
+    public async Task<GetCreditCardsInfoResponse> GetCreditCardsInfoAsync()
     {
-        return await _creditCardRepo.GetCreditCardsInfoAsync(_userContext.UserId).ConfigureAwait(false);
+        var creditCards = await creditCardRepo.GetCreditCardsInfoAsync(userContext.UserId).ConfigureAwait(false);
+
+        return new GetCreditCardsInfoResponse
+        {
+            CreditCards = creditCards.Select(card => new GetCreditCardsInfoItemResponse
+            {
+                Id = card.Id,
+                Company = card.Company ?? string.Empty,
+                RunningBalance = card.RunningBalance
+            }).ToList()
+        };
     }
 
     public async Task UpdateCreditCardCompanyAsync(string newCompanyName, int creditCardId)
     {
-        await _creditCardRepo.UpdateCreditCardCompanyAsync(newCompanyName, creditCardId, _userContext.UserId)
+        await creditCardRepo.UpdateCreditCardCompanyAsync(newCompanyName, creditCardId, userContext.UserId)
             .ConfigureAwait(false);
-    }
-
-    public async Task AddPaymentToCreditCardAsync(decimal cost, int creditCardId)
-    {
-        await _creditCardRepo.AddPaymentToCreditCardAsync(cost, creditCardId, _userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task PayCreditCardBalanceAsync(int creditCardId, decimal paymentAmount, string paymentDate)
     {
-        await _creditCardPaymentsRepo.CreateCreditCardPaymentAsync(creditCardId, paymentAmount, paymentDate)
+        await creditCardPaymentsRepo.CreateCreditCardPaymentAsync(creditCardId, paymentAmount, paymentDate)
             .ConfigureAwait(false);
 
-        await _creditCardRepo.PayCreditCardBalanceAsync(creditCardId, paymentAmount, _userContext.UserId).ConfigureAwait(false);
+        await creditCardRepo.PayCreditCardBalanceAsync(creditCardId, paymentAmount, userContext.UserId).ConfigureAwait(false);
     }
 }

@@ -80,6 +80,25 @@
     box-shadow: none;
 }
 
+.dayBox--skeleton {
+    cursor: default;
+    background-color: #f3f4f6;
+    border-style: dashed;
+}
+
+.dayBox--skeleton:hover {
+    transform: none;
+    border-color: #e5e7eb;
+    box-shadow: none;
+}
+
+.dayBox--skeleton .placeholder {
+    width: 1.6rem;
+    height: 0.9rem;
+    border-radius: 0.4rem;
+    align-self: flex-start;
+}
+
 .dayBoxTop {
     display: flex;
     align-items: center;

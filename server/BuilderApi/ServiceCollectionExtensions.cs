@@ -3,12 +3,14 @@ using DatabaseServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AuthenticationServices;
 using EmailServices;
-using BuilderServices.ExpenseService;
+using BuilderServices.Expenses.ExpenseService;
+using BuilderServices.Expenses.ExpenseTableService;
+using BuilderServices.ExpensePayments.ExpensePaymentService;
+using BuilderServices.ExpensePayments.ExpensePaymentTableService;
 using BuilderRepositories;
 using BuilderServices.CreditCardService;
 using BuilderServices.ExpenseCategoryService;
 using BuilderServices.UserService;
-using BuilderServices.ExpensePaymentService;
 
 namespace BuilderApi;
 
@@ -59,8 +61,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<UserService>();
         services.AddScoped<ExpenseService>();
+        services.AddScoped<ExpenseTableService>();
         services.AddScoped<ExpenseCategoryService>();
         services.AddScoped<ExpensePaymentService>();
+        services.AddScoped<ExpensePaymentTableService>();
         services.AddScoped<CreditCardService>();
 
         return services;

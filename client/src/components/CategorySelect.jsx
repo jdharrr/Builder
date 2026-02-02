@@ -12,7 +12,9 @@ export const CategorySelect = ({
     isInvalid = false,
     includeNoneOption = true,
     noneLabel = 'No Category',
-    initialValue = ''
+    initialValue = '',
+    onManageOpen = () => {},
+    onManageClose = () => {}
 }) => {
     const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(initialValue ?? '');
@@ -70,7 +72,10 @@ export const CategorySelect = ({
                         <button
                             className="manageCategoriesButton"
                             type="button"
-                            onClick={() => setShowManageCategoriesModal(true)}
+                            onClick={() => {
+                                setShowManageCategoriesModal(true);
+                                onManageOpen();
+                            }}
                         >
                             Manage
                         </button>
@@ -79,7 +84,10 @@ export const CategorySelect = ({
             </div>
             {showManageCategoriesModal && (
                 <ManageCategoriesModal
-                    handleClose={() => setShowManageCategoriesModal(false)}
+                    handleClose={() => {
+                        setShowManageCategoriesModal(false);
+                        onManageClose();
+                    }}
                 />
             )}
         </>

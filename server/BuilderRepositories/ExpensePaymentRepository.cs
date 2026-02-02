@@ -1,10 +1,10 @@
 ﻿using DatabaseServices;
 using DatabaseServices.Models;
 using DatabaseServices.Repsonses;
-using Microsoft.VisualBasic;
 using MySql.Data.MySqlClient;
 using System.Data;
-using Org.BouncyCastle.Asn1.X509;
+using BuilderRepositories.Requests;
+using BuilderServices.Enums;
 
 namespace BuilderRepositories;
 
@@ -144,7 +144,7 @@ public class ExpensePaymentRepository: BuilderRepository
         }) ?? [];
     }
 
-    public async Task<decimal> GetTotalSpentForRangeAsync(int userId, string? startDate = null, string? endDate = null)
+    public async Task<decimal> GetTotalSpentForRangeAsync(int userId, string? startDate = null, string? endDate = null, int? categoryId = null)
     {
         var sql = @"SELECT COALESCE(SUM(ep.cost), 0.0) AS total_spent 
                     FROM expense_payments ep
@@ -160,9 +160,15 @@ public class ExpensePaymentRepository: BuilderRepository
 
         if (startDate != null && endDate != null)
         {
-            sql += " AND payment_date >= @startDate AND payment_date <= @endDate";
+            sql += " AND ep.payment_date >= @startDate AND ep.payment_date <= @endDate";
             parameters.Add("@startDate", startDate);
             parameters.Add("@endDate", endDate);
+        }
+
+        if (categoryId != null)
+        {
+            sql += " AND e.category_id = @categoryId";
+            parameters.Add("@categoryId", categoryId);
         }
 
         var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
@@ -211,5 +217,135 @@ public class ExpensePaymentRepository: BuilderRepository
             Name = row.Field<string>("name") ?? string.Empty,
             CategoryTotalSpent = row.Field<decimal>("category_total_spent")
         }) ?? [];
+    }
+
+    public async Task<List<ExpensePaymentDto>> GetAllPaymentsForTableAsync(int userId, string sortColumn, string sortDir, string? searchColumn, string? searchValue, bool showSkipped, List<TableFilter> filters)
+    {
+        var parameters = new Dictionary<string, object?>()
+        {
+            { "@userId", userId }
+        };
+        
+        var selectFrom = @"SELECT 
+                               ep.*, 
+                               cc.credit_company,
+                               e.name AS expense_name,
+                               e.id AS expense_id
+                           FROM expense_payments ep";
+        var join = @" INNER JOIN expenses e
+                         ON ep.expense_id = e.id
+                      LEFT JOIN credit_cards cc 
+                         ON ep.credit_card_id = cc.id ";
+        var where = " WHERE e.user_id = @userId";
+        if (!showSkipped)
+            where += "  AND ep.skipped = 0";
+        
+        AddTableSearch(ref where, ref parameters, searchColumn, searchValue);
+        AddTableFilters(ref where, ref parameters, filters);
+        var orderBy = AddTableSort(sortDir, sortColumn);
+
+        var sql = selectFrom + join + where + orderBy;
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapList(row => new ExpensePaymentDto
+        {
+            Id = Convert.ToInt32(row["id"]),
+            ExpenseId = row.Field<int>("expense_id"),
+            Cost = row.Field<decimal>("cost"),
+            PaymentDate = row.Field<DateTime>("payment_date").ToString("yyyy-MM-dd"),
+            DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd"),
+            Skipped = row.Field<bool>("skipped"),
+            CreditCard = row.Field<string>("credit_company"),
+            ExpenseName = row.Field<string>("expense_name") ?? string.Empty
+        }) ?? [];
+    }
+
+    private static void AddTableSearch(ref string where, ref Dictionary<string, object?> parameters, string? searchColumn, string? searchValue)
+    {
+        if (string.IsNullOrEmpty(searchColumn) || string.IsNullOrEmpty(searchValue)) return;
+        
+        // TODO: sanitize search value to prevent
+        var searchCol = searchColumn switch
+        {
+            "expense_name" => "e.name",
+            "credit_card" => "cc.credit_company",
+            _ => $"ep.{searchColumn}"
+        };
+        where += $" AND {searchCol} LIKE @searchValue";
+
+        var escapedSearchValue = searchValue.Replace("%", "\\%").Replace("_", "\\_");
+        parameters["@searchValue"] = $"%{escapedSearchValue}%";
+    }
+    
+    private static void AddTableFilters(ref string where, ref Dictionary<string, object?> parameters, List<TableFilter> filters)
+    {
+        if (filters.Count <= 0) return;
+        
+        var i = 0;
+        foreach (var filter in filters)
+        {
+            if (string.IsNullOrEmpty(filter.Value1))
+                continue;
+                
+            switch (filter.FilterType)
+            {
+                case TableFilterType.Text:
+                    var filterCol = filter.FilterColumn switch
+                    {
+                        "expense_name" => "e.name",
+                        "credit_company" => "cc.credit_company",
+                        _ => $"ep.{filter.FilterColumn}"
+                    };
+                    where += $" AND {filterCol} like @filterValue{i}";
+                        
+                    var escapedFilterValue = filter.Value1.Replace("%", "\\%").Replace("_", "\\_");
+                    parameters[$"@filterValue{i}"] = $"%{escapedFilterValue}%";
+                    break;
+                case TableFilterType.DateRange:
+                    if (!DateOnly.TryParse(filter.Value1, out var _))
+                        continue;
+
+                    where += $" AND ep.{filter.FilterColumn} >= @dateFrom{i}";
+                    parameters[$"@dateFrom{i}"] = filter.Value1;
+
+                    if (string.IsNullOrEmpty(filter.Value2) || !DateOnly.TryParse(filter.Value2, out var _))
+                        break;
+
+                    where += $" AND ep.{filter.FilterColumn} <= @dateTo{i}";
+                    parameters[$"@dateTo{i}"] = filter.Value2;
+                        
+                    break;
+                case TableFilterType.NumberRange:
+                    if (!double.TryParse(filter.Value1, out var _))
+                        continue;
+                        
+                    where += $" AND ep.{filter.FilterColumn} >= @numMin{i}";
+                    parameters[$"@numMin{i}"] = filter.Value1;
+
+                    if (string.IsNullOrEmpty(filter.Value2) || !double.TryParse(filter.Value2, out var _))
+                        break;
+
+                    where += $" AND ep.{filter.FilterColumn} <= @numMax{i}";
+                    parameters[$"@numMax{i}"] = filter.Value2;
+                        
+                    break;
+            }
+
+            i++;
+        }
+    }
+
+    private static string AddTableSort(string sortDir, string sortColumn)
+    {
+        var sortDirection = sortDir.ToLower() == "asc" ? "ASC" : "DESC";
+        var sortCol = sortColumn switch
+        {
+            "expense_name" => "e.name",
+            "credit_card" => "cc.credit_company",
+            _ => $"ep.{sortColumn}"
+        };
+
+        return $" ORDER BY {sortCol} {sortDirection}, ep.id DESC";
     }
 }

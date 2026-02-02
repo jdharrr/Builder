@@ -52,5 +52,10 @@
 .tab-content-wrapper {
     transition: opacity 0.2s ease;
     width: 100%;
-    min-height: 28rem;
+    min-height: 0;
+}
+
+.upcoming-expenses-panel {
+    display: grid;
+    grid-template-rows: auto 1fr;
 }

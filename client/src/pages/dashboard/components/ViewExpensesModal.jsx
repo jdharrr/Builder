@@ -77,7 +77,7 @@ export const ViewExpensesModal = ({expenses, date, handleClose}) => {
 
     return (
         <>
-            <div className="modal show d-block view-expenses-modal">
+            <div className="modal show d-block view-expenses-modal app-modal">
                 <div className="modal-dialog" ref={wrapperRef}>
                     <div className="modal-content">
                         <div className="modal-header">
