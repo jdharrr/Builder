@@ -20,8 +20,10 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     const [editingCardId, setEditingCardId] = useState(null);
     const [payModal, setPayModal] = useState({isShowing: false, card: null});
     const [paymentAmount, setPaymentAmount] = useState('');
+    const [useCashBack, setUseCashBack] = useState(false);
+    const [cashBackAmount, setCashBackAmount] = useState('');
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().substring(0, 10));
-    const [paymentErrors, setPaymentErrors] = useState({amount: false, date: false});
+    const [paymentErrors, setPaymentErrors] = useState({amount: false, date: false, cashBack: false});
 
     const wrapperRef = useRef(null);
     const closeModal = useCallback(() => {
@@ -105,14 +107,16 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     });
 
     const payCreditCardMutation = useMutation({
-        mutationFn: ({creditCardId, amount, date}) => payCreditCardBalance(creditCardId, amount, date),
+        mutationFn: ({creditCardId, amount, date, cashBackAmount: cashBack}) => payCreditCardBalance(creditCardId, amount, date, cashBack),
         onSuccess: () => {
             showSuccess('Payment recorded!');
             qc.invalidateQueries({ queryKey: ['creditCards'] });
             setPayModal({isShowing: false, card: null});
             setPaymentAmount('');
+            setUseCashBack(false);
+            setCashBackAmount('');
             setPaymentDate(new Date().toISOString().substring(0, 10));
-            setPaymentErrors({amount: false, date: false});
+            setPaymentErrors({amount: false, date: false, cashBack: false});
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
@@ -160,31 +164,44 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     const handleOpenPayModal = (card) => {
         setPayModal({isShowing: true, card});
         setPaymentAmount('');
+        setUseCashBack(false);
+        setCashBackAmount('');
         setPaymentDate(new Date().toISOString().substring(0, 10));
-        setPaymentErrors({amount: false, date: false});
+        setPaymentErrors({amount: false, date: false, cashBack: false});
     };
 
     const handleClosePayModal = () => {
         setPayModal({isShowing: false, card: null});
-        setPaymentErrors({amount: false, date: false});
+        setPaymentErrors({amount: false, date: false, cashBack: false});
     };
 
     const handlePaySave = () => {
         const amountValue = Number(paymentAmount);
+        const cashBackValue = useCashBack ? Number(cashBackAmount) : 0;
         const nextErrors = {
-            amount: Number.isNaN(amountValue) || amountValue <= 0,
-            date: !paymentDate
+            amount: Number.isNaN(amountValue) || amountValue < 0,
+            date: !paymentDate,
+            cashBack: useCashBack && (Number.isNaN(cashBackValue) || cashBackValue <= 0)
         };
 
+        const totalPayment = (Number.isNaN(amountValue) ? 0 : amountValue) + (Number.isNaN(cashBackValue) ? 0 : cashBackValue);
+        if (totalPayment <= 0) {
+            nextErrors.amount = true;
+            if (useCashBack) {
+                nextErrors.cashBack = true;
+            }
+        }
+
         setPaymentErrors(nextErrors);
-        if (nextErrors.amount || nextErrors.date || !payModal.card) {
+        if (nextErrors.amount || nextErrors.date || nextErrors.cashBack || !payModal.card) {
             return;
         }
 
         payCreditCardMutation.mutate({
             creditCardId: payModal.card.id,
             amount: amountValue,
-            date: paymentDate
+            date: paymentDate,
+            cashBackAmount: cashBackValue
         });
     };
 
@@ -331,6 +348,42 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                             }}
                         />
                     </div>
+                    <div className="payment-section">
+                        <div className="manage-credit-cards-toggle-row">
+                            <label className="form-label" htmlFor="cashBackToggle">Use cash back?</label>
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="cashBackToggle"
+                                checked={useCashBack}
+                                onChange={() => {
+                                    setUseCashBack((prev) => !prev);
+                                    setCashBackAmount('');
+                                    if (paymentErrors.cashBack) {
+                                        setPaymentErrors((prev) => ({...prev, cashBack: false}));
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    {useCashBack && (
+                        <div className="payment-section">
+                            <label className="form-label">Cash Back Amount</label>
+                            <input
+                                className={`form-control${paymentErrors.cashBack ? ' is-invalid' : ''}`}
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={cashBackAmount}
+                                onChange={(e) => {
+                                    setCashBackAmount(e.target.value);
+                                    if (paymentErrors.cashBack) {
+                                        setPaymentErrors((prev) => ({...prev, cashBack: false}));
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
                     <div className="payment-section">
                         <label className="form-label">Payment Date</label>
                         <input

@@ -2,6 +2,8 @@ using BuilderRepositories.Requests;
 using BuilderServices.CreditCardService;
 using BuilderServices.CreditCardService.Requests;
 using BuilderServices.CreditCardService.Responses;
+using BuilderServices.ExpensePayments.ExpensePaymentChartService;
+using BuilderServices.ExpensePayments.ExpensePaymentChartService.Requests;
 using BuilderServices.ExpensePayments.ExpensePaymentService;
 using BuilderServices.ExpensePayments.ExpensePaymentService.Requests;
 using BuilderServices.ExpensePayments.ExpensePaymentService.Responses;
@@ -19,6 +21,7 @@ namespace BuilderApi.Controllers;
 [Authorize]
 public class PaymentController(
     ExpensePaymentService paymentService,
+    ExpensePaymentChartService paymentChartService,
     ExpensePaymentTableService paymentTableService,
     CreditCardService creditCardService
 ) : ControllerBase
@@ -81,7 +84,7 @@ public class PaymentController(
     [HttpGet("monthlyTotals")]
     public async Task<IActionResult> GetMonthTotalsByYear([FromQuery] MonthlyTotalsRequest request)
     {
-        var totals = await paymentService.GetMonthlyTotalsByYearAsync(request.Year, request.CategoryId).ConfigureAwait(false);
+        var totals = await paymentChartService.GetMonthlyTotalsByYearAsync(request.Year, request.CategoryId).ConfigureAwait(false);
 
         return Ok(totals);
     }
@@ -132,8 +135,14 @@ public class PaymentController(
     {
         if (request.PaymentAmount < 0)
             return BadRequest("Payment amount must not be negative");
+
+        if (request.CashBackAmount < 0)
+            return BadRequest("Cash back amount must not be negative");
+
+        if (request.PaymentAmount <= 0 && request.CashBackAmount <= 0)
+            return BadRequest("Payment amount or cash back must be greater than zero");
         
-        await creditCardService.PayCreditCardBalanceAsync(id, request.PaymentAmount, request.PaymentDate)
+        await creditCardService.PayCreditCardBalanceAsync(id, request.PaymentAmount, request.PaymentDate, request.CashBackAmount)
             .ConfigureAwait(false);
 
         return Ok(new PayCreditCardBalanceResponse

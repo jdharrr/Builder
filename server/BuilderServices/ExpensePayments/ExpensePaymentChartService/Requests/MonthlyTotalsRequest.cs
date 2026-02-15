@@ -1,4 +1,4 @@
-namespace BuilderServices.ExpensePayments.ExpensePaymentService.Requests;
+namespace BuilderServices.ExpensePayments.ExpensePaymentChartService.Requests;
 
 public class MonthlyTotalsRequest
 {

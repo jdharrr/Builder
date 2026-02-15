@@ -92,13 +92,14 @@ export const updateDarkMode = async (isDarkMode) => {
     return result.data;
 }
 
-export const payCreditCardBalance = async (creditCardId, paymentAmount, paymentDate) => {
+export const payCreditCardBalance = async (creditCardId, paymentAmount, paymentDate, cashBackAmount = 0) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
     const result = await apiClient.post(`/api/payments/creditCards/${creditCardId}/pay`, {
         paymentAmount,
-        paymentDate
+        paymentDate,
+        cashBackAmount
     });
 
     return result.data;
@@ -319,6 +320,13 @@ export const getExpenseCategoriesWithTotalSpent = async (categoryChartRangeOptio
     });
 
     return result.data;
+}
+
+export const getCategoryAvgSpent = async (year) => {
+    const result = await apiClient.get('/api/expenses/categories/avg', {
+        params: { year }
+    });
+    return result.data?.categories ?? result.data?.Categories ?? result.data;
 }
 
 export const getExpenseSortOptions = async () => {

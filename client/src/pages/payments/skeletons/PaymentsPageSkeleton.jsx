@@ -42,7 +42,7 @@ export default function PaymentsPageSkeleton() {
                         <table className="table payments-table" style={{ cursor: "default", tableLayout: "fixed", width: "100%" }}>
                             <thead className="payments-table-head">
                                 <tr>
-                                    {['Payment Date', 'Due Date', 'Expense', 'Amount', 'Credit Card', 'Skipped'].map((label) => (
+                                    {['Payment Date', 'Due Date', 'Expense', 'Amount', 'Credit Card', ''].map((label) => (
                                         <th className="text-center payments-sortable" key={label} scope="col">{label}</th>
                                     ))}
                                 </tr>

@@ -227,13 +227,17 @@ public class ExpensePaymentRepository: BuilderRepository
         };
         
         var selectFrom = @"SELECT 
-                               ep.*, 
+                               ep.*,
+                               ec.name AS category_name,
                                cc.credit_company,
                                e.name AS expense_name,
-                               e.id AS expense_id
+                               e.id AS expense_id,
+                               e.recurrence_rate
                            FROM expense_payments ep";
         var join = @" INNER JOIN expenses e
                          ON ep.expense_id = e.id
+                      INNER JOIN expense_categories ec
+                         ON e.category_id = ec.id
                       LEFT JOIN credit_cards cc 
                          ON ep.credit_card_id = cc.id ";
         var where = " WHERE e.user_id = @userId";
@@ -257,7 +261,9 @@ public class ExpensePaymentRepository: BuilderRepository
             DueDatePaid = row.Field<DateTime>("due_date_paid").ToString("yyyy-MM-dd"),
             Skipped = row.Field<bool>("skipped"),
             CreditCard = row.Field<string>("credit_company"),
-            ExpenseName = row.Field<string>("expense_name") ?? string.Empty
+            ExpenseName = row.Field<string>("expense_name") ?? string.Empty,
+            Category = row.Field<string>("category_name") ?? string.Empty,
+            RecurrenceRate = row.Field<string>("recurrence_rate") ?? string.Empty
         }) ?? [];
     }
 
@@ -270,6 +276,8 @@ public class ExpensePaymentRepository: BuilderRepository
         {
             "expense_name" => "e.name",
             "credit_card" => "cc.credit_company",
+            "category_name" => "ec.name",
+            "recurrence_rate" => "e.recurrence_rate",
             _ => $"ep.{searchColumn}"
         };
         where += $" AND {searchCol} LIKE @searchValue";
@@ -295,6 +303,8 @@ public class ExpensePaymentRepository: BuilderRepository
                     {
                         "expense_name" => "e.name",
                         "credit_company" => "cc.credit_company",
+                        "category_name" => "ec.name",
+                        "recurrence_rate" => "e.recurrence_rate",
                         _ => $"ep.{filter.FilterColumn}"
                     };
                     where += $" AND {filterCol} like @filterValue{i}";
@@ -343,9 +353,87 @@ public class ExpensePaymentRepository: BuilderRepository
         {
             "expense_name" => "e.name",
             "credit_card" => "cc.credit_company",
+            "category_name" => "ec.name",
+            "recurrence_rate" => "e.recurrence_rate",
             _ => $"ep.{sortColumn}"
         };
 
         return $" ORDER BY {sortCol} {sortDirection}, ep.id DESC";
+    }
+
+    public async Task<Dictionary<string, decimal>> GetAvgSpentForCategoriesAsync(int userId, int year)
+    {
+        var isCurrentYear = DateTime.Today.Year == year;
+        var maxMonthStart = new DateOnly(year, isCurrentYear ? DateTime.Today.Month : 12, 1);
+        var startDate = new DateOnly(year, 1, 1);
+        var endDate = isCurrentYear ? maxMonthStart.AddMonths(1) : new DateOnly(year + 1, 1, 1);
+
+        var sql = @"WITH RECURSIVE months AS (
+                      SELECT MAKEDATE(@year, 1) AS month_start
+                      UNION ALL
+                      SELECT month_start + INTERVAL 1 MONTH
+                      FROM months
+                      WHERE month_start < @maxMonthStart
+                    ),
+                    categories AS (
+                      SELECT DISTINCT COALESCE(ec.name, 'No Category') AS category
+                      FROM expenses e
+                      LEFT JOIN expense_categories ec 
+                        ON ec.id = e.category_id
+                      WHERE e.user_id = @userId
+                    ),
+                    month_totals AS (
+                      SELECT
+                        DATE_FORMAT(ep.payment_date, '%Y-%m-01') AS month_start,
+                        COALESCE(ec.name, 'No Category') AS category,
+                        SUM(ep.cost) AS totalSpent
+                      FROM expenses e
+                      JOIN expense_payments ep 
+                        ON ep.expense_id = e.id
+                      LEFT JOIN expense_categories ec 
+                        ON ec.id = e.category_id
+                      WHERE e.user_id = @userId
+                        AND ep.payment_date >= @startDate
+                        AND ep.payment_date <  @endDate
+                      GROUP BY month_start, category
+                    ),
+                    month_category AS (
+                      SELECT m.month_start, c.category
+                      FROM months m
+                      CROSS JOIN categories c
+                    )
+                    SELECT
+                      mc.category,
+                      AVG(COALESCE(mt.totalSpent, 0)) AS avgMonthlySpent
+                    FROM month_category mc
+                    LEFT JOIN month_totals mt
+                      ON mt.month_start = mc.month_start
+                     AND mt.category = mc.category
+                    GROUP BY mc.category
+                    ORDER BY mc.category";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@userId", userId },
+            { "@year", year },
+            { "@maxMonthStart", maxMonthStart.ToString("yyyy-MM-dd") },
+            { "@startDate", startDate.ToString("yyyy-MM-dd") },
+            { "@endDate", endDate.ToString("yyyy-MM-dd") }
+        };
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        var result = new Dictionary<string, decimal>();
+
+        foreach (DataRow r in dataTable.Rows)
+        {
+            var category = r.Field<string>("category") ?? "Unknown Category";
+            var avgObj = r["avgMonthlySpent"];
+
+            var avg = avgObj is decimal d ? d : Convert.ToDecimal(avgObj);
+
+            result[category] = avg;
+        }
+
+        return result;
     }
 }

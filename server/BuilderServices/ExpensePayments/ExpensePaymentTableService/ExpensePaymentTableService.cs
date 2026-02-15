@@ -28,12 +28,19 @@ public class ExpensePaymentTableService(
         return payments.Select(payment => new PaymentTablePaymentResponse
         {
             Id = payment.Id,
+            ExpenseId = payment.ExpenseId,
             PaymentDate = payment.PaymentDate,
             DueDatePaid = payment.DueDatePaid,
             ExpenseName = payment.ExpenseName,
             Cost = payment.Cost,
             CreditCard = payment.CreditCard ?? string.Empty,
-            Skipped = payment.Skipped
+            Skipped = payment.Skipped,
+            Category = payment.Category,
+            RecurrenceRate = payment.RecurrenceRate,
+            TableActions = new Dictionary<string, string>
+            {
+                { PaymentTableAction.DeletePayment.ToString(), PaymentTableAction.DeletePayment.GetDisplayName() }
+            }
         }).ToList();
     }
 
@@ -44,6 +51,8 @@ public class ExpensePaymentTableService(
         {
             { PaymentSearchColumn.PaymentDate.ToString(), PaymentSearchColumn.PaymentDate.GetDisplayName() },
             { PaymentSearchColumn.DueDate.ToString(), PaymentSearchColumn.DueDate.GetDisplayName() },
+            { PaymentSearchColumn.Category.ToString(), PaymentSearchColumn.Category.GetDisplayName() },
+            { PaymentSearchColumn.RecurrenceRate.ToString(), PaymentSearchColumn.RecurrenceRate.GetDisplayName() },
             { PaymentSearchColumn.ExpenseName.ToString(), PaymentSearchColumn.ExpenseName.GetDisplayName() },
             { PaymentSearchColumn.Amount.ToString(), PaymentSearchColumn.Amount.GetDisplayName() },
             { PaymentSearchColumn.CreditCard.ToString(), PaymentSearchColumn.CreditCard.GetDisplayName() }

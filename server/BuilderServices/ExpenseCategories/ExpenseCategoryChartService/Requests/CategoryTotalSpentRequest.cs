@@ -1,4 +1,4 @@
-namespace BuilderServices.ExpensePayments.ExpensePaymentService.Requests;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Requests;
 
 public class CategoryTotalSpentRequest
 {

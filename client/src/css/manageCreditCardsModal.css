@@ -100,3 +100,14 @@
     align-items: center;
     gap: 0.6rem;
 }
+
+.manage-credit-cards-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+}
+
+.manage-credit-cards-toggle-row .form-label {
+    margin-bottom: 0;
+}

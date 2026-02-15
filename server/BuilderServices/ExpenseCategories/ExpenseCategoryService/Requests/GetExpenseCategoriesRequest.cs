@@ -1,4 +1,4 @@
-namespace BuilderServices.ExpenseCategoryService.Request;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Request;
 
 public class GetExpenseCategoriesRequest
 {

@@ -1,9 +1,6 @@
 ﻿using BuilderRepositories;
-using BuilderServices.ExpenseCategoryService;
-using BuilderServices.ExpenseCategoryService.Request;
 using BuilderServices.CreditCardService;
 using BuilderServices.ExpensePayments.ExpensePaymentService;
-using BuilderServices.ExpensePayments.ExpensePaymentService.Requests;
 using BuilderServices.Expenses.ExpenseService;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using BuilderServices.Expenses.ExpenseService.Responses;
@@ -11,8 +8,9 @@ using BuilderServices.Expenses.ExpenseTableService;
 using BuilderServices.Expenses.ExpenseTableService.Enums;
 using BuilderServices.Expenses.ExpenseTableService.Requests;
 using BuilderServices.Expenses.ExpenseTableService.Responses;
-using BuilderServices.ExpenseCategoryService.Responses;
 using BuilderRepositories.Requests;
+using BuilderServices.ExpenseCategories.ExpenseCategoryService;
+using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,9 +22,8 @@ namespace BuilderApi.Controllers;
 public class ExpenseController(
     ExpenseService expenseService,
     ExpenseTableService expenseTableService,
-    ExpenseCategoryService categoryService,
     ExpensePaymentService paymentService,
-    CreditCardService creditCardService
+    ExpenseCategoryService categoryService
 ) : ControllerBase
 {
     private readonly List<string> _sortDirs = ["asc", "desc"];
@@ -199,80 +196,6 @@ public class ExpenseController(
         return Ok(new CategoryBatchUpdateResponse
         {
             IsUpdated = true
-        });
-    }
-    
-    //categories
-    [HttpGet("categories")]
-    public async Task<IActionResult> GetExpenseCategories([FromQuery] GetExpenseCategoriesRequest request)
-    {
-        var categories = await categoryService.GetExpenseCategoriesAsync(request.Active).ConfigureAwait(false);
-
-        return Ok(categories);
-    }
-    
-    [HttpPost("categories/create")]
-    public async Task<IActionResult> CreateExpenseCategory([FromBody] CreateExpenseCategoryRequest request)
-    {
-        // TODO: validate request
-
-        var isCreated = await categoryService.CreateExpenseCategoryAsync(request.CategoryName).ConfigureAwait(false);
-
-        return Ok(new CreateExpenseCategoryResponse
-        {
-            IsCreated = isCreated
-        });
-    }
-
-    [HttpPatch("categories/{id:int}/update/active")]
-    public async Task<IActionResult> SetExpenseCategoryActiveStatus([FromBody] SetExpenseCategoryActiveStatusRequest request, int id)
-    {
-        await categoryService.SetExpenseCategoryActiveStatusAsync(id, request.Active).ConfigureAwait(false);
-
-        return Ok(new SetExpenseCategoryActiveStatusResponse
-        {
-            IsUpdated = true
-        });
-    }
-    
-    [HttpGet("categories/totalSpent")]
-    public async Task<IActionResult> GetCategoryTotalSpentByRangeAsync([FromQuery] CategoryTotalSpentRequest request)
-    {
-        var categories = await paymentService.GetCategoryTotalSpentByRangeAsync(request.RangeOption).ConfigureAwait(false);
-
-        return Ok(categories);
-    }
-
-    [HttpGet("categories/chart/rangeOptions")]
-    public IActionResult GetCategoryChartRangeOptions()
-    {
-        var options = ExpenseCategoryService.GetCategoryChartRangeOptions();
-
-        return Ok(new CategoryChartRangeOptionsResponse
-        {
-            RangeOptions = options
-        });
-    }
-
-    [HttpPatch("categories/update/name")]
-    public async Task<IActionResult> UpdateCategoryName(UpdateCategoryNameRequest request)
-    {
-        await categoryService.UpdateCategoryNameAsync(request.CategoryId, request.NewCategoryName).ConfigureAwait(false);
-
-        return Ok(new UpdateCategoryNameResponse
-        {
-            IsUpdated = true
-        });
-    }
-
-    [HttpDelete("categories/{id:int}/delete")]
-    public async Task<IActionResult> DeleteExpenseCategory(int id)
-    {
-        await categoryService.DeleteExpenseCategoryAsync(id).ConfigureAwait(false);
-
-        return Ok(new DeleteExpenseCategoryResponse
-        {
-            IsDeleted = true
         });
     }
     

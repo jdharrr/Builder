@@ -1,6 +1,6 @@
 ﻿using BuilderRepositories;
 
-namespace BuilderServices.Expenses.ExpenseService.Enums;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Enums;
 
 public enum CategoryChartRangeOption
 {

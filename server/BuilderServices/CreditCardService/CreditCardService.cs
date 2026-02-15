@@ -36,11 +36,23 @@ public class CreditCardService(
             .ConfigureAwait(false);
     }
 
-    public async Task PayCreditCardBalanceAsync(int creditCardId, decimal paymentAmount, string paymentDate)
+    public async Task PayCreditCardBalanceAsync(int creditCardId, decimal paymentAmount, string paymentDate, decimal cashBackAmount)
     {
-        await creditCardPaymentsRepo.CreateCreditCardPaymentAsync(creditCardId, paymentAmount, paymentDate)
-            .ConfigureAwait(false);
+        if (paymentAmount > 0)
+        {
+            await creditCardPaymentsRepo.CreateCreditCardPaymentAsync(creditCardId, paymentAmount, paymentDate)
+                .ConfigureAwait(false);
+        }
 
-        await creditCardRepo.PayCreditCardBalanceAsync(creditCardId, paymentAmount, userContext.UserId).ConfigureAwait(false);
+        var totalPayed = paymentAmount;
+        if (cashBackAmount > 0)
+        {
+            await creditCardPaymentsRepo.CreateCreditCardPaymentAsync(creditCardId, cashBackAmount, paymentDate, true)
+                .ConfigureAwait(false);
+
+            totalPayed += cashBackAmount;
+        }
+
+        await creditCardRepo.PayCreditCardBalanceAsync(creditCardId, totalPayed, userContext.UserId).ConfigureAwait(false);
     }
 }

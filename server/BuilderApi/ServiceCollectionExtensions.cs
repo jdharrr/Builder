@@ -5,11 +5,13 @@ using AuthenticationServices;
 using EmailServices;
 using BuilderServices.Expenses.ExpenseService;
 using BuilderServices.Expenses.ExpenseTableService;
+using BuilderServices.ExpenseCategories.ExpenseCategoryChartService;
+using BuilderServices.ExpensePayments.ExpensePaymentChartService;
 using BuilderServices.ExpensePayments.ExpensePaymentService;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService;
 using BuilderRepositories;
 using BuilderServices.CreditCardService;
-using BuilderServices.ExpenseCategoryService;
+using BuilderServices.ExpenseCategories.ExpenseCategoryService;
 using BuilderServices.UserService;
 
 namespace BuilderApi;
@@ -60,9 +62,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection ConfigureBuilderServices(this IServiceCollection services)
     {
         services.AddScoped<UserService>();
+        services.AddScoped<ExpenseCategoryChartService>();
         services.AddScoped<ExpenseService>();
         services.AddScoped<ExpenseTableService>();
         services.AddScoped<ExpenseCategoryService>();
+        services.AddScoped<ExpensePaymentChartService>();
         services.AddScoped<ExpensePaymentService>();
         services.AddScoped<ExpensePaymentTableService>();
         services.AddScoped<CreditCardService>();

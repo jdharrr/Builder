@@ -8,7 +8,9 @@ public enum PaymentSortOption
     DueDate,
     ExpenseName,
     Amount,
-    CreditCard
+    CreditCard,
+    Category,
+    RecurrenceRate
 }
 
 public static class PaymentSortOptionsHelper
@@ -22,6 +24,8 @@ public static class PaymentSortOptionsHelper
             PaymentSortOption.ExpenseName => "expense_name",
             PaymentSortOption.Amount => "cost",
             PaymentSortOption.CreditCard => "credit_card",
+            PaymentSortOption.Category => "category_name",
+            PaymentSortOption.RecurrenceRate => "recurrence_rate",
             _ => throw new GenericException("Invalid sort option")
         };
     }
@@ -35,6 +39,8 @@ public static class PaymentSortOptionsHelper
             PaymentSortOption.ExpenseName => "Expense",
             PaymentSortOption.Amount => "Amount",
             PaymentSortOption.CreditCard => "Credit Card",
+            PaymentSortOption.Category => "Category",
+            PaymentSortOption.RecurrenceRate => "Recurrence",
             _ => throw new GenericException("Invalid sort option")
         };
     }

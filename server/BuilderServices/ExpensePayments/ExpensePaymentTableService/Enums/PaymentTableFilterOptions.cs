@@ -9,7 +9,9 @@ public enum PaymentTableFilterOption
     DueDate,
     Amount,
     Expense,
-    CreditCard
+    CreditCard,
+    Category,
+    RecurrenceRate
 }
 
 public static class PaymentTableFilterOptionsHelper
@@ -23,6 +25,8 @@ public static class PaymentTableFilterOptionsHelper
             PaymentTableFilterOption.Amount => "Amount",
             PaymentTableFilterOption.Expense => "Expense",
             PaymentTableFilterOption.CreditCard => "Credit Card",
+            PaymentTableFilterOption.Category => "Category",
+            PaymentTableFilterOption.RecurrenceRate => "Recurrence Rate",
             _ => throw new GenericException("Invalid payment table filter.")
         };
     }
@@ -36,6 +40,8 @@ public static class PaymentTableFilterOptionsHelper
             PaymentTableFilterOption.Amount => TableFilterType.NumberRange,
             PaymentTableFilterOption.Expense => TableFilterType.Text,
             PaymentTableFilterOption.CreditCard => TableFilterType.Text,
+            PaymentTableFilterOption.Category => TableFilterType.Text,
+            PaymentTableFilterOption.RecurrenceRate => TableFilterType.Text,
             _ => throw new GenericException("Invalid payment table filter.")
         };
     }
@@ -49,6 +55,8 @@ public static class PaymentTableFilterOptionsHelper
             PaymentTableFilterOption.Amount => "cost",
             PaymentTableFilterOption.Expense => "expense_name",
             PaymentTableFilterOption.CreditCard => "credit_company",
+            PaymentTableFilterOption.Category => "category_name",
+            PaymentTableFilterOption.RecurrenceRate => "recurrence_rate",
             _ => throw new GenericException("Invalid payment table filter.")
         };
     }

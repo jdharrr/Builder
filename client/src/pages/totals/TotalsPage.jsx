@@ -4,6 +4,7 @@ import { Bar, Doughnut } from 'react-chartjs-2';
 import {Card} from "../../components/Card.jsx";
 import {
     getAllExpenseCategories,
+    getCategoryAvgSpent,
     getCategoryChartRangeOptions,
     getExpenseCategoriesWithTotalSpent,
     getMonthlyTotals,
@@ -39,6 +40,7 @@ export default function TotalsPage() {
     const [selectedCategoryChartRangeOption, setSelectedCategoryChartRangeOption] = useState("ThisMonth");
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedMonthlyCategoryId, setSelectedMonthlyCategoryId] = useState('');
+    const [selectedAvgYear, setSelectedAvgYear] = useState(new Date().getFullYear());
     const years = getYearRange();
     const { data: categoryChartRangeOptions = [] } = useQuery({
         queryKey: ['categoryChartRangeOptions'],
@@ -112,6 +114,20 @@ export default function TotalsPage() {
         },
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
+
+    const { data: categoryAvgSpent = {} } = useQuery({
+        queryKey: ['categoryAvgSpent', selectedAvgYear],
+        queryFn: async () => {
+            const result = await getCategoryAvgSpent(selectedAvgYear);
+            return result ?? {};
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
     
     const { categories, combinedTotalSpent } = useMemo(() => {
         return {
@@ -169,6 +185,20 @@ export default function TotalsPage() {
         return monthlyTotals.yearTotalSpent ?? monthlyTotals.YearTotalSpent ?? 0;
     }, [monthlyTotals]);
 
+    const categoryAvgList = useMemo(() => {
+        const avgMap = categoryAvgSpent.categories ?? categoryAvgSpent.Categories ?? categoryAvgSpent ?? {};
+        const items = Object.entries(avgMap)
+            .map(([name, value]) => [name, Number(value) || 0])
+            .sort((a, b) => b[1] - a[1]);
+
+        if (items.length === 0) {
+            return { items: [], maxValue: 0 };
+        }
+
+        const maxValue = Math.max(...items.map(([, value]) => value), 0);
+        return { items, maxValue };
+    }, [categoryAvgSpent]);
+
     const monthlyTotalsOptions = useMemo(() => ({
         responsive: true,
         maintainAspectRatio: false,
@@ -205,6 +235,11 @@ export default function TotalsPage() {
     const handleMonthlyCategoryChange = (e, categoryId) => {
         e.preventDefault();
         setSelectedMonthlyCategoryId(categoryId);
+    }
+
+    const handleAvgYearChange = (e, year) => {
+        e.preventDefault();
+        setSelectedAvgYear(year);
     }
 
     const monthlyCategoryOptions = useMemo(() => {
@@ -285,6 +320,42 @@ export default function TotalsPage() {
                     </div>
                     <div className="totals-chart totals-chart--wide">
                         <Bar data={monthlyTotalsData} options={monthlyTotalsOptions} />
+                    </div>
+                </Card>
+                <Card
+                    title={"Avg Monthly Spend by Category"}
+                    className="totals-card"
+                    bodyClassName="totals-card-body"
+                    style={{width: '100%'}}
+                >
+                    <div className="totals-range">
+                        <span className="totals-stat-label">Year</span>
+                        <Dropdown
+                            title={selectedAvgYear}
+                            options={years}
+                            handleOptionChange={handleAvgYearChange}
+                            maxHeight={'16rem'}
+                            includeScrollbarY={true}
+                            changeTitleOnOptionChange={true}
+                        />
+                    </div>
+                    <div className="totals-avg-list">
+                        {categoryAvgList.items.length === 0 ? (
+                            <div className="totals-empty">No average data yet.</div>
+                        ) : categoryAvgList.items.map(([name, value]) => {
+                            const width = categoryAvgList.maxValue
+                                ? Math.max(4, (value / categoryAvgList.maxValue) * 100)
+                                : 0;
+                            return (
+                                <div className="totals-avg-row" key={name}>
+                                    <span className="totals-avg-label">{name}</span>
+                                    <div className="totals-avg-bar">
+                                        <div className="totals-avg-bar-fill" style={{ width: `${width}%` }} />
+                                    </div>
+                                    <span className="totals-avg-value">{formatCurrency(value)}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </Card>
             </div>

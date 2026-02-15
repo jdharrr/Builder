@@ -1,4 +1,4 @@
-namespace BuilderServices.ExpenseCategoryService.Responses;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 
 public class CategoryBatchUpdateResponse
 {

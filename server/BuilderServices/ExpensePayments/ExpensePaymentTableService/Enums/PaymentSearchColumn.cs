@@ -8,7 +8,9 @@ public enum PaymentSearchColumn
     DueDate,
     ExpenseName,
     Amount,
-    CreditCard
+    CreditCard,
+    Category,
+    RecurrenceRate
 }
 
 public static class PaymentSearchColumnHelper
@@ -22,6 +24,8 @@ public static class PaymentSearchColumnHelper
             PaymentSearchColumn.ExpenseName => "expense_name",
             PaymentSearchColumn.Amount => "cost",
             PaymentSearchColumn.CreditCard => "credit_card",
+            PaymentSearchColumn.Category => "category_name",
+            PaymentSearchColumn.RecurrenceRate => "recurrence_rate",
             _ => throw new GenericException("Invalid search column")
         };
     }
@@ -35,6 +39,8 @@ public static class PaymentSearchColumnHelper
             PaymentSearchColumn.ExpenseName => "Expense",
             PaymentSearchColumn.Amount => "Amount",
             PaymentSearchColumn.CreditCard => "Credit Card",
+            PaymentSearchColumn.Category => "Category",
+            PaymentSearchColumn.RecurrenceRate => "Recurrence",
             _ => throw new GenericException("Invalid search column")
         };
     }

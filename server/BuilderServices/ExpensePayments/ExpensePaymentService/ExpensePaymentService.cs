@@ -1,7 +1,6 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
 using BuilderServices.ExpensePayments.ExpensePaymentService.Responses;
-using BuilderServices.Expenses.ExpenseService.Enums;
 using DatabaseServices.Models;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentService;
@@ -233,94 +232,4 @@ public class ExpensePaymentService(
         }
     }
     
-    public async Task<CategoryTotalSpentResponse> GetCategoryTotalSpentByRangeAsync(string rangeOption)
-    {
-        var response = new CategoryTotalSpentResponse();
-        
-        if (!Enum.TryParse(typeof(CategoryChartRangeOption), rangeOption, out var option))
-            throw new GenericException("Invalid range request for category chart");
-
-        var startOfRange = DateOnly.FromDateTime(DateTime.Today);
-        var endOfRange = DateOnly.FromDateTime(DateTime.Today);
-        switch (option)
-        {
-            case CategoryChartRangeOption.ThisWeek:
-                startOfRange = startOfRange.AddDays(-(int)startOfRange.DayOfWeek);
-                endOfRange = endOfRange.AddDays(7 - (int)endOfRange.DayOfWeek);
-                break;
-            case CategoryChartRangeOption.ThisMonth:
-                startOfRange = startOfRange.AddDays(-startOfRange.Day + 1);
-                endOfRange = endOfRange.AddDays(DateTime.DaysInMonth(startOfRange.Year, startOfRange.Month) - startOfRange.Day);
-                break;
-            case CategoryChartRangeOption.ThisYear:
-                startOfRange = new DateOnly(startOfRange.Year, 1, 1);
-                endOfRange = new DateOnly(startOfRange.Year, 12, 31);
-                break;
-            case CategoryChartRangeOption.LastSixMonths:
-                startOfRange = startOfRange.AddMonths(-6);
-                break;
-            default:
-                response.Categories = (await repo.GetCategoryTotalSpentByRangeAsync(userContext.UserId).ConfigureAwait(false))
-                    .Select(category => new CategoryTotalSpentCategoryResponse
-                    {
-                        Id = category.Id,
-                        Name = category.Name,
-                        CategoryTotalSpent = category.CategoryTotalSpent
-                    }).ToList();
-                response.CombinedTotalSpend = await repo.GetTotalSpentForRangeAsync(userContext.UserId).ConfigureAwait(false);
-                return response;
-        }
-
-        response.Categories = (await repo.GetCategoryTotalSpentByRangeAsync(userContext.UserId, startOfRange.ToString("yyyy-MM-dd"), endOfRange.ToString("yyyy-MM-dd")).ConfigureAwait(false))
-            .Select(category => new CategoryTotalSpentCategoryResponse
-            {
-                Id = category.Id,
-                Name = category.Name,
-                CategoryTotalSpent = category.CategoryTotalSpent
-            }).ToList();
-        response.CombinedTotalSpend = await repo.GetTotalSpentForRangeAsync(userContext.UserId, startOfRange.ToString("yyyy-MM-dd"), endOfRange.ToString("yyyy-MM-dd")).ConfigureAwait(false);
-
-        return response;
-    }
-
-    public async Task<PaymentMonthlyTotalsResponse> GetMonthlyTotalsByYearAsync(int year, int? categoryId = null)
-    {
-        var months = new Dictionary<int, string>
-        {
-            { 1, "January" },
-            { 2, "February" },
-            { 3, "March" },
-            { 4, "April" },
-            { 5, "May" },
-            { 6, "June" },
-            { 7, "July" },
-            { 8, "August" },
-            { 9, "September" },
-            { 10, "October" },
-            { 11, "November" },
-            { 12, "December" }
-        };
-
-        var response = new PaymentMonthlyTotalsResponse();
-        
-        foreach (var month in months)
-        {
-            var startDate = new DateOnly(year, month.Key, 1);
-            var endDate = new DateOnly(year, month.Key, DateTime.DaysInMonth(year, month.Key));
-            
-            response.MonthlyTotals.Add(new PaymentMonthlyTotalItemResponse
-            {
-                Month = month.Value,
-                TotalSpent = await repo.GetTotalSpentForRangeAsync(userContext.UserId, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"), categoryId).ConfigureAwait(false)
-            });
-        }
-
-        var yearStartDate = new DateOnly(year, 1, 1);
-        var yearEndDate = new DateOnly(year, 12, 31);
-        response.YearTotalSpent = await repo.GetTotalSpentForRangeAsync(userContext.UserId,
-            yearStartDate.ToString("yyyy-MM-dd"), yearEndDate.ToString("yyyy-MM-dd"), categoryId).ConfigureAwait(false);
-
-        return response;
-    }
-
 }

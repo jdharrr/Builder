@@ -1,9 +1,9 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {useSuspenseQuery} from "@tanstack/react-query";
+import {useMutation, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 import {FaSearch} from "react-icons/fa";
 
 import {Dropdown} from "../../../components/Dropdown.jsx";
-import {getAllPayments, getPaymentSearchableColumns, getPaymentSortOptions, getPaymentTableFilterOptions} from "../../../api.jsx";
+import {deletePayments, getAllPayments, getPaymentSearchableColumns, getPaymentSortOptions, getPaymentTableFilterOptions} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {DateRangeFilterInput} from "../../expenses/components/filters/DateRangeFilterInput.jsx";
 import {NumberRangeFilterInput} from "../../expenses/components/filters/NumberRangeFilterInput.jsx";
@@ -12,7 +12,7 @@ import {TextFilterInput} from "../../expenses/components/filters/TextFilterInput
 import '../css/paymentsTableSection.css';
 
 // Search row extracted for readability
-const SearchRow = ({ searchableHeaders, searchFilter, handleSearchInput, handleSearchApply }) => (
+const SearchRow = ({ searchableHeaders, searchFilter, handleSearchInput, handleSearchApply, showSkipped }) => (
     <tr>
         {Object.entries(searchableHeaders).map(([column], idx) => (
             <th key={idx}>
@@ -41,13 +41,15 @@ const SearchRow = ({ searchableHeaders, searchFilter, handleSearchInput, handleS
                 </div>
             </th>
         ))}
+        {showSkipped && <th></th>}
         <th></th>
     </tr>
 );
 
 export const PaymentsTableSection = () => {
+    const qc = useQueryClient();
     const [selectedSort, setSelectedSort] = useState('');
-    const [sortDirection, setSortDirection] = useState('asc');
+    const [sortDirection, setSortDirection] = useState('desc');
     const [pageSize, setPageSize] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
     const [showSkipped, setShowSkipped] = useState(false);
@@ -63,6 +65,7 @@ export const PaymentsTableSection = () => {
         searchColumn: '',
         searchValue: '',
     });
+    const [clickedActionRowId, setClickedActionRowId] = useState(null);
     const filterMenuRef = useRef(null);
 
     const {data: searchableHeaders = {}} = useSuspenseQuery({
@@ -129,6 +132,20 @@ export const PaymentsTableSection = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [filterMenuOpen]);
+
+    useEffect(() => {
+        if (!clickedActionRowId) return;
+
+        const handleClickOutside = (event) => {
+            if (event.target.closest('.cell-actions')) {
+                return;
+            }
+            setClickedActionRowId(null);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [clickedActionRowId]);
 
     const mappedFilters = useMemo(() => {
         return selectedFilters
@@ -272,9 +289,49 @@ export const PaymentsTableSection = () => {
         });
     };
 
+    const deletePaymentsMutation = useMutation({
+        mutationFn: ({ selectedIds, expenseId }) => deletePayments(selectedIds, expenseId),
+        onSuccess: () => {
+            setClickedActionRowId(null);
+            qc.invalidateQueries({ queryKey: ['tablePayments'] });
+        }
+    });
+
+    const handleActionClick = (e, action, payment) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        switch (action) {
+            case 'DeletePayment': {
+                if (!window.confirm("Are you sure you want to delete this payment?")) {
+                    return;
+                }
+                deletePaymentsMutation.mutate({
+                    selectedIds: [payment.id],
+                    expenseId: payment.expenseId
+                });
+                break;
+            }
+            default:
+                break;
+        }
+    };
+
     const paymentColumnValues = {
         PaymentDate: (payment) => payment.paymentDate,
         DueDate: (payment) => payment.dueDatePaid,
+        Category: (payment) => (
+            <span className="category-pill">
+                {payment.categoryName || payment.category || 'Uncategorized'}
+            </span>
+        ),
+        RecurrenceRate: (payment) => (
+            <span className="recurrence-pill">
+                {payment.recurrenceRate
+                    ? payment.recurrenceRate.charAt(0).toUpperCase() + payment.recurrenceRate.slice(1).toLowerCase()
+                    : ''}
+            </span>
+        ),
         ExpenseName: (payment) => payment.expenseName,
         Amount: (payment) => `$${Number(payment.cost).toFixed(2)}`,
         CreditCard: (payment) => payment.creditCard || '',
@@ -283,6 +340,8 @@ export const PaymentsTableSection = () => {
     const paymentColumnClasses = {
         PaymentDate: 'text-nowrap text-center cell cell-date',
         DueDate: 'text-nowrap text-center cell cell-date',
+        Category: 'cell cell-category text-center',
+        RecurrenceRate: 'cell cell-recurrence text-center',
         ExpenseName: 'text-truncate text-center cell cell-name',
         Amount: 'cell cell-amount text-center',
         CreditCard: 'text-nowrap text-center cell cell-date',
@@ -297,6 +356,8 @@ export const PaymentsTableSection = () => {
     const endIndex = pageSize === 'All' ? payments.length : startIndex + pageSizeValue;
     const displayedPayments = payments.slice(startIndex, endIndex);
     const selectedFilterOptions = filterOptions.filter((option) => selectedFilters.includes(option.filter));
+
+    const extraHeaderCount = showSkipped ? 2 : 1;
 
     return (
         <div>
@@ -415,7 +476,8 @@ export const PaymentsTableSection = () => {
                         {Object.entries(searchableHeaders).map(([column, label], idx) => (
                             <th className={"text-center payments-sortable"} key={idx} scope="col" onClick={() => handleHeaderClick(column)}>{label}</th>
                         ))}
-                        <th className="text-center" scope="col">Skipped</th>
+                        {showSkipped && <th className="text-center" scope="col">Skipped</th>}
+                        <th className="text-center" scope="col"></th>
                     </tr>
                     {enableSearch &&
                         <SearchRow
@@ -423,13 +485,14 @@ export const PaymentsTableSection = () => {
                             searchFilter={searchFilter}
                             handleSearchInput={handleSearchInput}
                             handleSearchApply={handleSearchApply}
+                            showSkipped={showSkipped}
                         />
                     }
                     </thead>
                     <tbody className="payments-table-body">
                     {displayedPayments.length === 0 ? (
                         <tr className="payments-table-row">
-                            <td className="text-center cell" colSpan={Object.keys(searchableHeaders).length + 1}>
+                            <td className="text-center cell" colSpan={Object.keys(searchableHeaders).length + extraHeaderCount}>
                                 No payments found.
                             </td>
                         </tr>
@@ -440,7 +503,39 @@ export const PaymentsTableSection = () => {
                                     {paymentColumnValues[column]?.(payment) ?? ''}
                                 </td>
                             ))}
-                            <td className={'text-nowrap text-center cell cell-status'}>{payment.skipped ? 'Yes' : 'No'}</td>
+                            {showSkipped && (
+                                <td className={'text-nowrap text-center cell cell-status'}>{payment.skipped ? 'Yes' : 'No'}</td>
+                            )}
+                            <td className="cell cell-actions">
+                                <div className="dropdown">
+                                    <button
+                                        type="button"
+                                        className={`actions-button dropdown-toggle${clickedActionRowId === payment.id ? ' actions-button--active' : ''}`}
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setClickedActionRowId(payment.id);
+                                        }}
+                                    >
+                                        Actions
+                                    </button>
+                                    <ul className={`dropdown-menu ${clickedActionRowId === payment.id ? "show" : ""} actions-menu`}>
+                                        {Object.entries(payment.tableActions ?? {}).map(([action, label], idx) => (
+                                            <li key={idx}>
+                                                <a
+                                                    className="dropdown-item"
+                                                    href="#"
+                                                    onClick={(e) => handleActionClick(e, action, payment)}
+                                                >
+                                                    {label}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </td>
                         </tr>
                     ))}
                     </tbody>

@@ -1,10 +1,10 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
-using BuilderServices.Expenses.ExpenseService.Enums;
-using BuilderServices.ExpenseCategoryService.Responses;
+using BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Enums;
+using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using DatabaseServices.Models;
 
-namespace BuilderServices.ExpenseCategoryService;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryService;
 
 public class ExpenseCategoryService
 {

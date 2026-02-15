@@ -6,7 +6,7 @@ public class GetTablePaymentsRequest
 {
     public string Sort { get; set; } = "PaymentDate";
 
-    public string SortDir { get; set; } = "asc";
+    public string SortDir { get; set; } = "desc";
 
     public string? SearchColumn { get; set; }
 
