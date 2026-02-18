@@ -12,6 +12,7 @@ using BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService.Requests;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService.Responses;
 using BuilderServices;
+using BuilderServices.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,7 +47,7 @@ public class PaymentController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        await paymentService.UnpayDueDateAsync(request.PaymentIds, request.ExpenseId).ConfigureAwait(false);
+        await paymentService.DeletePaymentsAsync(request.PaymentIds, request.ExpenseId, request.RemoveFromCreditCard ?? false).ConfigureAwait(false);
 
         return Ok(new UnpayDueDatesResponse
         {
@@ -54,10 +55,14 @@ public class PaymentController(
         });
     }
     
-    [HttpPost("pay/overdue/{expenseId:int}")]
-    public async Task<IActionResult> PayAllOverdueDates(int expenseId)
+    [HttpPost("pay/overdue/{id:int}")]
+    public async Task<IActionResult> PayAllOverdueDates([FromRoute] IdRequest request)
     {
-        await paymentService.PayAllOverdueDatesAsync(expenseId).ConfigureAwait(false);
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+
+        await paymentService.PayAllOverdueDatesAsync(request.Id).ConfigureAwait(false);
 
         return Ok(new PayAllOverdueDatesResponse
         {
@@ -82,9 +87,13 @@ public class PaymentController(
     }
     
     [HttpGet("expense/{id:int}")]
-    public async Task<IActionResult> GetPaymentsForExpense(int id)
+    public async Task<IActionResult> GetPaymentsForExpense([FromRoute] IdRequest request)
     {
-        var payments = await paymentService.GetPaymentsForExpenseAsync(id).ConfigureAwait(false);
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+
+        var payments = await paymentService.GetPaymentsForExpenseAsync(request.Id).ConfigureAwait(false);
         
         return Ok(payments);
     }
@@ -136,13 +145,17 @@ public class PaymentController(
     }
 
     [HttpPatch("creditCards/{id:int}/update/company")]
-    public async Task<IActionResult> UpdateCreditCardCompany([FromBody] UpdateCreditCardCompanyRequest request, int id)
+    public async Task<IActionResult> UpdateCreditCardCompany([FromRoute] IdRequest routeRequest, [FromBody] UpdateCreditCardCompanyRequest request)
     {
+        var routeValidation = await validatorService.ValidateAsync(routeRequest);
+        if (!routeValidation.IsValid)
+            return BadRequest(routeValidation.Errors);
+
         var validationResult = await validatorService.ValidateAsync(request);
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        await creditCardService.UpdateCreditCardCompanyAsync(request.NewCompanyName, id).ConfigureAwait(false);
+        await creditCardService.UpdateCreditCardCompanyAsync(request.NewCompanyName, routeRequest.Id).ConfigureAwait(false);
 
         return Ok(new UpdateCreditCardCompanyResponse
         {
@@ -151,13 +164,17 @@ public class PaymentController(
     }
 
     [HttpPost("creditCards/{id:int}/pay")]
-    public async Task<IActionResult> PayCreditCardBalanceAsync([FromBody] PayCreditCardBalanceRequest request, int id)
+    public async Task<IActionResult> PayCreditCardBalanceAsync([FromRoute] IdRequest routeRequest, [FromBody] PayCreditCardBalanceRequest request)
     {
+        var routeValidation = await validatorService.ValidateAsync(routeRequest);
+        if (!routeValidation.IsValid)
+            return BadRequest(routeValidation.Errors);
+
         var validationResult = await validatorService.ValidateAsync(request);
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
         
-        await creditCardService.PayCreditCardBalanceAsync(id, request.PaymentAmount, request.PaymentDate, request.CashBackAmount)
+        await creditCardService.PayCreditCardBalanceAsync(routeRequest.Id, request.PaymentAmount, request.PaymentDate, request.CashBackAmount)
             .ConfigureAwait(false);
 
         return Ok(new PayCreditCardBalanceResponse
@@ -173,26 +190,8 @@ public class PaymentController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        List<TableFilter> filters = [];
-        if (request.Filters.Count > 0)
-        {
-            foreach (var filter in request.Filters)
-            {
-                if (!Enum.TryParse(typeof(PaymentTableFilterOption), filter.Filter, true, out var filterEnum))
-                    return BadRequest("Invalid filter.");
-                
-                filters.Add(new TableFilter
-                {
-                    FilterType = ((PaymentTableFilterOption)filterEnum).GetFilterType(),
-                    FilterColumn = ((PaymentTableFilterOption)filterEnum).GetFilterColumn(),
-                    Value1 = filter.Value1,
-                    Value2 = filter.Value2
-                });
-            }
-        }
-        
+        var filters = ExpensePaymentTableService.BuildTableFilters(request.Filters);
         var payments = await paymentTableService.GetAllPaymentsForTableAsync(request.Sort.GetColumnName(), request.SortDir, request.SearchColumn?.GetColumnName(), request.SearchValue, request.ShowSkipped, filters).ConfigureAwait(false);
-
 
         return Ok(payments);
     }

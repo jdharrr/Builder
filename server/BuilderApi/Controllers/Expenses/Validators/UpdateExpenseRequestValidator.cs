@@ -1,6 +1,6 @@
+using BuilderServices;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using FluentValidation;
-using System.Text.RegularExpressions;
 
 namespace BuilderApi.Controllers.Expenses.Validators;
 
@@ -12,35 +12,28 @@ public class UpdateExpenseRequestValidator : AbstractValidator<UpdateExpenseRequ
             .NotEmpty()
             .MinimumLength(2)
             .MaximumLength(100)
-            .When(x => x.Name != null);
+            .When(x => x.Name is not null);
 
         RuleFor(x => x.Cost)
             .GreaterThanOrEqualTo(0)
-            .When(x => x.Cost != null);
+            .When(x => x.Cost is not null);
 
         RuleFor(x => x.Description)
             .MaximumLength(500)
-            .When(x => x.Description != null);
+            .When(x => x.Description is not null);
 
         RuleFor(x => x.EndDate)
-            .Must(IsIsoDate)
+            .Must(ValidatorService.IsIsoDate)
             .When(x => !string.IsNullOrWhiteSpace(x.EndDate))
             .WithMessage("End date must be in yyyy-MM-dd format.");
 
         RuleFor(x => x.CategoryId)
             .GreaterThan(0)
-            .When(x => x.CategoryId != null);
+            .When(x => x.CategoryId is not null);
 
         RuleFor(x => x.AutomaticPaymentsCreditCardId)
             .GreaterThan(0)
-            .When(x => x.AutomaticPaymentsCreditCardId != null);
+            .When(x => x.AutomaticPaymentsCreditCardId is not null);
     }
 
-    private static bool IsIsoDate(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-
-        return Regex.IsMatch(value, @"^\d{4}-\d{2}-\d{2}$");
-    }
 }

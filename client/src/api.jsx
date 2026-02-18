@@ -187,7 +187,7 @@ export const updateExpense = async (expenseId, expenseData) => {
     return result.data;
 };
 
-export const deletePayments = async (paymentIds, expenseId) => {
+export const deletePayments = async (paymentIds, expenseId, removeFromCreditCard = false) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
@@ -196,7 +196,8 @@ export const deletePayments = async (paymentIds, expenseId) => {
         {
             data: {
                 paymentIds,
-                expenseId
+                expenseId,
+                removeFromCreditCard
             }
         }
     );

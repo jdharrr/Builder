@@ -12,6 +12,6 @@ public class MonthlyTotalsRequestValidator : AbstractValidator<MonthlyTotalsRequ
 
         RuleFor(x => x.CategoryId)
             .GreaterThan(0)
-            .When(x => x.CategoryId != null);
+            .When(x => x.CategoryId is not null);
     }
 }

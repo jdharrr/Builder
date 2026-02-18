@@ -16,6 +16,8 @@ public class ExpensePaymentDto
     
     public string? CreditCard { get; set; }
     
+    public int? CreditCardId { get; set; }
+    
     public string ExpenseName { get; set; } = string.Empty;
 
     public string Category { get; set; } = string.Empty;

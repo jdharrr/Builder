@@ -386,8 +386,8 @@ export const ExpensesTableSection = ({
         }
     }
 
-    const handleExpenseSelectSave = async (selectedIds, expenseId) => {
-        deletePaymentsMutation.mutate({ selectedIds, expenseId });
+    const handleExpenseSelectSave = async (selectedIds, expenseId, removeFromCreditCard) => {
+        deletePaymentsMutation.mutate({ selectedIds, expenseId, removeFromCreditCard });
     }
 
     const handleEditExpenseSave = async (expenseId, expenseData) => {
@@ -449,19 +449,23 @@ export const ExpensesTableSection = ({
     });
 
     const deletePaymentsMutation = useMutation({
-        mutationFn: ({ selectedIds, expenseId }) => deletePayments(selectedIds, expenseId),
+        mutationFn: ({ selectedIds, expenseId, removeFromCreditCard }) => deletePayments(selectedIds, expenseId, removeFromCreditCard),
         onSuccess: (_data, variables) => {
             showSuccess(`Successfully deleted ${variables.selectedIds.length} payment(s)!`);
             setViewUnpayDatesModal({isShowing: false, expenseId: null});
             qc.refetchQueries({ queryKey: ['lateDates']});
         },
-        onError: (err) => {
+        onError: (err, variables) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
                 showError('Failed to delete payment(s)');
             }
+            if (variables?.expenseId) {
+                qc.invalidateQueries({ queryKey: ['paymentsForExpense', variables.expenseId] });
+            }
+            qc.invalidateQueries({ queryKey: ['tableExpenses'] });
         }
     });
 

@@ -9,7 +9,6 @@ public class GetTablePaymentsRequestValidator : AbstractValidator<GetTablePaymen
     public GetTablePaymentsRequestValidator()
     {
         RuleFor(x => x.Sort)
-            .NotEmpty()
             .IsInEnum();
 
         RuleFor(x => x.SortDir)
@@ -17,7 +16,6 @@ public class GetTablePaymentsRequestValidator : AbstractValidator<GetTablePaymen
             .Must(dir => dir is "asc" or "desc");
 
         RuleFor(x => x.SearchColumn)
-            .NotEmpty()
             .IsInEnum()
             .When(x => !string.IsNullOrWhiteSpace(x.SearchValue));
 

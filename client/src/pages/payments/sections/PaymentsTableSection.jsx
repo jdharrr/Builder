@@ -290,9 +290,12 @@ export const PaymentsTableSection = () => {
     };
 
     const deletePaymentsMutation = useMutation({
-        mutationFn: ({ selectedIds, expenseId }) => deletePayments(selectedIds, expenseId),
+        mutationFn: ({ selectedIds, expenseId, removeFromCreditCard }) => deletePayments(selectedIds, expenseId, removeFromCreditCard),
         onSuccess: () => {
             setClickedActionRowId(null);
+            qc.invalidateQueries({ queryKey: ['tablePayments'] });
+        },
+        onError: () => {
             qc.invalidateQueries({ queryKey: ['tablePayments'] });
         }
     });
@@ -306,9 +309,14 @@ export const PaymentsTableSection = () => {
                 if (!window.confirm("Are you sure you want to delete this payment?")) {
                     return;
                 }
+                const hasCreditCard = payment?.creditCardId || payment?.creditCard;
+                const removeFromCreditCard = hasCreditCard
+                    ? window.confirm("Remove the cost from the credit card balance as well?")
+                    : false;
                 deletePaymentsMutation.mutate({
                     selectedIds: [payment.id],
-                    expenseId: payment.expenseId
+                    expenseId: payment.expenseId,
+                    removeFromCreditCard
                 });
                 break;
             }

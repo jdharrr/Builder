@@ -44,7 +44,18 @@ public class AuthenticationService
         userDto.PasswordHash = Hash(request.Password, salt);
         userDto.Salt = Convert.ToBase64String(salt);
 
-        await _userRepo.InsertUserAsync(userDto).ConfigureAwait(false);
+        try
+        {
+            await _userRepo.InsertUserAsync(userDto).ConfigureAwait(false);
+        }
+        catch (GenericException ex) when (ex.Message.Contains("Email already in use", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DuplicateEmailException(ex.Message);
+        }
+        catch (GenericException ex) when (ex.Message.Contains("Username already in use", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DuplicateUsernameException(ex.Message);
+        }
 
         return true;
     }
@@ -54,9 +65,12 @@ public class AuthenticationService
         var response = new LoginResponse();
 
         var user = await _userRepo.GetFullUserByEmailAsync(request.Email).ConfigureAwait(false);
-        if (user == null)
+        if (user is null)
         {
-            // TODO: dummy hash for safety
+            var dummySalt = new byte[16];
+            RandomNumberGenerator.Fill(dummySalt);
+            var dummyHash = Hash("dummy", dummySalt);
+            _ = IsValidHash(request.Password, dummyHash, Convert.ToBase64String(dummySalt));
             throw new InvalidCredentialsException();
         }
 
@@ -118,7 +132,7 @@ public class AuthenticationService
     //    var user = await _userRepo.GetUserByEmailAsync(emailClaim).ConfigureAwait(false)
     //        ?? throw new UserNotFoundException();
 
-    //    if (user.PasswordResetExpiration == null || user.PasswordResetExpiration < DateTime.UtcNow)
+    //    if (user.PasswordResetExpiration is null || user.PasswordResetExpiration < DateTime.UtcNow)
     //        throw new InvalidTokenException();
 
     //    if (Hash(request.ResetToken, Convert.FromBase64String(user.Salt!)) != user.PasswordResetToken)

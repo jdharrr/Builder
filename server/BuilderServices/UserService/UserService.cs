@@ -22,7 +22,7 @@ public class UserService
     public async Task<GetUserResponse?> GetLimitedUserByIdAsync()
     {
         var user = await _userRepo.GetLimitedUserByIdAsync(_userContext.UserId).ConfigureAwait(false);
-        if (user == null)
+        if (user is null)
             return null;
 
         return new GetUserResponse

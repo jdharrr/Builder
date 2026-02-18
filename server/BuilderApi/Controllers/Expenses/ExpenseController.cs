@@ -11,6 +11,7 @@ using BuilderServices.ExpenseCategories.ExpenseCategoryService;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using BuilderServices;
 using BuilderServices.Expenses.ExpenseCreationService;
+using BuilderServices.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -66,36 +67,20 @@ public class ExpenseController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        List<TableFilter> filters = [];
-        if (request.Filters.Count > 0)
-        {
-            foreach (var filter in request.Filters)
-            {
-                if (!Enum.TryParse(typeof(ExpenseTableFilterOption), filter.Filter, true, out var filterEnum))
-                    return BadRequest("Invalid filter.");
-
-                filters.Add(new TableFilter
-                {
-                    FilterType = ((ExpenseTableFilterOption)filterEnum).GetFilterType(),
-                    FilterColumn = ((ExpenseTableFilterOption)filterEnum).GetFilterColumn(),
-                    Value1 = filter.Value1,
-                    Value2 = filter.Value2
-                });
-            }
-        }
-
+        var filters = ExpenseTableService.BuildTableFilters(request.Filters);
         var expenses = await expenseTableService.GetAllExpensesForTableAsync(request.Sort.GetColumnName(), request.SortDir, request.SearchColumn?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses, filters).ConfigureAwait(false);
 
         return Ok(expenses);
     }
 
     [HttpDelete("{id:int}/delete")]
-    public async Task<IActionResult> DeleteExpense(int id)
+    public async Task<IActionResult> DeleteExpense([FromRoute] IdRequest request)
     {
-        if (id <= 0)
-            return BadRequest("Expense id must be greater than 0");
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
         
-        await expenseService.DeleteExpenseAsync(id).ConfigureAwait(false);
+        await expenseService.DeleteExpenseAsync(request.Id).ConfigureAwait(false);
         
         return Ok(new DeleteExpenseResponse
         {
@@ -112,12 +97,13 @@ public class ExpenseController(
     }
 
     [HttpGet("{id:int}/lateDates")]
-    public async Task<IActionResult> GetLateDatesForExpense(int id)
+    public async Task<IActionResult> GetLateDatesForExpense([FromRoute] IdRequest request)
     {
-        if (id <= 0)
-            return BadRequest("Expense id must be greater than 0");
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
         
-        var lateDates = await expenseService.GetLateDatesForExpense(id).ConfigureAwait(false);
+        var lateDates = await expenseService.GetLateDatesForExpense(request.Id).ConfigureAwait(false);
 
         return Ok(new ExpenseLateDatesResponse
         {
@@ -127,22 +113,26 @@ public class ExpenseController(
 
     //expense updates
     [HttpPatch("update/{id:int}")]
-    public async Task<IActionResult> UpdateExpense([FromBody] UpdateExpenseRequest request, int id)
+    public async Task<IActionResult> UpdateExpense([FromRoute] IdRequest routeRequest, [FromBody] UpdateExpenseRequest request)
     {
+        var routeValidation = await validatorService.ValidateAsync(routeRequest);
+        if (!routeValidation.IsValid)
+            return BadRequest(routeValidation.Errors);
+
         var validationResult = await validatorService.ValidateAsync(request);
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
         int? isActive = null;
-        if (request.Active != null)
+        if (request.Active is not null)
             isActive = (bool)request.Active ? 1 : 0;
 
         int? isAutomaticPayments = null;
-        if (request.AutomaticPayments != null)
+        if (request.AutomaticPayments is not null)
             isAutomaticPayments = (bool)request.AutomaticPayments ? 1 : 0;
             
         await expenseService.UpdateExpenseAsync(
-            id,
+            routeRequest.Id,
             request.Name, 
             request.Cost,
             request.EndDate,

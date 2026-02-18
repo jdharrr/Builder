@@ -34,23 +34,27 @@ public class AuthenticationController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        bool userCreated;
         try
         {
-            userCreated = await authService.CreateNewUserAsync(request).ConfigureAwait(false);
+            await authService.CreateNewUserAsync(request).ConfigureAwait(false);
+
+            return Ok(new CreateUserResponse
+            {
+                IsCreated = true
+            });
+        }
+        catch (DuplicateEmailException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (DuplicateUsernameException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception)
         {
             return Problem(_genericProblemResponse);
         }
-
-        if (!userCreated)
-            return BadRequest("Email already exists.");
-
-        return Ok(new CreateUserResponse
-        {
-            IsCreated = true
-        });
     }
 
     [Authorize]
@@ -77,7 +81,7 @@ public class AuthenticationController(
         }
         catch (InvalidCredentialsException)
         {
-            return Unauthorized("Email or password are inccorect.");
+            return Unauthorized("Email or password are incorrect.");
         }
         catch (Exception)
         {

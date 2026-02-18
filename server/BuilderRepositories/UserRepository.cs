@@ -35,12 +35,14 @@ public class UserRepository
         }
         catch (MySqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
         {
+            await _dbService.RollbackAsync().ConfigureAwait(false);
+
             if (ex.Message.Contains("email"))
                 throw new GenericException("Email already in use");
-            else if (ex.Message.Contains("username"))
+            if (ex.Message.Contains("username"))
                 throw new GenericException("Username already in use");
 
-            await _dbService.RollbackAsync().ConfigureAwait(false);
+            throw;
         }
 
         var lastInsertedUserId = userResult.LastInsertedId;

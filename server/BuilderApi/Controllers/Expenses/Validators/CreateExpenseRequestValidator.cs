@@ -1,6 +1,6 @@
+using BuilderServices;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using FluentValidation;
-using System.Text.RegularExpressions;
 
 namespace BuilderApi.Controllers.Expenses.Validators;
 
@@ -26,34 +26,34 @@ public partial class CreateExpenseRequestValidator : AbstractValidator<CreateExp
 
         RuleFor(x => x.StartDate)
             .NotEmpty()
-            .Must(IsIsoDate)
+            .Must(ValidatorService.IsIsoDate)
             .WithMessage("Start date must be in yyyy-MM-dd format.");
 
         RuleFor(x => x.EndDate)
-            .Must(IsIsoDate)
+            .Must(ValidatorService.IsIsoDate)
             .When(x => !string.IsNullOrWhiteSpace(x.EndDate))
             .WithMessage("End date must be in yyyy-MM-dd format.");
 
         RuleFor(x => x.CategoryId)
             .GreaterThan(0)
-            .When(x => x.CategoryId != null);
+            .When(x => x.CategoryId is not null);
 
         RuleFor(x => x.OneTimePayment.PaymentDate)
-            .Must(IsIsoDate)
+            .Must(ValidatorService.IsIsoDate)
             .When(x => !string.IsNullOrWhiteSpace(x.OneTimePayment.PaymentDate))
             .WithMessage("Payment date must be in yyyy-MM-dd format.");
 
         RuleFor(x => x.OneTimePayment.CreditCardId)
             .GreaterThan(0)
-            .When(x => x.OneTimePayment.CreditCardId != null);
+            .When(x => x.OneTimePayment.CreditCardId is not null);
 
         RuleFor(x => x.PayToNowPayment.CreditCardId)
             .GreaterThan(0)
-            .When(x => x.PayToNowPayment.CreditCardId != null);
+            .When(x => x.PayToNowPayment.CreditCardId is not null);
 
         RuleFor(x => x.AutomaticPayment.CreditCardId)
             .GreaterThan(0)
-            .When(x => x.AutomaticPayment.CreditCardId != null);
+            .When(x => x.AutomaticPayment.CreditCardId is not null);
         
         #region Policy Rules
         RuleFor(x => x.OneTimePayment)
@@ -88,11 +88,4 @@ public partial class CreateExpenseRequestValidator : AbstractValidator<CreateExp
         #endregion
     }
 
-    private static bool IsIsoDate(string? value)
-    {
-        return !string.IsNullOrWhiteSpace(value) && IsoDateRegex().IsMatch(value);
-    }
-
-    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}$")]
-    private static partial Regex IsoDateRegex();
 }

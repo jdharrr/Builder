@@ -1,6 +1,6 @@
+using BuilderServices;
 using BuilderServices.CreditCardService.Requests;
 using FluentValidation;
-using System.Text.RegularExpressions;
 
 namespace BuilderApi.Controllers.Payments.Validators;
 
@@ -22,15 +22,7 @@ public class PayCreditCardBalanceRequestValidator : AbstractValidator<PayCreditC
 
         RuleFor(x => x.PaymentDate)
             .NotEmpty()
-            .Must(IsIsoDate)
+            .Must(ValidatorService.IsIsoDate)
             .WithMessage("Payment date must be in yyyy-MM-dd format.");
-    }
-
-    private static bool IsIsoDate(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-
-        return Regex.IsMatch(value, @"^\d{4}-\d{2}-\d{2}$");
     }
 }

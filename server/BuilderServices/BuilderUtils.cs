@@ -7,8 +7,8 @@ public static class BuilderUtils
     public static bool ExpenseIsForDate(ExpenseDto dto, DateOnly date)
     {
         var startDate = DateOnly.ParseExact(dto.StartDate, "yyyy-MM-dd");
-        var endDate = dto.EndDate != null ? DateOnly.ParseExact(dto.EndDate, "yyyy-MM-dd") : (DateOnly?)null;
-        if (startDate > date || (endDate != null && endDate < date))
+        var endDate = dto.EndDate is not null ? DateOnly.ParseExact(dto.EndDate, "yyyy-MM-dd") : (DateOnly?)null;
+        if (startDate > date || (endDate < date))
             return false;
 
         var diffDays = startDate.DayNumber - date.DayNumber;

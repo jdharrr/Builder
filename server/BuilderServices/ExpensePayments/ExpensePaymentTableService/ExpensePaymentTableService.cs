@@ -3,6 +3,7 @@ using BuilderRepositories;
 using BuilderRepositories.Requests;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService.Responses;
+using BuilderServices.Requests;
 using BuilderServices.Responses;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentTableService;
@@ -84,5 +85,26 @@ public class ExpensePaymentTableService(
         }
 
         return filterOptions;
+    }
+
+    public static List<TableFilter> BuildTableFilters(List<FilterRequest> filterRequests)
+    {
+        List<TableFilter> filters = [];
+        if (filterRequests.Count <= 0) 
+            return filters;
+        
+        foreach (var filter in filterRequests)
+        {
+            var filterEnum = Enum.Parse<PaymentTableFilterOption>(filter.Filter);
+            filters.Add(new TableFilter
+            {
+                FilterType = filterEnum.GetFilterType(),
+                FilterColumn = filterEnum.GetFilterColumn(),
+                Value1 = filter.Value1,
+                Value2 = filter.Value2
+            });
+        }
+
+        return filters;
     }
 }

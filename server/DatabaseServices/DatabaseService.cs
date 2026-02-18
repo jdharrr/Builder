@@ -29,7 +29,7 @@ public class DatabaseService : IDisposable
 
     public async Task CommitAsync()
     {
-        if (_transaction != null)
+        if (_transaction is not null)
         {
             await _transaction.CommitAsync().ConfigureAwait(false);
             _transaction = null;
@@ -38,7 +38,7 @@ public class DatabaseService : IDisposable
 
     public async Task RollbackAsync()
     {
-        if (_transaction != null)
+        if (_transaction is not null)
         {
             await _transaction.RollbackAsync().ConfigureAwait(false);
             _transaction = null;
@@ -48,7 +48,7 @@ public class DatabaseService : IDisposable
     public async Task<ExecuteResponse> ExecuteAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
-        if (parameters != null)
+        if (parameters is not null)
             AddParameters(cmd, parameters);
 
         var result = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
@@ -62,7 +62,7 @@ public class DatabaseService : IDisposable
     public async Task<object?> ExecuteScalarAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
-        if (parameters != null)
+        if (parameters is not null)
             AddParameters(cmd, parameters);
 
         return await cmd.ExecuteScalarAsync().ConfigureAwait(false);
@@ -71,7 +71,7 @@ public class DatabaseService : IDisposable
     public async Task<DataTable> QueryAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
         using var cmd = new MySqlCommand(sql, _connection, _transaction);
-        if (parameters != null)
+        if (parameters is not null)
             AddParameters(cmd, parameters);
 
         using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);

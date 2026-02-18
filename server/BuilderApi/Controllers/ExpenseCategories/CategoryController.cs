@@ -4,6 +4,7 @@ using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using BuilderServices.ExpenseCategories.ExpenseCategoryChartService;
 using BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Requests;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService.Requests;
+using BuilderServices.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,13 +47,17 @@ public class CategoryController(
     }
 
     [HttpPatch("{id:int}/update/active")]
-    public async Task<IActionResult> SetExpenseCategoryActiveStatus([FromBody] SetExpenseCategoryActiveStatusRequest request, int id)
+    public async Task<IActionResult> SetExpenseCategoryActiveStatus([FromRoute] IdRequest routeRequest, [FromBody] SetExpenseCategoryActiveStatusRequest request)
     {
+        var routeValidation = await validatorService.ValidateAsync(routeRequest);
+        if (!routeValidation.IsValid)
+            return BadRequest(routeValidation.Errors);
+
         var validationResult = await validatorService.ValidateAsync(request);
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
         
-        await categoryService.SetExpenseCategoryActiveStatusAsync(id, request.Active).ConfigureAwait(false);
+        await categoryService.SetExpenseCategoryActiveStatusAsync(routeRequest.Id, request.Active).ConfigureAwait(false);
 
         return Ok(new SetExpenseCategoryActiveStatusResponse
         {
@@ -99,12 +104,13 @@ public class CategoryController(
     }
 
     [HttpDelete("{id:int}/delete")]
-    public async Task<IActionResult> DeleteExpenseCategory(int id)
+    public async Task<IActionResult> DeleteExpenseCategory([FromRoute] IdRequest request)
     {
-        if (id <= 0)
-            return BadRequest("Category id must be greater than 0");
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
         
-        await categoryService.DeleteExpenseCategoryAsync(id).ConfigureAwait(false);
+        await categoryService.DeleteExpenseCategoryAsync(request.Id).ConfigureAwait(false);
 
         return Ok(new DeleteExpenseCategoryResponse
         {

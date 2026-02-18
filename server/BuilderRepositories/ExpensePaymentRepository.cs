@@ -5,6 +5,7 @@ using MySql.Data.MySqlClient;
 using System.Data;
 using BuilderRepositories.Requests;
 using BuilderServices.Enums;
+using Mysqlx.Resultset;
 
 namespace BuilderRepositories;
 
@@ -63,11 +64,24 @@ public class ExpensePaymentRepository: BuilderRepository
         return result.LastInsertedId;
     }
 
-    public async Task<bool> DeleteExpensePaymentsAsync(List<object> paymentIds)
+    public async Task<bool> DeleteExpensePaymentsAsync(List<int> paymentIds)
     {
         var parameters = new Dictionary<string, object?>();
         var sql = $@"DELETE FROM expense_payments
                     WHERE id IN ({BuildInParams(paymentIds, ref parameters)})";
+        
+        var result = await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+        return result.RowsAffected > 0;
+    }
+    
+    public async Task<bool> DeleteExpensePaymentByIdAsync(int paymentId)
+    {
+        var sql = $@"DELETE FROM expense_payments
+                    WHERE id = @paymentId";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@paymentId", paymentId }
+        };
         
         var result = await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
         return result.RowsAffected > 0;
@@ -158,14 +172,14 @@ public class ExpensePaymentRepository: BuilderRepository
             { "@userId", userId }
         };
 
-        if (startDate != null && endDate != null)
+        if (startDate is not null && endDate is not null)
         {
             sql += " AND ep.payment_date >= @startDate AND ep.payment_date <= @endDate";
             parameters.Add("@startDate", startDate);
             parameters.Add("@endDate", endDate);
         }
 
-        if (categoryId != null)
+        if (categoryId is not null)
         {
             sql += " AND e.category_id = @categoryId";
             parameters.Add("@categoryId", categoryId);
@@ -178,7 +192,7 @@ public class ExpensePaymentRepository: BuilderRepository
     
     public async Task<List<ExpenseCategoryDto>> GetCategoryTotalSpentByRangeAsync(int userId, string? startOfRange = null, string? endOfRange = null)
     {
-        var rangeSql = startOfRange != null && endOfRange != null
+        var rangeSql = startOfRange is not null && endOfRange is not null
             ? @"AND DATE(ep.payment_date) >= @startOfRange
                 AND DATE(ep.payment_date) <= @endOfRange
                "
@@ -203,7 +217,7 @@ public class ExpensePaymentRepository: BuilderRepository
             
         };
 
-        if (startOfRange != null & endOfRange != null)
+        if (startOfRange is not null & endOfRange is not null)
         {
             parameters["@startOfRange"] = startOfRange;
             parameters["@endOfRange"] = endOfRange;
@@ -271,7 +285,6 @@ public class ExpensePaymentRepository: BuilderRepository
     {
         if (string.IsNullOrEmpty(searchColumn) || string.IsNullOrEmpty(searchValue)) return;
         
-        // TODO: sanitize search value to prevent
         var searchCol = searchColumn switch
         {
             "expense_name" => "e.name",
@@ -435,5 +448,26 @@ public class ExpensePaymentRepository: BuilderRepository
         }
 
         return result;
+    }
+
+    public async Task<ExpensePaymentDto?> GetExpensePaymentByIdAsync(int paymentId)
+    {
+        var sql = @"SELECT
+                        *
+                    FROM expense_payments ep
+                    WHERE id = @paymentId";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "@paymentId", paymentId }
+        };
+
+        var dataTable = await _dbService.QueryAsync(sql, parameters).ConfigureAwait(false);
+
+        return dataTable.MapSingle(row => new ExpensePaymentDto()
+        {
+            Id = row.Field<int>("id"),
+            CreditCardId = row.Field<int?>("credit_card_id"),
+            Cost = row.Field<decimal>("cost")
+        });
     }
 }

@@ -160,13 +160,25 @@ public class ExpenseService(
         string? nextDueDate = null;
         if (active == 1 && expense.RecurrenceRate != "once")
         {
-            if (expense.EndDate != null && DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") < DateOnly.FromDateTime(DateTime.UtcNow))
+            if (expense.EndDate is not null && DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") < DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new GenericException("Cannot activate expense with end date in the past");
             
             nextDueDate = BuilderUtils.GetNextFutureDueDate(expense.RecurrenceRate, expense.NextDueDate ?? expense.StartDate);
         }
+
+        var newActiveStatus = active;
+        if (endDate is not null && expense.NextDueDate is not null)
+        {
+            var endDateObj = DateOnly.ParseExact(endDate, "yyyy-MM-dd");
+            var currNextDueDate = DateOnly.ParseExact(expense.NextDueDate, "yyyy-MM-dd");
+            if (endDateObj < currNextDueDate)
+            {
+                newActiveStatus = 0;
+                nextDueDate = null;
+            }
+        }
         
-        await CheckForScheduledPaymentsUpdateRequiredAsync(expense, automaticPayments, active, automaticPaymentsCreditCardId).ConfigureAwait(false);
+        await HandleScheduledPaymentsUpdatesAsync(expense, automaticPayments, active, automaticPaymentsCreditCardId).ConfigureAwait(false);
 
         var values = new
         {
@@ -175,7 +187,7 @@ public class ExpenseService(
             end_date = endDate ?? expense.EndDate,
             category_id = categoryId ?? expense.CategoryId,
             description = description ?? expense.Description,
-            active = active ?? (expense.Active ? 1 : 0),
+            active = newActiveStatus ?? (expense.Active ? 1 : 0),
             automatic_payments = automaticPayments ?? (expense.AutomaticPayments ? 1 : 0),
             automatic_payment_credit_card_id = automaticPaymentsCreditCardId ?? expense.AutomaticPaymentCreditCardId,
             next_due_date = nextDueDate ?? expense.NextDueDate
@@ -191,7 +203,7 @@ public class ExpenseService(
         await expenseRepo.UpdateExpenseAsync(updateDict, expenseId, userContext.UserId);
     }
 
-    private async Task CheckForScheduledPaymentsUpdateRequiredAsync(ExpenseDto expense, int? newAutomaticPayments, int? newIsActive, int? newAutomaticCreditCardId)
+    private async Task HandleScheduledPaymentsUpdatesAsync(ExpenseDto expense, int? newAutomaticPayments, int? newIsActive, int? newAutomaticCreditCardId)
     {
         // User is turning on automatic payments. Schedule the next due date
         if (newAutomaticPayments == 1 && expense is { AutomaticPayments: false, NextDueDate: not null })
@@ -200,10 +212,10 @@ public class ExpenseService(
         // User is either putting scheduled payments on credit or changing the credit card. Update the existing scheduled payment.
         if (newAutomaticPayments == 1 && expense.AutomaticPayments &&
             expense.AutomaticPaymentCreditCardId != newAutomaticCreditCardId &&
-            expense.NextDueDate != null)
+            expense.NextDueDate is not null)
         {
             var scheduledPayment = await scheduledPaymentRepo.GetScheduledPaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
-            if (scheduledPayment != null)
+            if (scheduledPayment is not null)
                 await scheduledPaymentRepo.UpdateCreditCardIdAsync(scheduledPayment.Id, newAutomaticCreditCardId);
         }
 
@@ -233,10 +245,10 @@ public class ExpenseService(
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             while (currentDueDate < today)
             {
-                if (expense.EndDate != null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
+                if (expense.EndDate is not null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
                     break;
                 
-                var paymentExists = await paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) != null;
+                var paymentExists = await paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) is not null;
                 if (!paymentExists)
                     hasLate = true;
                 
@@ -274,12 +286,12 @@ public class ExpenseService(
         var expense = await expenseRepo.GetExpenseByIdAsync(expenseId, userContext.UserId).ConfigureAwait(false)
             ?? throw new GenericException("Failed to find expense.");
 
-        DateOnly? endDate = expense.EndDate != null ? DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") : null;
+        DateOnly? endDate = expense.EndDate is not null ? DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") : null;
         var currentDate = DateOnly.ParseExact(expense.StartDate, "yyyy-MM-dd");
         var today = DateOnly.FromDateTime(DateTime.Today);
-        while(currentDate < today && (endDate == null || currentDate <= endDate))
+        while(currentDate < today && (endDate is null || currentDate <= endDate))
         {
-            var paymentExists = (await paymentRepo.GetExpensePaymentByDueDateAsync(currentDate.ToString("yyyy-MM-dd"), expenseId).ConfigureAwait(false)) != null;
+            var paymentExists = (await paymentRepo.GetExpensePaymentByDueDateAsync(currentDate.ToString("yyyy-MM-dd"), expenseId).ConfigureAwait(false)) is not null;
             if (!paymentExists)
                 lateDates.Add(currentDate.ToString("yyyy-MM-dd"));
 

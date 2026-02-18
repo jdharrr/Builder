@@ -8,7 +8,6 @@ public class CategoryTotalSpentRequestValidator : AbstractValidator<CategoryTota
     public CategoryTotalSpentRequestValidator()
     {
         RuleFor(x => x.RangeOption)
-            .NotEmpty()
             .IsInEnum();
     }
 }

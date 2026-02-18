@@ -21,7 +21,12 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     }, [handleClose]);
 
     const handleSaveClick = () => {
-        handleSave(selectedIds, expenseId);
+        const selectedPayments = payments.filter((payment) => selectedIds.includes(payment.id));
+        const hasCreditCard = selectedPayments.some((payment) => payment.creditCardId || payment.creditCard);
+        const removeFromCreditCard = hasCreditCard
+            ? window.confirm("Remove the cost from the credit card balance as well?")
+            : false;
+        handleSave(selectedIds, expenseId, removeFromCreditCard);
     }
 
     const handleCheckboxClick = (checked, id) => {
