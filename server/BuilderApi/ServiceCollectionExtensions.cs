@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.Reflection;
+using Microsoft.Extensions.Options;
 using DatabaseServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AuthenticationServices;
@@ -10,9 +11,12 @@ using BuilderServices.ExpensePayments.ExpensePaymentChartService;
 using BuilderServices.ExpensePayments.ExpensePaymentService;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService;
 using BuilderRepositories;
+using BuilderServices;
 using BuilderServices.CreditCardService;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService;
+using BuilderServices.Expenses.ExpenseCreationService;
 using BuilderServices.UserService;
+using FluentValidation;
 
 namespace BuilderApi;
 
@@ -64,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UserService>();
         services.AddScoped<ExpenseCategoryChartService>();
         services.AddScoped<ExpenseService>();
+        services.AddScoped<ExpenseCreationService>();
         services.AddScoped<ExpenseTableService>();
         services.AddScoped<ExpenseCategoryService>();
         services.AddScoped<ExpensePaymentChartService>();
@@ -77,6 +82,14 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection ConfigureUserContext(this IServiceCollection services)
     {
         services.AddScoped<UserContext>();
+
+        return services;
+    }
+    
+    public static IServiceCollection ConfigureValidation(this IServiceCollection services)
+    {
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        services.AddScoped<ValidatorService>();
 
         return services;
     }

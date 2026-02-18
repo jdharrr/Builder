@@ -4,20 +4,19 @@ using AuthenticationServices.Responses;
 using BuilderRepositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
+using BuilderServices;
 
-namespace BuilderApi.Controllers;
+namespace BuilderApi.Controllers.Authentication;
 
 [ApiController]
 [Route("api/auth")]
 public class AuthenticationController(
-    AuthenticationService authService
+    AuthenticationService authService,
+    ValidatorService validatorService
 ) : ControllerBase
 {
-    private readonly string _emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-
     private readonly string _genericProblemResponse = "An error occurred while processing the request.";
-
+    
     [Authorize]
     [HttpGet("validate/accessToken")]
     public IActionResult ValidateAccessToken()
@@ -31,8 +30,9 @@ public class AuthenticationController(
     [HttpPost("create/user")]
     public async Task<IActionResult> CreateUser([FromBody] NewUserRequest request)
     {
-        if (!Regex.IsMatch(request.Email, _emailPattern, RegexOptions.IgnoreCase))
-            return BadRequest("Incorrect email format.");
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
 
         bool userCreated;
         try
@@ -63,6 +63,10 @@ public class AuthenticationController(
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
     {
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+        
         try
         {
             return Ok(await authService.LoginAsync(request).ConfigureAwait(false));

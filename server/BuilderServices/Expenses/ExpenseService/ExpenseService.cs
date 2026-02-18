@@ -6,25 +6,14 @@ using DatabaseServices.Models;
 
 namespace BuilderServices.Expenses.ExpenseService;
 
-public class ExpenseService
+public class ExpenseService(
+    ExpenseRepository expenseRepo,
+    ExpensePaymentRepository paymentRepo,
+    UserContext userContext,
+    ScheduledPaymentRepository scheduledPaymentRepo
+)
 {
-    private readonly ExpenseRepository _expenseRepo;
-
-    private readonly ExpensePaymentRepository _paymentRepo;
-
-    private readonly ScheduledPaymentRepository _scheduledPaymentRepo;
-
-    private readonly UserContext _userContext;
-
     private readonly int _upcomingDaysLimit = 7;
-
-    public ExpenseService(ExpenseRepository expenseRepo, ExpensePaymentRepository paymentRepo, UserContext userContext, ScheduledPaymentRepository scheduledPaymentRepo) 
-    {
-        _expenseRepo = expenseRepo;
-        _paymentRepo = paymentRepo;
-        _userContext = userContext;
-        _scheduledPaymentRepo = scheduledPaymentRepo;
-    }
 
     public async Task<long> CreateExpenseAsync(CreateExpenseRequest request)
     {
@@ -69,14 +58,19 @@ public class ExpenseService
 
         expenseDto.NextDueDate = currentDueDate.ToString("yyyy-MM-dd");
         
-        var lastInsertedId = await _expenseRepo.CreateExpenseAsync(expenseDto, _userContext.UserId).ConfigureAwait(false);
+        var lastInsertedId = await expenseRepo.CreateExpenseAsync(expenseDto, userContext.UserId).ConfigureAwait(false);
         if (lastInsertedId == 0)
-        {
             throw new GenericException("Failed to create expense");
-        }
 
-        if (automaticPayment.Enabled)
-            await _scheduledPaymentRepo.SchedulePaymentAsync((int)lastInsertedId, expenseDto.NextDueDate, automaticPayment.CreditCardId).ConfigureAwait(false);
+        if (!automaticPayment.Enabled) 
+            return lastInsertedId;
+        
+        var scheduledPaymentId = await scheduledPaymentRepo
+            .SchedulePaymentAsync((int)lastInsertedId, expenseDto.NextDueDate, automaticPayment.CreditCardId)
+            .ConfigureAwait(false);
+
+        if (scheduledPaymentId <= 0)
+            throw new GenericException("Failed to schedule next payment");
 
         return lastInsertedId;
     }
@@ -87,7 +81,7 @@ public class ExpenseService
         var firstDate = new DateOnly(year, month, 1);
         var lastDate = new DateOnly(year, month, daysInMonth);
 
-        var expenses = await _expenseRepo.GetExpensesForDateRangeAsync(_userContext.UserId, firstDate, lastDate).ConfigureAwait(false);
+        var expenses = await expenseRepo.GetExpensesForDateRangeAsync(userContext.UserId, firstDate, lastDate).ConfigureAwait(false);
 
         var mappedExpenses = new Dictionary<string, List<DashboardCalendarExpenseResponse>>();
         for (int i = 1; i <= daysInMonth; i++)
@@ -127,8 +121,8 @@ public class ExpenseService
         var startDate = DateOnly.FromDateTime(DateTime.Today);
         var endDate = startDate.AddDays(_upcomingDaysLimit);
 
-        var expenses = await _expenseRepo.GetExpensesForDateRangeAsync(
-            _userContext.UserId, 
+        var expenses = await expenseRepo.GetExpensesForDateRangeAsync(
+            userContext.UserId, 
             startDate, 
             endDate
         ).ConfigureAwait(false);
@@ -136,7 +130,7 @@ public class ExpenseService
         var mappedExpenses = new Dictionary<string, List<DashboardUpcomingExpenseResponse>>();
         for (DateOnly date = startDate; date < endDate; date = date.AddDays(1))
         {
-            var paymentsForDate = await _paymentRepo.GetPaymentsForDateAsync(date, _userContext.UserId).ConfigureAwait(false);
+            var paymentsForDate = await paymentRepo.GetPaymentsForDateAsync(date, userContext.UserId).ConfigureAwait(false);
             mappedExpenses[date.ToString("yyyy-MM-dd")] = [.. expenses
                 .Where(e => BuilderUtils.ExpenseIsForDate(e, date) && !paymentsForDate.Any(p => p.ExpenseId == e.Id))
                 .Select(expense => new DashboardUpcomingExpenseResponse
@@ -160,7 +154,7 @@ public class ExpenseService
         string? endDate = null, int? categoryId = null, string? description = null, 
         int? active = null, int? automaticPayments = null, int? automaticPaymentsCreditCardId = null)
     {
-        var expense = await _expenseRepo.GetExpenseByIdAsync(expenseId, _userContext.UserId).ConfigureAwait(false)
+        var expense = await expenseRepo.GetExpenseByIdAsync(expenseId, userContext.UserId).ConfigureAwait(false)
             ?? throw new GenericException("Failed to find expense");
         
         string? nextDueDate = null;
@@ -194,42 +188,42 @@ public class ExpenseService
             updateDict[prop.Name] = value;
         }
 
-        await _expenseRepo.UpdateExpenseAsync(updateDict, expenseId, _userContext.UserId);
+        await expenseRepo.UpdateExpenseAsync(updateDict, expenseId, userContext.UserId);
     }
 
     private async Task CheckForScheduledPaymentsUpdateRequiredAsync(ExpenseDto expense, int? newAutomaticPayments, int? newIsActive, int? newAutomaticCreditCardId)
     {
         // User is turning on automatic payments. Schedule the next due date
         if (newAutomaticPayments == 1 && expense is { AutomaticPayments: false, NextDueDate: not null })
-            await _scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, newAutomaticCreditCardId).ConfigureAwait(false);
+            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, newAutomaticCreditCardId).ConfigureAwait(false);
 
         // User is either putting scheduled payments on credit or changing the credit card. Update the existing scheduled payment.
         if (newAutomaticPayments == 1 && expense.AutomaticPayments &&
             expense.AutomaticPaymentCreditCardId != newAutomaticCreditCardId &&
             expense.NextDueDate != null)
         {
-            var scheduledPayment = await _scheduledPaymentRepo.GetScheduledPaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
+            var scheduledPayment = await scheduledPaymentRepo.GetScheduledPaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
             if (scheduledPayment != null)
-                await _scheduledPaymentRepo.UpdateCreditCardIdAsync(scheduledPayment.Id, newAutomaticCreditCardId);
+                await scheduledPaymentRepo.UpdateCreditCardIdAsync(scheduledPayment.Id, newAutomaticCreditCardId);
         }
 
         // User if turning off automatic payments OR setting the expense inactive. Delete next scheduled payment.
         if ((newAutomaticPayments == 0 || newIsActive == 0) && expense is { AutomaticPayments: true, NextDueDate: not null })
-            await _scheduledPaymentRepo.DeleteScheduledPaymentByDueDateAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
+            await scheduledPaymentRepo.DeleteScheduledPaymentByDueDateAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
         
         // User is activating expense that has automatic payments. Schedule next payment.
         if (newIsActive == 1 && expense is { AutomaticPayments: true, NextDueDate: not null })
-            await _scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, expense.AutomaticPaymentCreditCardId).ConfigureAwait(false);
+            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, expense.AutomaticPaymentCreditCardId).ConfigureAwait(false);
     }
 
     public async Task DeleteExpenseAsync(int expenseId)
     {
-        await _expenseRepo.DeleteExpenseAsync(expenseId, _userContext.UserId).ConfigureAwait(false);
+        await expenseRepo.DeleteExpenseAsync(expenseId, userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task<List<DashboardLateExpenseResponse>> GetLateExpensesAsync()
     {
-        var expenses = await _expenseRepo.GetAllExpensesAsync(_userContext.UserId);
+        var expenses = await expenseRepo.GetAllExpensesAsync(userContext.UserId);
 
         var lateExpenses = new List<DashboardLateExpenseResponse>();
         foreach (var expense in expenses)
@@ -242,7 +236,7 @@ public class ExpenseService
                 if (expense.EndDate != null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
                     break;
                 
-                var paymentExists = await _paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) != null;
+                var paymentExists = await paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) != null;
                 if (!paymentExists)
                     hasLate = true;
                 
@@ -277,7 +271,7 @@ public class ExpenseService
     {
         List<string> lateDates = [];
 
-        var expense = await _expenseRepo.GetExpenseByIdAsync(expenseId, _userContext.UserId).ConfigureAwait(false)
+        var expense = await expenseRepo.GetExpenseByIdAsync(expenseId, userContext.UserId).ConfigureAwait(false)
             ?? throw new GenericException("Failed to find expense.");
 
         DateOnly? endDate = expense.EndDate != null ? DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") : null;
@@ -285,7 +279,7 @@ public class ExpenseService
         var today = DateOnly.FromDateTime(DateTime.Today);
         while(currentDate < today && (endDate == null || currentDate <= endDate))
         {
-            var paymentExists = (await _paymentRepo.GetExpensePaymentByDueDateAsync(currentDate.ToString("yyyy-MM-dd"), expenseId).ConfigureAwait(false)) != null;
+            var paymentExists = (await paymentRepo.GetExpensePaymentByDueDateAsync(currentDate.ToString("yyyy-MM-dd"), expenseId).ConfigureAwait(false)) != null;
             if (!paymentExists)
                 lateDates.Add(currentDate.ToString("yyyy-MM-dd"));
 

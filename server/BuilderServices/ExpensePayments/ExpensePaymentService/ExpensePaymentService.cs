@@ -2,6 +2,7 @@
 using BuilderRepositories;
 using BuilderServices.ExpensePayments.ExpensePaymentService.Responses;
 using DatabaseServices.Models;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentService;
 
@@ -39,6 +40,8 @@ public class ExpensePaymentService(
         var expense = await expenseRepo.GetExpenseByIdAsync(expenseId, userContext.UserId).ConfigureAwait(false)
             ?? throw new GenericException("Expense not found");
 
+        await repo.BeginTransactionAsync().ConfigureAwait(false);
+        
         var currentDueDate = DateOnly.ParseExact(expense.StartDate, "yyyy-MM-dd");
         DateOnly? endDate = expense.EndDate != null ? DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") : null;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -47,14 +50,33 @@ public class ExpensePaymentService(
             var paymentExists = await repo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) != null;
             if (!paymentExists)
             {
-                await repo.CreateExpensePaymentAsync(expenseId, today.ToString("yyyy-MM-dd"), currentDueDate.ToString("yyyy-MM-dd"), false, expense.Cost, creditCardId);
+                var expensePaymentId = await repo.CreateExpensePaymentAsync(expenseId, today.ToString("yyyy-MM-dd"), currentDueDate.ToString("yyyy-MM-dd"), false, expense.Cost, creditCardId);
+                if (expensePaymentId <= 0)
+                {
+                    await repo.RollbackTransactionAsync().ConfigureAwait(false);
+                    throw new GenericException("Failed to create a payment. Overdue payments aborted.");
+                }
 
                 if (creditCardId != null)
-                    await creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, userContext.UserId);
-                
+                {
+                    var creditCardPaymentId = await creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId,
+                        userContext.UserId);
+                    if (creditCardPaymentId <= 0)
+                    {
+                        await repo.RollbackTransactionAsync().ConfigureAwait(false);
+                        throw new GenericException("Failed to create credit card payment. Overdue payments aborted.");
+                    }
+                }
+
                 if (endDate != null && currentDueDate >= endDate)
                 {
-                    await expenseRepo.UpdateExpenseAsync(new Dictionary<string, object?> { { "active", false }, { "next_due_date", null } }, expenseId, userContext.UserId);
+                    var updated = await expenseRepo.UpdateExpenseAsync(new Dictionary<string, object?> { { "active", false }, { "next_due_date", null } }, expenseId, userContext.UserId);
+                    if (!updated)
+                    {
+                        await repo.RollbackTransactionAsync().ConfigureAwait(false);
+                        throw new GenericException("Failed to update expense due date. Overdue payments aborted.");
+                    }
+                    
                     expense.NextDueDate = null;
                     break;
                 }
@@ -76,8 +98,15 @@ public class ExpensePaymentService(
 
         if (expense.NextDueDate != null && DateOnly.ParseExact(expense.NextDueDate, "yyyy-MM-dd") < today)
         {
-            await expenseRepo.UpdateExpenseAsync(new Dictionary<string, object?> { { "next_due_date", currentDueDate.ToString("yyyy-MM-dd") } }, expenseId, userContext.UserId).ConfigureAwait(false);
+            var updated = await expenseRepo.UpdateExpenseAsync(new Dictionary<string, object?> { { "next_due_date", currentDueDate.ToString("yyyy-MM-dd") } }, expenseId, userContext.UserId).ConfigureAwait(false);
+            if (!updated)
+            {
+                await repo.RollbackTransactionAsync().ConfigureAwait(false);
+                throw new GenericException("Failed to update expense due date. Overdue payments aborted.");
+            }
         }
+
+        await repo.CommitTransactionAsync().ConfigureAwait(false);
     }
 
     public async Task UnpayDueDateAsync(List<object> paymentIds, int expenseId)
@@ -106,50 +135,92 @@ public class ExpensePaymentService(
         if (string.IsNullOrEmpty(datePaid))
             datePaid = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
+        // Pay Due Date Transaction
+        await repo.BeginTransactionAsync().ConfigureAwait(false);
+        
+        // Use creditCardId param rather than from expense record in case user used a different credit card to pay due date
         var lastInsertedId = await repo.CreateExpensePaymentAsync(expenseId, datePaid, dueDatePaid, isSkipped, expense.Cost, creditCardId).ConfigureAwait(false);
         if (lastInsertedId == 0)
-            throw new GenericException("Failed to create payment for expense");
+        {
+            await repo.RollbackTransactionAsync().ConfigureAwait(false);
+            throw new GenericException("Failed to create payment for expense. Payment aborted.");
+        }
 
         if (!isSkipped && creditCardId != null)
-            await creditCardRepo.AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, userContext.UserId).ConfigureAwait(false);
+        {
+            var creditCardPaymentId = await creditCardRepo
+                .AddPaymentToCreditCardAsync(expense.Cost, (int)creditCardId, userContext.UserId)
+                .ConfigureAwait(false);
 
+            if (creditCardPaymentId <= 0)
+            {
+                await repo.RollbackTransactionAsync().ConfigureAwait(false);
+                throw new GenericException("Failed to add payment to credit card. Payment aborted.");
+            }
+        }
+        
+        try
+        {
+            await HandlePayDueDateUpdatesAsync(dueDatePaid, creditCardId, expense).ConfigureAwait(false);
+        }
+        catch
+        {
+            await repo.RollbackTransactionAsync().ConfigureAwait(false);
+            throw new GenericException("Failed to update next due date for expense. Payment aborted.");
+        }
+
+        await repo.CommitTransactionAsync().ConfigureAwait(false);
+    }
+
+    private async Task HandlePayDueDateUpdatesAsync(string dueDatePaid, int? creditCardId, ExpenseDto expense)
+    {
         var dueDatePaidObj = DateOnly.ParseExact(dueDatePaid, "yyyy-MM-dd");
         var nextDueDateObj = DateOnly.ParseExact(expense.NextDueDate!, "yyyy-MM-dd");
-        if (dueDatePaidObj >= nextDueDateObj)
+        if (dueDatePaidObj < nextDueDateObj)
+            return;
+            
+        var nextDueDate = await UpdateNextDueDateAsync(expense).ConfigureAwait(false);
+        
+        var scheduledPayment = await scheduledPaymentRepo.GetScheduledPaymentAsync(expense.Id, dueDatePaid).ConfigureAwait(false);
+        if (scheduledPayment != null)
         {
-            try
-            {
-                var nextDueDate = await UpdateNextDueDateAsync(expense).ConfigureAwait(false);
-                
-                var scheduledPayment = await scheduledPaymentRepo.GetScheduledPaymentAsync(expenseId, dueDatePaid).ConfigureAwait(false);
-                if (scheduledPayment != null)
-                {
-                    await scheduledPaymentRepo.DeleteScheduledPaymentByIdAsync(scheduledPayment.Id).ConfigureAwait(false);
+            var paymentDeleted = (await scheduledPaymentRepo
+                .DeleteScheduledPaymentByIdAsync(scheduledPayment.Id).ConfigureAwait(false)) > 0;
+            if (!paymentDeleted)
+                throw new GenericException("Failed to update payment schedule. Payment aborted.");
 
-                    if (nextDueDate != null)
-                        await scheduledPaymentRepo.SchedulePaymentAsync(expenseId, nextDueDate, creditCardId).ConfigureAwait(false);
-                }  
-            }
-            catch
+            if (nextDueDate != null)
             {
-                throw new GenericException("Failed to update next due date for expense");
+                var schedulePaymentId = await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, nextDueDate, creditCardId)
+                    .ConfigureAwait(false);
+
+                if (schedulePaymentId <= 0)
+                    throw new Exception("Failed to update payment schedule. Payment aborted.");
             }
         }
     }
 
     private async Task<string?> UpdateNextDueDateAsync(ExpenseDto dto)
     {
-        if (dto.RecurrenceRate == "once")
+        // Transactions should be handled in the calling function
+        if (dto.RecurrenceRate != "once") 
+            return await UpdateRecurringNextDueDateAsync(dto).ConfigureAwait(false);
+        
+        var updateDict1 = new Dictionary<string, object?>
         {
-            var updateDict1 = new Dictionary<string, object?>
-            {
-                { "active", 0 },
-                { "next_due_date", null }
-            };
-            await expenseRepo.UpdateExpenseAsync(updateDict1, dto.Id, userContext.UserId).ConfigureAwait(false);
-            return null;
-        }
+            { "active", 0 },
+            { "next_due_date", null }
+        };
+        var updated = await expenseRepo.UpdateExpenseAsync(updateDict1, dto.Id, userContext.UserId).ConfigureAwait(false);
+        if (!updated)
+            throw new GenericException("Failed to update expense.");
+                
+        return null;
+    }
 
+    private async Task<string?> UpdateRecurringNextDueDateAsync(ExpenseDto dto)
+    {
+        bool updated;
         var paymentExistsForDueDate = true;
         var currentDueDate = DateOnly.ParseExact(dto.NextDueDate!, "yyyy-MM-dd");
         while (paymentExistsForDueDate)
@@ -178,7 +249,10 @@ public class ExpensePaymentService(
                     { "active", 0 },
                     { "next_due_date", null }
                 };
-                await expenseRepo.UpdateExpenseAsync(updateDict2, dto.Id, userContext.UserId).ConfigureAwait(false);
+                updated = await expenseRepo.UpdateExpenseAsync(updateDict2, dto.Id, userContext.UserId).ConfigureAwait(false);
+                if (!updated)
+                    throw new GenericException("Failed to update expense");
+                
                 return null;
             }
 
@@ -189,8 +263,10 @@ public class ExpensePaymentService(
         {
             { "next_due_date", currentDueDate.ToString("yyyy-MM-dd") }
         };
-        await expenseRepo.UpdateExpenseAsync(updateDict3, dto.Id, userContext.UserId).ConfigureAwait(false);
-
+        updated = await expenseRepo.UpdateExpenseAsync(updateDict3, dto.Id, userContext.UserId).ConfigureAwait(false);
+        if (!updated)
+            throw new GenericException("Failed to update expense");
+        
         return currentDueDate.ToString("yyyy-MM-dd");
     }
     

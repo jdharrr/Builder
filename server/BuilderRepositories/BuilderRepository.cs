@@ -26,7 +26,7 @@ public class BuilderRepository
         await _dbService.RollbackAsync().ConfigureAwait(false);
     }
 
-    public static string BuildInParams(List<object> inList, ref Dictionary<string, object?> parameters)
+    public static string BuildInParams<T>(List<T> inList, ref Dictionary<string, object?> parameters)
     {
         var sql = "";
         for (int i = 0; i < inList.Count; i++)

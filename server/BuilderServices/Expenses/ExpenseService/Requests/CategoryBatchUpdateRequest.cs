@@ -2,7 +2,7 @@
 
 public class CategoryBatchUpdateRequest
 {
-    public required List<object> ExpenseIds { get; set; }
+    public required List<int> ExpenseIds { get; set; }
 
     public required int CategoryId { get; set; }
 }

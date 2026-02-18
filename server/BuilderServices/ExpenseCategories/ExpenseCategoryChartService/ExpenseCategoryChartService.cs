@@ -10,16 +10,13 @@ public class ExpenseCategoryChartService(
     UserContext userContext
 )
 {
-    public async Task<CategoryTotalSpentResponse> GetCategoryTotalSpentByRangeAsync(string rangeOption)
+    public async Task<CategoryTotalSpentResponse> GetCategoryTotalSpentByRangeAsync(CategoryChartRangeOption rangeOption)
     {
         var response = new CategoryTotalSpentResponse();
 
-        if (!Enum.TryParse(typeof(CategoryChartRangeOption), rangeOption, out var option))
-            throw new GenericException("Invalid range request for category chart");
-
         var startOfRange = DateOnly.FromDateTime(DateTime.Today);
         var endOfRange = DateOnly.FromDateTime(DateTime.Today);
-        switch (option)
+        switch (rangeOption)
         {
             case CategoryChartRangeOption.ThisWeek:
                 endOfRange = endOfRange.AddDays(7 - (int)endOfRange.DayOfWeek);

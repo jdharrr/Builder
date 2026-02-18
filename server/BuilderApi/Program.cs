@@ -12,6 +12,7 @@ builder.Services.ConfigureEmail(builder.Configuration);
 builder.Services.ConfigureBuilderRepositories();
 builder.Services.ConfigureBuilderServices();
 builder.Services.ConfigureUserContext();
+builder.Services.ConfigureValidation();
 
 // Other Services
 builder.Services.AddControllers();

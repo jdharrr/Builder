@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
@@ -16,6 +18,11 @@
     <ProjectReference Include="..\AuthenticationServices\AuthenticationServices.csproj" />
     <ProjectReference Include="..\BuilderServices\BuilderServices.csproj" />
     <ProjectReference Include="..\DatabaseServices\DatabaseServices.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\Expenses\Validators\" />
+    <Folder Include="Controllers\Payments\Validators\" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,4 @@
-﻿using BuilderRepositories;
-using BuilderServices.CreditCardService;
-using BuilderServices.ExpensePayments.ExpensePaymentService;
+﻿using BuilderServices.ExpensePayments.ExpensePaymentService;
 using BuilderServices.Expenses.ExpenseService;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using BuilderServices.Expenses.ExpenseService.Responses;
@@ -11,19 +9,22 @@ using BuilderServices.Expenses.ExpenseTableService.Responses;
 using BuilderRepositories.Requests;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
+using BuilderServices;
+using BuilderServices.Expenses.ExpenseCreationService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BuilderApi.Controllers;
+namespace BuilderApi.Controllers.Expenses;
 
 [ApiController]
 [Route("api/expenses")]
 [Authorize]
 public class ExpenseController(
     ExpenseService expenseService,
+    ExpenseCreationService expenseCreationService,
     ExpenseTableService expenseTableService,
-    ExpensePaymentService paymentService,
-    ExpenseCategoryService categoryService
+    ExpenseCategoryService categoryService,
+    ValidatorService validatorService
 ) : ControllerBase
 {
     private readonly List<string> _sortDirs = ["asc", "desc"];
@@ -31,48 +32,19 @@ public class ExpenseController(
     [HttpPost("create")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseRequest request)
     {
-        var oneTimePayment = request.OneTimePayment;
-        var payToNowPayment = request.PayToNowPayment;
-        var automaticPayment = request.AutomaticPayment;
-        var hasOneTimePayment = oneTimePayment.IsPaid || oneTimePayment.IsCredit;
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
 
-        if (oneTimePayment is { IsCredit: true, IsPaid: true })
-            throw new GenericException("Cannot provide both credit and payment");
-        
-        if (oneTimePayment is { IsCredit: true, CreditCardId: null } 
-            || payToNowPayment is { Enabled: true, IsCredit: true, CreditCardId: null } 
-            || automaticPayment is { Enabled: true, CreditCardId: null })
-            throw new GenericException("Must provide a credit card for payment");
-
-        if (hasOneTimePayment && string.IsNullOrWhiteSpace(oneTimePayment.PaymentDate))
-            throw new GenericException("Must provide a payment date for expense");
-        
-        if (request.RecurrenceRate != "once" && hasOneTimePayment)
-            throw new GenericException("Payment requires a recurrence rate of once");
-
-        if (request.RecurrenceRate == "once" && payToNowPayment.Enabled)
-            throw new GenericException("Pay to now cannot have recurrence rate of once");
-
-        var expenseId = await expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
-
-        if (hasOneTimePayment && !automaticPayment.Enabled)
-            await paymentService
-                .PayDueDateAsync((int)expenseId, request.StartDate, false, oneTimePayment.CreditCardId, oneTimePayment.PaymentDate)
-                .ConfigureAwait(false);
-        
-        if (payToNowPayment.Enabled)
-            await paymentService.PayAllOverdueDatesAsync((int)expenseId, payToNowPayment.CreditCardId).ConfigureAwait(false);
-        
-        return Ok(new CreateExpenseResponse
-        {
-            IsCreated = expenseId > 0
-        });
+        return Ok(await expenseCreationService.CreateExpenseAsync(request).ConfigureAwait(false));
     }
 
     [HttpGet("dashboard/calendar")]
     public async Task<IActionResult> GetExpensesForDashboardCalendar([FromQuery] GetExpensesForDashboardCalendarRequest request)
     {
-        // TODO: Validate request
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
 
         var expenses = await expenseService.GetExpensesForDashboardCalendarAsync(request.Year, request.Month).ConfigureAwait(false);
 
@@ -90,20 +62,9 @@ public class ExpenseController(
     [HttpGet("all")]
     public async Task<IActionResult> GetAllExpensesForTable([FromQuery] GetAllExpensesRequest request)
     {
-        // TODO: Validate search request
-
-        if (string.IsNullOrEmpty(request.Sort) || string.IsNullOrEmpty(request.SortDir))
-            return BadRequest("Must provide sort column and sort direction.");
-
-        if (!Enum.TryParse(typeof(ExpenseSortOption), request.Sort, true, out var sortOption))
-            return BadRequest("Invalid sort option.");
-
-        if (!_sortDirs.Contains(request.SortDir))
-            return BadRequest("Invalid sort direction.");
-
-        object? searchColumn = null;
-        if (!string.IsNullOrEmpty(request.SearchColumn) && !Enum.TryParse(typeof(ExpenseSearchColumn), request.SearchColumn, true, out searchColumn))
-            return BadRequest("Invalid search column.");
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
 
         List<TableFilter> filters = [];
         if (request.Filters.Count > 0)
@@ -123,7 +84,7 @@ public class ExpenseController(
             }
         }
 
-        var expenses = await expenseTableService.GetAllExpensesForTableAsync(((ExpenseSortOption)sortOption!).GetColumnName(), request.SortDir, ((ExpenseSearchColumn?)searchColumn)?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses, filters).ConfigureAwait(false);
+        var expenses = await expenseTableService.GetAllExpensesForTableAsync(request.Sort.GetColumnName(), request.SortDir, request.SearchColumn?.GetColumnName(), request.SearchValue, request.ShowInactiveExpenses, filters).ConfigureAwait(false);
 
         return Ok(expenses);
     }
@@ -131,6 +92,9 @@ public class ExpenseController(
     [HttpDelete("{id:int}/delete")]
     public async Task<IActionResult> DeleteExpense(int id)
     {
+        if (id <= 0)
+            return BadRequest("Expense id must be greater than 0");
+        
         await expenseService.DeleteExpenseAsync(id).ConfigureAwait(false);
         
         return Ok(new DeleteExpenseResponse
@@ -150,6 +114,9 @@ public class ExpenseController(
     [HttpGet("{id:int}/lateDates")]
     public async Task<IActionResult> GetLateDatesForExpense(int id)
     {
+        if (id <= 0)
+            return BadRequest("Expense id must be greater than 0");
+        
         var lateDates = await expenseService.GetLateDatesForExpense(id).ConfigureAwait(false);
 
         return Ok(new ExpenseLateDatesResponse
@@ -162,6 +129,10 @@ public class ExpenseController(
     [HttpPatch("update/{id:int}")]
     public async Task<IActionResult> UpdateExpense([FromBody] UpdateExpenseRequest request, int id)
     {
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+
         int? isActive = null;
         if (request.Active != null)
             isActive = (bool)request.Active ? 1 : 0;
@@ -191,6 +162,10 @@ public class ExpenseController(
     [HttpPatch("update/batch/category")]
     public async Task<IActionResult> CategoryBatchUpdate([FromBody] CategoryBatchUpdateRequest request)
     {
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+
         await categoryService.CategoryBatchUpdateAsync(request.ExpenseIds, request.CategoryId).ConfigureAwait(false);
 
         return Ok(new CategoryBatchUpdateResponse

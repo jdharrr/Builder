@@ -1,14 +1,15 @@
-﻿using BuilderServices.Requests;
+﻿using BuilderServices.Expenses.ExpenseTableService.Enums;
+using BuilderServices.Requests;
 
 namespace BuilderServices.Expenses.ExpenseTableService.Requests;
 
 public class GetAllExpensesRequest
 {
-    public string Sort { get; set; } = "CreatedAt";
+    public ExpenseSortOption Sort { get; set; } = ExpenseSortOption.CreatedDate;
 
     public string SortDir { get; set; } = "asc";
 
-    public string? SearchColumn { get; set; }
+    public ExpenseSearchColumn? SearchColumn { get; set; }
 
     public string? SearchValue { get; set; }
 

@@ -1,14 +1,15 @@
+using BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 using BuilderServices.Requests;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentTableService.Requests;
 
 public class GetTablePaymentsRequest
 {
-    public string Sort { get; set; } = "PaymentDate";
+    public PaymentSortOption Sort { get; set; } = PaymentSortOption.PaymentDate;
 
     public string SortDir { get; set; } = "desc";
 
-    public string? SearchColumn { get; set; }
+    public PaymentSearchColumn? SearchColumn { get; set; }
 
     public string? SearchValue { get; set; }
 

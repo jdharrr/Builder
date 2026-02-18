@@ -1,6 +1,6 @@
-namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Request;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Requests;
 
 public class GetExpenseCategoriesRequest
 {
-    public bool Active { get; set; }
+    public required bool Active { get; set; }
 }

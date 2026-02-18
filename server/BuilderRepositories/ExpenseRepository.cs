@@ -70,11 +70,12 @@ public class ExpenseRepository : BuilderRepository
         }
         catch (MySqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
         {
-            if (ex.Message.Contains("name"))
-            {
-                throw new GenericException("An expense with this name already exists.");
-            }
-            
+            // Not enforcing at the moment
+            // if (ex.Message.Contains("name"))
+            // {
+            //     throw new GenericException("An expense with this name already exists.");
+            // }
+            //
             throw;
         }
 
@@ -436,7 +437,7 @@ public class ExpenseRepository : BuilderRepository
         }) ?? [];
     }
 
-    public async Task CategoryBatchUpdateAsync(List<object> expenseIds, int categoryId, int userId)
+    public async Task CategoryBatchUpdateAsync(List<int> expenseIds, int categoryId, int userId)
     {
         var parameters = new Dictionary<string, object?>();
         var sql = $@"UPDATE expenses

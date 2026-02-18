@@ -14,7 +14,7 @@ public class ScheduledPaymentRepository : BuilderRepository
         _dbService = dbService;
     }
 
-    public async Task SchedulePaymentAsync(int expenseId, string dueDate, int? creditCardId = null)
+    public async Task<long> SchedulePaymentAsync(int expenseId, string dueDate, int? creditCardId = null)
     {
         var sql = @"INSERT INTO scheduled_payments (expense_id, scheduled_due_date, credit_card_id)
                     VALUE (@expenseId, @dueDate, @creditCardId)";
@@ -25,7 +25,7 @@ public class ScheduledPaymentRepository : BuilderRepository
             { "@creditCardId", creditCardId }
         };
 
-        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+        return (await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false)).LastInsertedId;
     }
 
     public async Task<List<ScheduledPaymentDto>> GetScheduledPaymentsToPayAsync(int userId)
@@ -113,7 +113,7 @@ public class ScheduledPaymentRepository : BuilderRepository
         await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
     }
     
-    public async Task DeleteScheduledPaymentByIdAsync(int scheduledPaymentId)
+    public async Task<long> DeleteScheduledPaymentByIdAsync(int scheduledPaymentId)
     {
         var sql = @"DELETE FROM scheduled_payments
                     WHERE id = @scheduledPaymentId";
@@ -122,6 +122,6 @@ public class ScheduledPaymentRepository : BuilderRepository
             { "@scheduledPaymentId", scheduledPaymentId }
         };
 
-        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+        return (await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false)).RowsAffected;
     }
 }

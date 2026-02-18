@@ -1,4 +1,4 @@
-namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Request;
+namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Requests;
 
 public class UpdateCategoryNameRequest
 {

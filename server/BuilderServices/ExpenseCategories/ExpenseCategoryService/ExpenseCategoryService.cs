@@ -56,7 +56,7 @@ public class ExpenseCategoryService
         };
     }
 
-    public async Task CategoryBatchUpdateAsync(List<object> expenseIds, int categoryId)
+    public async Task CategoryBatchUpdateAsync(List<int> expenseIds, int categoryId)
     {
         await _expenseRepo.CategoryBatchUpdateAsync(expenseIds, categoryId, _userContext.UserId).ConfigureAwait(false);
     }
