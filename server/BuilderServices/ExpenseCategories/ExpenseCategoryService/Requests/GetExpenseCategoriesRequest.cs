@@ -2,5 +2,5 @@ namespace BuilderServices.ExpenseCategories.ExpenseCategoryService.Requests;
 
 public class GetExpenseCategoriesRequest
 {
-    public required bool Active { get; set; }
+    public bool Active { get; set; } = true;
 }

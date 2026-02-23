@@ -14,5 +14,7 @@ public class ExpensePaymentsForExpenseItemResponse
     public string DueDatePaid { get; set; } = string.Empty;
 
     public bool Skipped { get; set; }
+    
+    public int? CreditCardId { get; set; }
 }
 

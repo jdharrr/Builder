@@ -12,4 +12,6 @@ public class TableFilterOptionResponse
     public required string DisplayText { get; set; }
     
     public required string FilterType { get; set; }
+    
+    public string? Api { get; set; }
 }

@@ -26,6 +26,15 @@ public class PayDueDatesRequestValidator : AbstractValidator<PayDueDatesRequest>
         RuleFor(x => x.CreditCardId)
             .GreaterThan(0)
             .When(x => x.CreditCardId is not null);
+
+        RuleFor(x => x)
+            .Must(request => !(request.IgnoreCashBackForPaymentsOnCreation && request.CashBackOverwrite.HasValue))
+            .WithMessage("Ignore cash back cannot be combined with a cash back overwrite.");
+
+        RuleFor(x => x.CashBackOverwrite)
+            .GreaterThan(0)
+            .When(x => x.CashBackOverwrite.HasValue)
+            .WithMessage("Cash back overwrite must be greater than 0.");
     }
 
 }

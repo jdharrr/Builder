@@ -2,6 +2,7 @@ using BuilderApi;
 using BuilderApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +16,11 @@ builder.Services.ConfigureUserContext();
 builder.Services.ConfigureValidation();
 
 // Other Services
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -68,6 +73,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowBuilderApp");
+
+app.UseMiddleware<ApiExceptionMiddleware>();
 
 // Authenticate User
 app.UseAuthentication();

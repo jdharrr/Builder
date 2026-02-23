@@ -12,4 +12,17 @@ public class GetCreditCardsInfoItemResponse
     public string Company { get; set; } = string.Empty;
 
     public decimal RunningBalance { get; set; }
+    
+    public decimal CashBackBalance { get; set; }
+
+    public List<RewardsRuleResponse> RewardRules { get; set; } = [];
+}
+
+public class RewardsRuleResponse
+{
+    public int? CategoryId { get; set; }
+
+    public bool AllOtherCategories { get; set; }
+    
+    public decimal CashBackPercent { get; set; }
 }

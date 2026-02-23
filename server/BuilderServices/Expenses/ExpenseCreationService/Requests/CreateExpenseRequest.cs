@@ -1,4 +1,6 @@
-﻿namespace BuilderServices.Expenses.ExpenseService.Requests;
+﻿using BuilderRepositories.Enums;
+
+namespace BuilderServices.Expenses.ExpenseService.Requests;
 
 public class CreateExpenseRequest
 {
@@ -8,7 +10,7 @@ public class CreateExpenseRequest
 
     public string? Description { get; set; } = string.Empty;
 
-    public string RecurrenceRate { get; set; } = string.Empty;
+    public ExpenseRecurrenceRate RecurrenceRate { get; set; } = ExpenseRecurrenceRate.Once;
     
     public string StartDate { get; set; } = string.Empty;
 
@@ -17,6 +19,10 @@ public class CreateExpenseRequest
     public bool EndOfTheMonth { get; set; } = false;
 
     public int? CategoryId { get; set; } = 0;
+
+    public bool IgnoreCashBackForPaymentsOnCreation { get; set; } = false;
+    
+    public decimal? CashBackOverwrite { get; set; }
 
     public OneTimePaymentRequest OneTimePayment { get; set; } = new();
 
@@ -50,4 +56,8 @@ public class AutomaticPaymentRequest
     public bool Enabled { get; set; }
 
     public int? CreditCardId { get; set; }
+    
+    public decimal? CashBackOverwrite { get; set; }
+
+    public bool IgnoreCashBack { get; set; } = false;
 }

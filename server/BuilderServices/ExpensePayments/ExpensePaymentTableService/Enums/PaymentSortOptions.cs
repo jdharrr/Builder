@@ -1,4 +1,5 @@
 using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 
@@ -19,13 +20,13 @@ public static class PaymentSortOptionsHelper
     {
         return option switch
         {
-            PaymentSortOption.PaymentDate => "payment_date",
-            PaymentSortOption.DueDate => "due_date_paid",
-            PaymentSortOption.ExpenseName => "expense_name",
-            PaymentSortOption.Amount => "cost",
-            PaymentSortOption.CreditCard => "credit_card",
-            PaymentSortOption.Category => "category_name",
-            PaymentSortOption.RecurrenceRate => "recurrence_rate",
+            PaymentSortOption.PaymentDate => "ep.payment_date",
+            PaymentSortOption.DueDate => "ep.due_date_paid",
+            PaymentSortOption.ExpenseName => "e.name",
+            PaymentSortOption.Amount => "ep.cost",
+            PaymentSortOption.CreditCard => "cc.credit_company",
+            PaymentSortOption.Category => "ec.name",
+            PaymentSortOption.RecurrenceRate => "e.recurrence_rate",
             _ => throw new GenericException("Invalid sort option")
         };
     }

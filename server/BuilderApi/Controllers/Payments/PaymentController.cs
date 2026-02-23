@@ -1,4 +1,3 @@
-using BuilderRepositories.Requests;
 using BuilderServices.CreditCardService;
 using BuilderServices.CreditCardService.Requests;
 using BuilderServices.CreditCardService.Responses;
@@ -13,6 +12,7 @@ using BuilderServices.ExpensePayments.ExpensePaymentTableService.Requests;
 using BuilderServices.ExpensePayments.ExpensePaymentTableService.Responses;
 using BuilderServices;
 using BuilderServices.Requests;
+using DatabaseServices.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -78,7 +78,15 @@ public class PaymentController(
             return BadRequest(validationResult.Errors);
 
         foreach (var dueDate in request.DueDates)
-            await paymentService.PayDueDateAsync(request.ExpenseId, dueDate, request.IsSkipped, request.CreditCardId, request.DatePaid).ConfigureAwait(false);
+            await paymentService.PayDueDateAsync(
+                request.ExpenseId,
+                dueDate,
+                request.IsSkipped,
+                request.CreditCardId,
+                request.DatePaid,
+                request.IgnoreCashBackForPaymentsOnCreation,
+                request.CashBackOverwrite
+            ).ConfigureAwait(false);
         
         return Ok(new PayDueDatesResponse
         {
@@ -128,7 +136,17 @@ public class PaymentController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        await creditCardService.CreateCreditCardAsync(request.CreditCardCompany).ConfigureAwait(false);
+        var rewardsRules = request.RewardsRules.Select(rule => new CreditCardRewardsRuleDto
+        {
+            AllOtherCategories = rule.AllOtherCategories,
+            CategoryId = rule.CategoryId,
+            CashBackPercent = rule.CashBackPercent
+        }).ToList() ?? [];
+
+        await creditCardService.CreateCreditCardAsync(
+            request.CreditCardCompany,
+            rewardsRules.Count > 0 ? rewardsRules : null
+        ).ConfigureAwait(false);
 
         return Ok(new CreateCreditCardResponse
         {
@@ -144,8 +162,8 @@ public class PaymentController(
         return Ok(creditCards);
     }
 
-    [HttpPatch("creditCards/{id:int}/update/company")]
-    public async Task<IActionResult> UpdateCreditCardCompany([FromRoute] IdRequest routeRequest, [FromBody] UpdateCreditCardCompanyRequest request)
+    [HttpPatch("creditCards/{id:int}/update")]
+    public async Task<IActionResult> UpdateCreditCard([FromRoute] IdRequest routeRequest, [FromBody] UpdateCreditCardRequest request)
     {
         var routeValidation = await validatorService.ValidateAsync(routeRequest);
         if (!routeValidation.IsValid)
@@ -155,16 +173,17 @@ public class PaymentController(
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
-        await creditCardService.UpdateCreditCardCompanyAsync(request.NewCompanyName, routeRequest.Id).ConfigureAwait(false);
+        await creditCardService.UpdateCreditCardAsync(request.NewCompanyName, request.RewardsRules, routeRequest.Id)
+            .ConfigureAwait(false);
 
-        return Ok(new UpdateCreditCardCompanyResponse
+        return Ok(new UpdateCreditCardResponse
         {
             IsUpdated = true
         });
     }
 
     [HttpPost("creditCards/{id:int}/pay")]
-    public async Task<IActionResult> PayCreditCardBalanceAsync([FromRoute] IdRequest routeRequest, [FromBody] PayCreditCardBalanceRequest request)
+    public async Task<IActionResult> PayCreditCardBalance([FromRoute] IdRequest routeRequest, [FromBody] PayCreditCardBalanceRequest request)
     {
         var routeValidation = await validatorService.ValidateAsync(routeRequest);
         if (!routeValidation.IsValid)

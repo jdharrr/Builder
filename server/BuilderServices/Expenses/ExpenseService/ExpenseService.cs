@@ -1,5 +1,7 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
+using BuilderRepositories.Enums;
+using BuilderRepositories.Exceptions;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using BuilderServices.Expenses.ExpenseService.Responses;
 using DatabaseServices.Models;
@@ -15,6 +17,8 @@ public class ExpenseService(
 {
     private readonly int _upcomingDaysLimit = 7;
 
+    #region Public service methods
+    
     public async Task<long> CreateExpenseAsync(CreateExpenseRequest request)
     {
         var automaticPayment = request.AutomaticPayment;
@@ -24,13 +28,15 @@ public class ExpenseService(
             Name = request.Name,
             Cost = request.Cost,
             Description = request.Description,
-            RecurrenceRate = request.RecurrenceRate,
+            RecurrenceRate = request.RecurrenceRate.GetRepoValue(),
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             DueEndOfMonth = request.EndOfTheMonth,
             CategoryId = request.CategoryId,
             AutomaticPayments = automaticPayment.Enabled,
-            AutomaticPaymentCreditCardId = automaticPayment.CreditCardId
+            AutomaticPaymentCreditCardId = automaticPayment.CreditCardId,
+            AutomaticPaymentCashBackOverwrite = automaticPayment.CashBackOverwrite,
+            AutomaticPaymentIgnoreCashBack = automaticPayment.IgnoreCashBack
         };
 
         if (request.EndOfTheMonth)
@@ -44,16 +50,7 @@ public class ExpenseService(
         var today = DateOnly.FromDateTime(DateTime.Today);
         while (expenseDto.RecurrenceRate != "once" && currentDueDate < today)
         {
-            currentDueDate = expenseDto.RecurrenceRate switch
-            {
-                "daily" => currentDueDate.AddDays(1),
-
-                "weekly" => currentDueDate.AddDays(7),
-
-                "monthly" => currentDueDate.AddMonths(1),
-
-                "yearly" => currentDueDate.AddYears(1),
-            };
+            currentDueDate = BuilderUtils.GetNextDueDate(expenseDto.RecurrenceRate, currentDueDate, expenseDto.DueEndOfMonth);
         }
 
         expenseDto.NextDueDate = currentDueDate.ToString("yyyy-MM-dd");
@@ -66,7 +63,7 @@ public class ExpenseService(
             return lastInsertedId;
         
         var scheduledPaymentId = await scheduledPaymentRepo
-            .SchedulePaymentAsync((int)lastInsertedId, expenseDto.NextDueDate, automaticPayment.CreditCardId)
+            .SchedulePaymentAsync((int)lastInsertedId, expenseDto.NextDueDate)
             .ConfigureAwait(false);
 
         if (scheduledPaymentId <= 0)
@@ -80,40 +77,9 @@ public class ExpenseService(
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var firstDate = new DateOnly(year, month, 1);
         var lastDate = new DateOnly(year, month, daysInMonth);
-
         var expenses = await expenseRepo.GetExpensesForDateRangeAsync(userContext.UserId, firstDate, lastDate).ConfigureAwait(false);
-
-        var mappedExpenses = new Dictionary<string, List<DashboardCalendarExpenseResponse>>();
-        for (int i = 1; i <= daysInMonth; i++)
-        {
-            var date = new DateOnly(year, month, i);
-            mappedExpenses[date.ToString("yyyy-MM-dd")] = [];
-            foreach (var expense in expenses)
-            {
-                if (BuilderUtils.ExpenseIsForDate(expense, date))
-                {
-                    mappedExpenses[date.ToString("yyyy-MM-dd")].Add(new DashboardCalendarExpenseResponse
-                    {
-                        Id = expense.Id,
-                        Name = expense.Name,
-                        Cost = expense.Cost,
-                        CategoryName = expense.CategoryName,
-                        NextDueDate = expense.NextDueDate,
-                        RecurrenceRate = expense.RecurrenceRate,
-                        CategoryId = expense.CategoryId,
-                        Description = expense.Description,
-                        StartDate = expense.StartDate,
-                        EndDate = expense.EndDate,
-                        DueLastDayOfMonth = expense.DueEndOfMonth,
-                        AutomaticPayments = expense.AutomaticPayments,
-                        AutomaticPaymentCreditCardId = expense.AutomaticPaymentCreditCardId,
-                        OneTimeExpenseIsPaid = expense.OneTimeExpenseIsPaid
-                    });
-                }
-            }
-        }
-
-        return mappedExpenses;
+        
+        return MapExpensesForCalendarResponse(year, month, expenses);
     }
 
     public async Task<Dictionary<string, List<DashboardUpcomingExpenseResponse>>> GetUpcomingExpensesAsync()
@@ -127,32 +93,13 @@ public class ExpenseService(
             endDate
         ).ConfigureAwait(false);
 
-        var mappedExpenses = new Dictionary<string, List<DashboardUpcomingExpenseResponse>>();
-        for (DateOnly date = startDate; date < endDate; date = date.AddDays(1))
-        {
-            var paymentsForDate = await paymentRepo.GetPaymentsForDateAsync(date, userContext.UserId).ConfigureAwait(false);
-            mappedExpenses[date.ToString("yyyy-MM-dd")] = [.. expenses
-                .Where(e => BuilderUtils.ExpenseIsForDate(e, date) && !paymentsForDate.Any(p => p.ExpenseId == e.Id))
-                .Select(expense => new DashboardUpcomingExpenseResponse
-                {
-                    Id = expense.Id,
-                    Name = expense.Name,
-                    Cost = expense.Cost,
-                    RecurrenceRate = expense.RecurrenceRate,
-                    StartDate = expense.StartDate,
-                    EndDate = expense.EndDate,
-                    NextDueDate = expense.NextDueDate,
-                    AutomaticPayments = expense.AutomaticPayments,
-                    DueEndOfMonth = expense.DueEndOfMonth
-                })];
-        }
-
-        return mappedExpenses;
+        return await MapExpensesForUpcomingExpensesResponseAsync(startDate, endDate, expenses).ConfigureAwait(false);
     }
 
     public async Task UpdateExpenseAsync(int expenseId, string? name = null, decimal? cost = null,
         string? endDate = null, int? categoryId = null, string? description = null, 
-        int? active = null, int? automaticPayments = null, int? automaticPaymentsCreditCardId = null)
+        int? active = null, int? automaticPayments = null, int? automaticPaymentsCreditCardId = null,
+        bool? automaticPaymentsIgnoreCashBack = null, decimal? automaticPaymentsCashBackOverwrite = null)
     {
         var expense = await expenseRepo.GetExpenseByIdAsync(expenseId, userContext.UserId).ConfigureAwait(false)
             ?? throw new GenericException("Failed to find expense");
@@ -163,7 +110,7 @@ public class ExpenseService(
             if (expense.EndDate is not null && DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd") < DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new GenericException("Cannot activate expense with end date in the past");
             
-            nextDueDate = BuilderUtils.GetNextFutureDueDate(expense.RecurrenceRate, expense.NextDueDate ?? expense.StartDate);
+            nextDueDate = BuilderUtils.GetNextFutureDueDate(expense.RecurrenceRate, expense.NextDueDate ?? expense.StartDate, expense.DueEndOfMonth);
         }
 
         var newActiveStatus = active;
@@ -190,6 +137,8 @@ public class ExpenseService(
             active = newActiveStatus ?? (expense.Active ? 1 : 0),
             automatic_payments = automaticPayments ?? (expense.AutomaticPayments ? 1 : 0),
             automatic_payment_credit_card_id = automaticPaymentsCreditCardId ?? expense.AutomaticPaymentCreditCardId,
+            automatic_payment_ignore_cash_back = automaticPaymentsIgnoreCashBack ?? expense.AutomaticPaymentIgnoreCashBack,
+            automatic_payment_cash_back_overwrite = automaticPaymentsCashBackOverwrite ?? expense.AutomaticPaymentCashBackOverwrite,
             next_due_date = nextDueDate ?? expense.NextDueDate
         };
         
@@ -203,33 +152,12 @@ public class ExpenseService(
         await expenseRepo.UpdateExpenseAsync(updateDict, expenseId, userContext.UserId);
     }
 
-    private async Task HandleScheduledPaymentsUpdatesAsync(ExpenseDto expense, int? newAutomaticPayments, int? newIsActive, int? newAutomaticCreditCardId)
-    {
-        // User is turning on automatic payments. Schedule the next due date
-        if (newAutomaticPayments == 1 && expense is { AutomaticPayments: false, NextDueDate: not null })
-            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, newAutomaticCreditCardId).ConfigureAwait(false);
-
-        // User is either putting scheduled payments on credit or changing the credit card. Update the existing scheduled payment.
-        if (newAutomaticPayments == 1 && expense.AutomaticPayments &&
-            expense.AutomaticPaymentCreditCardId != newAutomaticCreditCardId &&
-            expense.NextDueDate is not null)
-        {
-            var scheduledPayment = await scheduledPaymentRepo.GetScheduledPaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
-            if (scheduledPayment is not null)
-                await scheduledPaymentRepo.UpdateCreditCardIdAsync(scheduledPayment.Id, newAutomaticCreditCardId);
-        }
-
-        // User if turning off automatic payments OR setting the expense inactive. Delete next scheduled payment.
-        if ((newAutomaticPayments == 0 || newIsActive == 0) && expense is { AutomaticPayments: true, NextDueDate: not null })
-            await scheduledPaymentRepo.DeleteScheduledPaymentByDueDateAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
-        
-        // User is activating expense that has automatic payments. Schedule next payment.
-        if (newIsActive == 1 && expense is { AutomaticPayments: true, NextDueDate: not null })
-            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate, expense.AutomaticPaymentCreditCardId).ConfigureAwait(false);
-    }
-
     public async Task DeleteExpenseAsync(int expenseId)
     {
+        var paymentExists = (await paymentRepo.GetPaymentsForExpenseAsync(expenseId).ConfigureAwait(false)).Count > 0;
+        if (paymentExists)
+            throw new BadRequestException("Please delete payments on the expense before deleting.");
+            
         await expenseRepo.DeleteExpenseAsync(expenseId, userContext.UserId).ConfigureAwait(false);
     }
 
@@ -240,33 +168,7 @@ public class ExpenseService(
         var lateExpenses = new List<DashboardLateExpenseResponse>();
         foreach (var expense in expenses)
         {
-            var hasLate = false;
-            var currentDueDate = DateOnly.ParseExact(expense.StartDate, "yyyy-MM-dd");
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            while (currentDueDate < today)
-            {
-                if (expense.EndDate is not null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
-                    break;
-                
-                var paymentExists = await paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) is not null;
-                if (!paymentExists)
-                    hasLate = true;
-                
-                currentDueDate = expense.RecurrenceRate switch
-                {
-                    "daily" => currentDueDate.AddDays(1),
-
-                    "weekly" => currentDueDate.AddDays(7),
-
-                    "monthly" => currentDueDate.AddMonths(1),
-
-                    "yearly" => currentDueDate.AddYears(1),
-
-                    _ => currentDueDate,
-                };
-            }
-
-            if (hasLate)
+            if (await CheckExpenseHasLateDueDateAsync(expense).ConfigureAwait(false))
             {
                 lateExpenses.Add(new DashboardLateExpenseResponse
                 {
@@ -295,21 +197,112 @@ public class ExpenseService(
             if (!paymentExists)
                 lateDates.Add(currentDate.ToString("yyyy-MM-dd"));
 
-            currentDate = expense.RecurrenceRate switch
-            {
-                "daily" => currentDate.AddDays(1),
-
-                "weekly" => currentDate.AddDays(7),
-
-                "monthly" => currentDate.AddMonths(1),
-
-                "yearly" => currentDate.AddYears(1),
-
-                _ => currentDate,
-            };
+            currentDate = BuilderUtils.GetNextDueDate(expense.RecurrenceRate, currentDate, expense.DueEndOfMonth);
         }
 
         return lateDates;
     }
 
+    #endregion
+    #region Private helpers
+    
+    private async Task HandleScheduledPaymentsUpdatesAsync(ExpenseDto expense, int? newAutomaticPayments, int? newIsActive, int? newAutomaticCreditCardId)
+    {
+        // User is turning on automatic payments. Schedule the next due date
+        if (newAutomaticPayments == 1 && expense is { AutomaticPayments: false, NextDueDate: not null })
+            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
+
+        // User if turning off automatic payments OR setting the expense inactive. Delete next scheduled payment.
+        if ((newAutomaticPayments == 0 || newIsActive == 0) && expense is { AutomaticPayments: true, NextDueDate: not null })
+            await scheduledPaymentRepo.DeleteScheduledPaymentByDueDateAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
+        
+        // User is activating expense that has automatic payments. Schedule next payment.
+        if (newIsActive == 1 && expense is { AutomaticPayments: true, NextDueDate: not null })
+            await scheduledPaymentRepo.SchedulePaymentAsync(expense.Id, expense.NextDueDate).ConfigureAwait(false);
+    }
+
+    private static Dictionary<string, List<DashboardCalendarExpenseResponse>> MapExpensesForCalendarResponse(int year, int month, List<ExpenseDto> expenses)
+    {
+        var daysInMonth = DateTime.DaysInMonth(year, month);
+        var mappedExpenses = new Dictionary<string, List<DashboardCalendarExpenseResponse>>();
+        for (var i = 1; i <= daysInMonth; i++)
+        {
+            var date = new DateOnly(year, month, i);
+            mappedExpenses[date.ToString("yyyy-MM-dd")] = [];
+            foreach (var expense in expenses)
+            {
+                if (BuilderUtils.ExpenseIsForDate(expense, date))
+                {
+                    mappedExpenses[date.ToString("yyyy-MM-dd")].Add(new DashboardCalendarExpenseResponse
+                    {
+                        Id = expense.Id,
+                        Name = expense.Name,
+                        Cost = expense.Cost,
+                        CategoryName = expense.CategoryName,
+                        NextDueDate = expense.NextDueDate,
+                        RecurrenceRate = expense.RecurrenceRate,
+                        CategoryId = expense.CategoryId,
+                        Description = expense.Description,
+                        StartDate = expense.StartDate,
+                        EndDate = expense.EndDate,
+                        DueLastDayOfMonth = expense.DueEndOfMonth,
+                        AutomaticPayments = expense.AutomaticPayments,
+                        AutomaticPaymentCreditCardId = expense.AutomaticPaymentCreditCardId,
+                        AutomaticPaymentIgnoreCashBack = expense.AutomaticPaymentIgnoreCashBack,
+                        AutomaticPaymentCashBackOverwrite = expense.AutomaticPaymentCashBackOverwrite,
+                        OneTimeExpenseIsPaid = expense.OneTimeExpenseIsPaid
+                    });
+                }
+            }
+        }
+
+        return mappedExpenses;
+    }
+
+    private async Task<Dictionary<string, List<DashboardUpcomingExpenseResponse>>> MapExpensesForUpcomingExpensesResponseAsync(DateOnly startDate, DateOnly endDate, List<ExpenseDto> expenses)
+    {
+        var mappedExpenses = new Dictionary<string, List<DashboardUpcomingExpenseResponse>>();
+        for (var date = startDate; date < endDate; date = date.AddDays(1))
+        {
+            var paymentsForDate = await paymentRepo.GetPaymentsForDateAsync(date, userContext.UserId).ConfigureAwait(false);
+            mappedExpenses[date.ToString("yyyy-MM-dd")] = [.. expenses
+                .Where(e => BuilderUtils.ExpenseIsForDate(e, date) && paymentsForDate.All(p => p.ExpenseId != e.Id))
+                .Select(expense => new DashboardUpcomingExpenseResponse
+                {
+                    Id = expense.Id,
+                    Name = expense.Name,
+                    Cost = expense.Cost,
+                    RecurrenceRate = expense.RecurrenceRate,
+                    StartDate = expense.StartDate,
+                    EndDate = expense.EndDate,
+                    NextDueDate = expense.NextDueDate,
+                    AutomaticPayments = expense.AutomaticPayments,
+                    DueEndOfMonth = expense.DueEndOfMonth
+                })];
+        }
+
+        return mappedExpenses;
+    }
+
+    private async Task<bool> CheckExpenseHasLateDueDateAsync(ExpenseDto expense)
+    {
+        var hasLate = false;
+        var currentDueDate = DateOnly.ParseExact(expense.StartDate, "yyyy-MM-dd");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        while (currentDueDate < today)
+        {
+            if (expense.EndDate is not null && currentDueDate > DateOnly.ParseExact(expense.EndDate, "yyyy-MM-dd"))
+                break;
+                
+            var paymentExists = await paymentRepo.GetExpensePaymentByDueDateAsync(currentDueDate.ToString("yyyy-MM-dd"), expense.Id) is not null;
+            if (!paymentExists)
+                hasLate = true;
+                
+            currentDueDate = BuilderUtils.GetNextDueDate(expense.RecurrenceRate, currentDueDate, expense.DueEndOfMonth);
+        }
+
+        return hasLate;
+    }
+    
+    #endregion
 }

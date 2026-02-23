@@ -13,6 +13,8 @@ public class ExpensePaymentTableService(
     UserContext userContext
 )
 {
+    #region Public service methods
+    
     public async Task<List<PaymentTablePaymentResponse>> GetAllPaymentsForTableAsync(
         string sort,
         string sortDir,
@@ -35,6 +37,7 @@ public class ExpensePaymentTableService(
             ExpenseName = payment.ExpenseName,
             Cost = payment.Cost,
             CreditCard = payment.CreditCard ?? string.Empty,
+            CreditCardId = payment.CreditCardId,
             Skipped = payment.Skipped,
             Category = payment.Category,
             RecurrenceRate = payment.RecurrenceRate,
@@ -48,7 +51,7 @@ public class ExpensePaymentTableService(
     public static Dictionary<string, string> GetSearchColumns()
     {
         // Keep expected order for frontend
-        return new Dictionary<string, string>()
+        return new Dictionary<string, string>
         {
             { PaymentSearchColumn.PaymentDate.ToString(), PaymentSearchColumn.PaymentDate.GetDisplayName() },
             { PaymentSearchColumn.DueDate.ToString(), PaymentSearchColumn.DueDate.GetDisplayName() },
@@ -80,7 +83,8 @@ public class ExpensePaymentTableService(
             {
                 Filter = option.ToString()!,
                 DisplayText = option.GetDisplayText(),
-                FilterType = option.GetFilterType().ToString()
+                FilterType = option.GetFilterType().ToString(),
+                Api = option.GetFilterDropdownApi()
             });
         }
 
@@ -107,4 +111,6 @@ public class ExpensePaymentTableService(
 
         return filters;
     }
+    
+    #endregion
 }

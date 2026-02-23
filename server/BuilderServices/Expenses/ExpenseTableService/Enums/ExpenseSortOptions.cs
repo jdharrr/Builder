@@ -1,4 +1,5 @@
 ﻿using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.Expenses.ExpenseTableService.Enums;
 
@@ -22,16 +23,16 @@ public static class ExpenseSortOptionsHelper
     {
         return option switch
         {
-            ExpenseSortOption.NextDueDate => "next_due_date",
-            ExpenseSortOption.Cost => "cost",
-            ExpenseSortOption.Category => "category_name",
-            ExpenseSortOption.CreatedDate => "created_at",
-            ExpenseSortOption.EndDate => "end_date",
-            ExpenseSortOption.UpdatedDate => "updated_at",
-            ExpenseSortOption.RecurrenceRate => "recurrence_rate",
-            ExpenseSortOption.StartDate => "start_date",
-            ExpenseSortOption.Name => "name",
-            ExpenseSortOption.Active => "active",
+            ExpenseSortOption.NextDueDate => "e.next_due_date",
+            ExpenseSortOption.Cost => "e.cost",
+            ExpenseSortOption.Category => "ec.name",
+            ExpenseSortOption.CreatedDate => "e.created_at",
+            ExpenseSortOption.EndDate => "e.end_date",
+            ExpenseSortOption.UpdatedDate => "e.updated_at",
+            ExpenseSortOption.RecurrenceRate => "e.recurrence_rate",
+            ExpenseSortOption.StartDate => "e.start_date",
+            ExpenseSortOption.Name => "e.name",
+            ExpenseSortOption.Active => "e.active",
             _ => throw new GenericException("Invalid sort option")
         };
     }

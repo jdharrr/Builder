@@ -5,6 +5,7 @@ using BuilderServices.Expenses.ExpenseTableService.Enums;
 using BuilderServices.Expenses.ExpenseTableService.Responses;
 using BuilderServices.Requests;
 using BuilderServices.Responses;
+using DatabaseServices.Models;
 
 namespace BuilderServices.Expenses.ExpenseTableService;
 
@@ -14,6 +15,8 @@ public class ExpenseTableService(
     UserContext userContext
 )
 {
+    #region Public service methods
+    
     public async Task<List<ExpenseTableExpenseResponse>> GetAllExpensesForTableAsync(
         string sortColumn,
         string sortDir,
@@ -30,39 +33,7 @@ public class ExpenseTableService(
 
         foreach (var expense in expenses)
         {
-            var recurrenceIsOnce = expense.RecurrenceRate == "once";
-            var tableActions = new Dictionary<string, string>();
-            if (!recurrenceIsOnce)
-            {
-                if (expense.Active)
-                {
-                    tableActions[ExpenseTableAction.Inactive.ToString()] = ExpenseTableAction.Inactive.GetActionText(recurrenceIsOnce);
-                    tableActions[ExpenseTableAction.Pay.ToString()] = ExpenseTableAction.Pay.GetActionText(recurrenceIsOnce);
-                }
-                else
-                {
-                    tableActions[ExpenseTableAction.Active.ToString()] = ExpenseTableAction.Active.GetActionText(recurrenceIsOnce);
-                }
-
-                tableActions[ExpenseTableAction.Unpay.ToString()] = ExpenseTableAction.Unpay.GetActionText(recurrenceIsOnce);
-            }
-            else
-            {
-                var paymentExists = (await paymentRepo.GetPaymentsForExpenseAsync(expense.Id).ConfigureAwait(false)).Count > 0;
-                if (paymentExists)
-                {
-                    tableActions[ExpenseTableAction.Unpay.ToString()] = ExpenseTableAction.Unpay.GetActionText(recurrenceIsOnce);
-                    expense.OneTimeExpenseIsPaid = true;
-                }
-                else
-                {
-                    tableActions[ExpenseTableAction.Pay.ToString()] = ExpenseTableAction.Pay.GetActionText(recurrenceIsOnce);
-                }
-            }
-
-            tableActions[ExpenseTableAction.Edit.ToString()] = ExpenseTableAction.Edit.GetActionText(recurrenceIsOnce);
-            tableActions[ExpenseTableAction.Delete.ToString()] = ExpenseTableAction.Delete.GetActionText(recurrenceIsOnce);
-
+            var tableActions = await GetTableActionsForExpense(expense).ConfigureAwait(false);
             response.Add(new ExpenseTableExpenseResponse
             {
                 Id = expense.Id,
@@ -81,6 +52,8 @@ public class ExpenseTableService(
                 DueLastDayOfMonth = expense.DueEndOfMonth,
                 AutomaticPayments = expense.AutomaticPayments,
                 AutomaticPaymentCreditCardId = expense.AutomaticPaymentCreditCardId,
+                AutomaticPaymentIgnoreCashBack = expense.AutomaticPaymentIgnoreCashBack,
+                AutomaticPaymentCashBackOverwrite = expense.AutomaticPaymentCashBackOverwrite,
                 OneTimeExpenseIsPaid = expense.OneTimeExpenseIsPaid,
                 TableActions = tableActions
             });
@@ -134,7 +107,8 @@ public class ExpenseTableService(
             {
                 Filter = option.ToString()!,
                 DisplayText = option.GetDisplayText(),
-                FilterType = option.GetFilterType().ToString()
+                FilterType = option.GetFilterType().ToString(),
+                Api = option.GetFilterDropdownApi()
             });
         }
 
@@ -161,4 +135,48 @@ public class ExpenseTableService(
 
         return filters;
     }
+    
+    #endregion
+    #region Private helpers
+
+    private async Task<Dictionary<string, string>> GetTableActionsForExpense(ExpenseDto expense)
+    {
+        var recurrenceIsOnce = expense.RecurrenceRate == "once";
+        var tableActions = new Dictionary<string, string>();
+        if (!recurrenceIsOnce)
+        {
+            if (expense.Active)
+            {
+                tableActions[ExpenseTableAction.Inactive.ToString()] = ExpenseTableAction.Inactive.GetActionText(recurrenceIsOnce);
+                tableActions[ExpenseTableAction.Pay.ToString()] = ExpenseTableAction.Pay.GetActionText(recurrenceIsOnce);
+            }
+            else
+            {
+                tableActions[ExpenseTableAction.Active.ToString()] = ExpenseTableAction.Active.GetActionText(recurrenceIsOnce);
+            }
+
+            tableActions[ExpenseTableAction.Unpay.ToString()] = ExpenseTableAction.Unpay.GetActionText(recurrenceIsOnce);
+        }
+        else
+        {
+            var paymentExists = (await paymentRepo.GetPaymentsForExpenseAsync(expense.Id).ConfigureAwait(false)).Count > 0;
+            if (paymentExists)
+            {
+                tableActions[ExpenseTableAction.Unpay.ToString()] = ExpenseTableAction.Unpay.GetActionText(recurrenceIsOnce);
+                expense.OneTimeExpenseIsPaid = true;
+            }
+            else
+            {
+                tableActions[ExpenseTableAction.Pay.ToString()] = ExpenseTableAction.Pay.GetActionText(recurrenceIsOnce);
+            }
+        }
+        
+        tableActions[ExpenseTableAction.Edit.ToString()] = ExpenseTableAction.Edit.GetActionText(recurrenceIsOnce);
+        if (!expense.Active)
+            tableActions[ExpenseTableAction.Delete.ToString()] = ExpenseTableAction.Delete.GetActionText(recurrenceIsOnce);
+
+        return tableActions;
+    }
+    
+    #endregion
 }

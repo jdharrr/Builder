@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <Folder Include="Controllers\Expenses\Validators\" />
-    <Folder Include="Controllers\Payments\Validators\" />
   </ItemGroup>
 
 </Project>

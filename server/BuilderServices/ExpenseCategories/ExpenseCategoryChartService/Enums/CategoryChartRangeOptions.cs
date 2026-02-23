@@ -1,4 +1,5 @@
 ﻿using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Enums;
 

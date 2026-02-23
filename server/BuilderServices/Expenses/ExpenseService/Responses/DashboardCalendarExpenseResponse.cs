@@ -28,6 +28,9 @@ public class DashboardCalendarExpenseResponse
 
     public int? AutomaticPaymentCreditCardId { get; set; }
 
+    public bool AutomaticPaymentIgnoreCashBack { get; set; }
+
+    public decimal? AutomaticPaymentCashBackOverwrite { get; set; }
+
     public bool OneTimeExpenseIsPaid { get; set; }
 }
-

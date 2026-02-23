@@ -34,8 +34,11 @@ public class ExpenseTableExpenseResponse
 
     public int? AutomaticPaymentCreditCardId { get; set; }
 
+    public bool AutomaticPaymentIgnoreCashBack { get; set; }
+
+    public decimal? AutomaticPaymentCashBackOverwrite { get; set; }
+
     public bool OneTimeExpenseIsPaid { get; set; }
 
     public Dictionary<string, string> TableActions { get; set; } = [];
 }
-

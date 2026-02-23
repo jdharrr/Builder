@@ -4,6 +4,22 @@ namespace BuilderServices;
 
 public static class BuilderUtils
 {
+    public static readonly Dictionary<int, string> Months = new()
+    {
+        { 1, "January" },
+        { 2, "February" },
+        { 3, "March" },
+        { 4, "April" },
+        { 5, "May" },
+        { 6, "June" },
+        { 7, "July" },
+        { 8, "August" },
+        { 9, "September" },
+        { 10, "October" },
+        { 11, "November" },
+        { 12, "December" }
+    };
+    
     public static bool ExpenseIsForDate(ExpenseDto dto, DateOnly date)
     {
         var startDate = DateOnly.ParseExact(dto.StartDate, "yyyy-MM-dd");
@@ -23,9 +39,8 @@ public static class BuilderUtils
             case "monthly":
                 if (dto.DueEndOfMonth && date.Day == DateTime.DaysInMonth(date.Year, date.Month))
                     return true;
-                if (date.Day == startDate.Day)
-                    return true;
-                return false;
+                
+                return date.Day == startDate.Day;
             case "yearly":
                 return date.Month == startDate.Month && date.Day == startDate.Day;
             default:
@@ -33,26 +48,38 @@ public static class BuilderUtils
         }
     }
 
-    public static string GetNextFutureDueDate(string recurrenceRate, string currentDueDate)
+    public static string GetNextFutureDueDate(string recurrenceRate, string currentDueDate, bool dueEndOfMonth = false)
     {
         var nextDueDate = DateOnly.ParseExact(currentDueDate, "yyyy-MM-dd");
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         while (nextDueDate < today)
         {
-            nextDueDate = recurrenceRate switch
-            {
-                "daily" => nextDueDate.AddDays(1),
-
-                "weekly" => nextDueDate.AddDays(7),
-
-                "monthly" => nextDueDate.AddMonths(1),
-
-                "yearly" => nextDueDate.AddYears(1),
-
-                _ => nextDueDate,
-            };
+            nextDueDate = GetNextDueDate(recurrenceRate, nextDueDate, dueEndOfMonth);
         }
 
         return nextDueDate.ToString("yyyy-MM-dd");
+    }
+
+    public static DateOnly GetNextDueDate(string recurrenceRate, DateOnly currentDueDate, bool dueEndOfMonth = false)
+    {
+        if (dueEndOfMonth)
+        {
+            currentDueDate = currentDueDate.AddDays(1);
+            currentDueDate = currentDueDate.AddMonths(1).AddDays(-1);
+            return currentDueDate;
+        }
+
+        return recurrenceRate switch
+        {
+            "daily" => currentDueDate.AddDays(1),
+
+            "weekly" => currentDueDate.AddDays(7),
+
+            "monthly" => currentDueDate.AddMonths(1),
+
+            "yearly" => currentDueDate.AddYears(1),
+
+            _ => currentDueDate,
+        };
     }
 }

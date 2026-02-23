@@ -1,5 +1,6 @@
 using BuilderRepositories;
-using BuilderServices.Enums;
+using BuilderRepositories.Enums;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 
@@ -40,8 +41,8 @@ public static class PaymentTableFilterOptionsHelper
             PaymentTableFilterOption.Amount => TableFilterType.NumberRange,
             PaymentTableFilterOption.Expense => TableFilterType.Text,
             PaymentTableFilterOption.CreditCard => TableFilterType.Text,
-            PaymentTableFilterOption.Category => TableFilterType.Text,
-            PaymentTableFilterOption.RecurrenceRate => TableFilterType.Text,
+            PaymentTableFilterOption.Category => TableFilterType.MultiSelect,
+            PaymentTableFilterOption.RecurrenceRate => TableFilterType.MultiSelect,
             _ => throw new GenericException("Invalid payment table filter.")
         };
     }
@@ -50,14 +51,24 @@ public static class PaymentTableFilterOptionsHelper
     {
         return filter switch
         {
-            PaymentTableFilterOption.PaymentDate => "payment_date",
-            PaymentTableFilterOption.DueDate => "due_date_paid",
-            PaymentTableFilterOption.Amount => "cost",
-            PaymentTableFilterOption.Expense => "expense_name",
-            PaymentTableFilterOption.CreditCard => "credit_company",
-            PaymentTableFilterOption.Category => "category_name",
-            PaymentTableFilterOption.RecurrenceRate => "recurrence_rate",
+            PaymentTableFilterOption.PaymentDate => "ep.payment_date",
+            PaymentTableFilterOption.DueDate => "ep.due_date_paid",
+            PaymentTableFilterOption.Amount => "c.cost",
+            PaymentTableFilterOption.Expense => "e.name",
+            PaymentTableFilterOption.CreditCard => "cc.credit_company",
+            PaymentTableFilterOption.Category => "ec.name",
+            PaymentTableFilterOption.RecurrenceRate => "e.recurrence_rate",
             _ => throw new GenericException("Invalid payment table filter.")
+        };
+    }
+    
+    public static string? GetFilterDropdownApi(this PaymentTableFilterOption filter)
+    {
+        return filter switch
+        {
+            PaymentTableFilterOption.Category => "expenses/categories/dropdown",
+            PaymentTableFilterOption.RecurrenceRate => "expenses/options/recurrenceRates",
+            _ => null
         };
     }
 }

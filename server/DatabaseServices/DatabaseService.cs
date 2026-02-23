@@ -47,7 +47,7 @@ public class DatabaseService : IDisposable
 
     public async Task<ExecuteResponse> ExecuteAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
-        using var cmd = new MySqlCommand(sql, _connection, _transaction);
+        await using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters is not null)
             AddParameters(cmd, parameters);
 
@@ -61,7 +61,7 @@ public class DatabaseService : IDisposable
 
     public async Task<object?> ExecuteScalarAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
-        using var cmd = new MySqlCommand(sql, _connection, _transaction);
+        await using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters is not null)
             AddParameters(cmd, parameters);
 
@@ -70,11 +70,11 @@ public class DatabaseService : IDisposable
 
     public async Task<DataTable> QueryAsync(string sql, Dictionary<string, object?>? parameters = null)
     {
-        using var cmd = new MySqlCommand(sql, _connection, _transaction);
+        await using var cmd = new MySqlCommand(sql, _connection, _transaction);
         if (parameters is not null)
             AddParameters(cmd, parameters);
 
-        using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
         var table = new DataTable();
         table.Load(reader);
 

@@ -4,24 +4,13 @@ using BuilderServices.UserService.Responses;
 
 namespace BuilderServices.UserService;
 
-public class UserService
+public class UserService(UserRepository userRepo, UserSettingsRepository userSettingsRepo, UserContext userContext)
 {
-    private readonly UserRepository _userRepo;
-
-    private readonly UserSettingsRepository _userSettingsRepo;
-
-    private readonly UserContext _userContext;
-
-    public UserService(UserRepository userRepo, UserSettingsRepository userSettingsRepo, UserContext userContext)
-    {
-        _userRepo = userRepo;
-        _userSettingsRepo = userSettingsRepo;
-        _userContext = userContext;
-    }
-
+    #region Public service Methods
+    
     public async Task<GetUserResponse?> GetLimitedUserByIdAsync()
     {
-        var user = await _userRepo.GetLimitedUserByIdAsync(_userContext.UserId).ConfigureAwait(false);
+        var user = await userRepo.GetLimitedUserByIdAsync(userContext.UserId).ConfigureAwait(false);
         if (user is null)
             return null;
 
@@ -45,6 +34,8 @@ public class UserService
             { "dark_mode", darkMode ? 1 : 0 }
         };
 
-        await _userSettingsRepo.UpdateUserSettings(updateDict, _userContext.UserId).ConfigureAwait(false);
+        await userSettingsRepo.UpdateUserSettings(updateDict, userContext.UserId).ConfigureAwait(false);
     }
+    
+    #endregion
 }

@@ -5,6 +5,7 @@ import {getLateDatesForExpense, payDueDates} from '../../../api.jsx';
 import {getStatus} from '../../../util.jsx';
 import {showSuccess, showError} from '../../../utils/toast.js';
 import {CreditCardSelect} from "../../../components/CreditCardSelect.jsx";
+import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 
 export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     const wrapperRef = useRef(null);
 
     const [selectedDates, setSelectedDates] = useState([]);
+    const {openConfirm, confirmModal} = useConfirmModal();
     const [showPaymentDateInput, setShowPaymentDateInput] = useState(false);
     const [paymentDate, setPaymentDate] = useState('');
     const [skippingDate, setSkippingDate] = useState(null);
@@ -96,6 +98,9 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
             if (document.querySelector('.manage-credit-cards-modal')) {
                 return;
             }
+            if (event.target.closest('.confirm-modal')) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 handleClose();
             }
@@ -120,10 +125,9 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
     };
 
     const handleSkipDate = (date) => {
-        if (!window.confirm(`Skip ${date}?`)) {
-            return;
-        }
-        skipDateMutation.mutate(date);
+        openConfirm(`Skip ${date}?`, () => {
+            skipDateMutation.mutate(date);
+        });
     }
 
     // Handle back from payment date input
@@ -257,6 +261,7 @@ export const LateDatesModal = ({expense, handleClose, onPaymentSuccess}) => {
                     </div>
                 </div>
             </div>
+            {confirmModal}
         </div>
     );
 };

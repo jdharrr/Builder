@@ -14,7 +14,8 @@ export const CreditCardSelect = ({
     noneLabel = 'No credit card',
     initialValue = '',
     onManageOpen = () => {},
-    onManageClose = () => {}
+    onManageClose = () => {},
+    children
 }) => {
     const [showManageCreditCardsModal, setShowManageCreditCardsModal] = useState(false);
     const [selectedCard, setSelectedCard] = useState(initialValue ?? '');
@@ -81,6 +82,11 @@ export const CreditCardSelect = ({
                         </button>
                     </div>
                 </div>
+                {children && (
+                    <div className="credit-card-select-children">
+                        {children}
+                    </div>
+                )}
             </div>
             {showManageCreditCardsModal && (
                 <ManageCreditCardsModal

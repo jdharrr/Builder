@@ -6,7 +6,7 @@ using BuilderServices.Expenses.ExpenseTableService;
 using BuilderServices.Expenses.ExpenseTableService.Enums;
 using BuilderServices.Expenses.ExpenseTableService.Requests;
 using BuilderServices.Expenses.ExpenseTableService.Responses;
-using BuilderRepositories.Requests;
+using BuilderRepositories.Enums;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using BuilderServices;
@@ -28,8 +28,6 @@ public class ExpenseController(
     ValidatorService validatorService
 ) : ControllerBase
 {
-    private readonly List<string> _sortDirs = ["asc", "desc"];
-
     [HttpPost("create")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseRequest request)
     {
@@ -140,7 +138,9 @@ public class ExpenseController(
             request.Description, 
             isActive, 
             isAutomaticPayments, 
-            request.AutomaticPaymentsCreditCardId
+            request.AutomaticPaymentsCreditCardId,
+            request.AutomaticPaymentsIgnoreCashBack,
+            request.AutomaticPaymentsCashBackOverwrite
         ).ConfigureAwait(false);
 
         return Ok(new UpdateExpenseResponse
@@ -206,6 +206,17 @@ public class ExpenseController(
         return Ok(new ExpenseTableFilterOptionsResponse
         {
             FilterOptions = filters
+        });
+    }
+
+    [HttpGet("options/recurrenceRates")]
+    public IActionResult GetRecurrenceRates()
+    {
+        return Ok(new ExpenseRecurrenceRatesResponse
+        {
+            Options = Enum.GetValues<ExpenseRecurrenceRate>()
+                .Select(rate => rate.ToString())
+                .ToList()
         });
     }
 }

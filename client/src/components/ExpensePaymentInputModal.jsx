@@ -19,6 +19,9 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     const todayDateString = new Date().toISOString().substring(0, 10);
     const hasStarted = expense?.startDate && expense.startDate.substring(0, 10) <= todayDateString;
     const [selectedCreditCardId, setSelectedCreditCardId] = useState('');
+    const [ignoreCashBack, setIgnoreCashBack] = useState(false);
+    const [cashBackOverwriteEnabled, setCashBackOverwriteEnabled] = useState(false);
+    const [cashBackOverwrite, setCashBackOverwrite] = useState('');
 
     const wrapperRef = useRef(null);
     useEffect(() => {
@@ -92,7 +95,13 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
             return;
         }
 
-        handleSave(selectedDatePaid, dueDates, selectedCreditCardId || null);
+        handleSave(
+            selectedDatePaid,
+            dueDates,
+            selectedCreditCardId || null,
+            ignoreCashBack,
+            cashBackOverwriteEnabled ? cashBackOverwrite : ''
+        );
     }
 
     const handleFutureDateAdd = () => {
@@ -146,6 +155,8 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
     }
 
     const dueDatesCount = selectedLateDates.length + selectedFutureDates.length;
+    const selectedDueDates = Array.from(new Set([...selectedLateDates, ...selectedFutureDates]));
+    const allowDueDateSelection = expense.recurrenceRate !== 'once' && !preSelectedDueDate;
 
     return (
         <div className="modal show d-block app-modal payment-input-modal">
@@ -180,92 +191,186 @@ export const ExpensePaymentInputModal = ({handleSave, handleClose, expense, preS
                         </button>
                     </div>
                     <div className="modal-body">
-                        {expense.recurrenceRate !== 'once' && !preSelectedDueDate &&
-                            <div className="payment-section">
-                                <div className="payment-section-header">
-                                    <span className="payment-section-title">Late Due Dates</span>
-                                    <span className="payment-section-count">
-                                        {lateDates.length}
-                                    </span>
-                                </div>
-                                {lateDates.length > 0 ? (
+                        <div className="expense-input-grid">
+                            {!allowDueDateSelection && (
+                                <div className="payment-section expense-input-span">
+                                    <div className="payment-section-header">
+                                        <span className="payment-section-title">Selected due date</span>
+                                    </div>
                                     <div className="payment-dates">
-                                        {lateDates.map((date, idx) => (
-                                            <label key={idx} className="payment-date-pill payment-date-option">
-                                                <input
-                                                    type="checkbox"
-                                                    className="form-check-input"
-                                                    checked={selectedLateDates.includes(date)}
-                                                    onChange={(e) => handleLateDateToggle(date, e.target.checked)}
-                                                />
-                                                <span>{date}</span>
-                                            </label>
+                                        {selectedDueDates.map((date) => (
+                                            <span className="payment-date-pill" key={date}>{date}</span>
                                         ))}
                                     </div>
-                                ) : (
-                                    <p className="modal-empty">No late expenses.</p>
-                                )}
-                            </div>
-                        }
-                        {expense.recurrenceRate !== 'once' && !preSelectedDueDate &&
-                            <div className="payment-section">
-                                <label className={'form-label'}>Add a future due date</label>
-                                <div className="payment-future-row">
+                                    <span className="payment-section-description">
+                                        This expense is a one-time payment.
+                                    </span>
+                                </div>
+                            )}
+                            {allowDueDateSelection &&
+                                <div className="payment-section">
+                                    <div className="payment-section-header">
+                                        <span className="payment-section-title">Late Due Dates</span>
+                                        <span className="payment-section-count">
+                                            {selectedLateDates.length}/{lateDates.length}
+                                        </span>
+                                    </div>
+                                    <span className="payment-section-description">
+                                        Select any past due dates you want to mark as paid.
+                                    </span>
+                                    {lateDates.length > 0 ? (
+                                        <div className="payment-dates">
+                                            {lateDates.map((date, idx) => (
+                                                <label key={idx} className="payment-date-pill payment-date-option">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        checked={selectedLateDates.includes(date)}
+                                                        onChange={(e) => handleLateDateToggle(date, e.target.checked)}
+                                                    />
+                                                    <span>{date}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="modal-empty">No late expenses.</p>
+                                    )}
+                                </div>
+                            }
+                            {allowDueDateSelection &&
+                                <div className="payment-section">
+                                    <div className="payment-section-header">
+                                        <span className="payment-section-title">Add a future due date</span>
+                                        <span className="payment-section-count">
+                                            {selectedFutureDates.length}
+                                        </span>
+                                    </div>
+                                    <span className="payment-section-description">
+                                        Add an upcoming due date if you are paying ahead.
+                                    </span>
+                                    <div className="payment-future-row">
+                                        <input
+                                            className={'form-control'}
+                                            type={'date'}
+                                            value={futureDateInput}
+                                            onChange={(e) => {
+                                                setFutureDateInput(e.target.value);
+                                                setInvalidFutureDate(false);
+                                                setPaymentExists(false);
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={handleFutureDateAdd}
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    {selectedFutureDates.length > 0 && (
+                                        <div className="payment-future-list">
+                                            {selectedFutureDates.map((date) => (
+                                                <div className="payment-future-pill" key={date}>
+                                                    <span>{date}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="payment-future-remove"
+                                                        onClick={() => handleFutureDateRemove(date)}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {invalidFutureDate &&
+                                        <span className="payment-error">Invalid date.</span>
+                                    }
+                                    {paymentExists &&
+                                        <span className="payment-error">Payment already exists.</span>
+                                    }
+                                </div>
+                            }
+                            <div className="payment-section expense-input-span">
+                                <div className="payment-section-header">
+                                    <span className="payment-section-title">Payment details</span>
+                                </div>
+                                <span className="payment-section-description">
+                                    Set the payment date and optional credit card details.
+                                </span>
+                                <div className="expense-input">
+                                    <label className="form-label">Paid on</label>
                                     <input
                                         className={'form-control'}
                                         type={'date'}
-                                        value={futureDateInput}
-                                        onChange={(e) => {
-                                            setFutureDateInput(e.target.value);
-                                            setInvalidFutureDate(false);
-                                            setPaymentExists(false);
-                                        }}
+                                        value={selectedDatePaid}
+                                        onChange={(e) => setSelectedDatePaid(e.target.value)}
                                     />
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        onClick={handleFutureDateAdd}
-                                    >
-                                        Add
-                                    </button>
+                                    <span className="payment-subtext">
+                                        {expense.dueEndOfMonth ? 'End of month schedule' : `Recurs ${expense.recurrenceRate}`}
+                                    </span>
                                 </div>
-                                {selectedFutureDates.length > 0 && (
-                                    <div className="payment-future-list">
-                                        {selectedFutureDates.map((date) => (
-                                            <div className="payment-future-pill" key={date}>
-                                                <span>{date}</span>
-                                                <button
-                                                    type="button"
-                                                    className="payment-future-remove"
-                                                    onClick={() => handleFutureDateRemove(date)}
-                                                >
-                                                    Remove
-                                                </button>
+                                <CreditCardSelect
+                                    label="Credit card (optional)"
+                                    includeNoneOption={true}
+                                    initialValue={selectedCreditCardId || ''}
+                                    onChange={(e) => setSelectedCreditCardId(e.target.value)}
+                                >
+                                    {selectedCreditCardId && (
+                                        <>
+                                            <div className="credit-card-options-label">Cash back options</div>
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor="ignoreCashBackOnRecord">
+                                                    Ignore Cash Back?
+                                                </label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id="ignoreCashBackOnRecord"
+                                                    checked={ignoreCashBack}
+                                                    onChange={() => {
+                                                        setIgnoreCashBack((prev) => !prev);
+                                                        setCashBackOverwriteEnabled(false);
+                                                        setCashBackOverwrite('');
+                                                    }}
+                                                />
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {invalidFutureDate &&
-                                    <span className="payment-error">Invalid date.</span>
-                                }
-                                {paymentExists &&
-                                    <span className="payment-error">Payment already exists.</span>
-                                }
+                                            <div className="expense-toggle-row">
+                                                <label className={'form-label'} htmlFor="cashBackOverwriteToggleRecord">
+                                                    Cash Back Overwrite?
+                                                </label>
+                                                <input
+                                                    className={'form-check-input'}
+                                                    type={'checkbox'}
+                                                    id="cashBackOverwriteToggleRecord"
+                                                    checked={cashBackOverwriteEnabled}
+                                                    onChange={() => {
+                                                        setCashBackOverwriteEnabled((prev) => !prev);
+                                                        setIgnoreCashBack(false);
+                                                        if (cashBackOverwriteEnabled) {
+                                                            setCashBackOverwrite('');
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            {cashBackOverwriteEnabled && (
+                                                <div className="expense-input">
+                                                    <label className={'form-label'}>Cash Back Overwrite percentage</label>
+                                                    <input
+                                                        className={'form-control'}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={cashBackOverwrite}
+                                                        onChange={(e) => setCashBackOverwrite(e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </CreditCardSelect>
                             </div>
-                        }
-                        <div className="payment-section">
-                            <label className="form-label">Paid on</label>
-                            <input className={'form-control'} type={'date'} value={selectedDatePaid} onChange={(e) => setSelectedDatePaid(e.target.value)} />
-                            <span className="payment-subtext">
-                                {expense.dueEndOfMonth ? 'End of month schedule' : `Recurs ${expense.recurrenceRate}`}
-                            </span>
                         </div>
-        <CreditCardSelect
-            label="Credit card (optional)"
-            includeNoneOption={true}
-            initialValue={selectedCreditCardId || ''}
-            onChange={(e) => setSelectedCreditCardId(e.target.value)}
-        />
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>

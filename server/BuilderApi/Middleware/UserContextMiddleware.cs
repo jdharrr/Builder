@@ -1,6 +1,7 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
 using System.Security.Claims;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderApi.Middleware;
 

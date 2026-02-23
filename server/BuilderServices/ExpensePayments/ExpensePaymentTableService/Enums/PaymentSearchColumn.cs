@@ -1,4 +1,5 @@
 using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.ExpensePayments.ExpensePaymentTableService.Enums;
 
@@ -19,13 +20,13 @@ public static class PaymentSearchColumnHelper
     {
         return column switch
         {
-            PaymentSearchColumn.PaymentDate => "payment_date",
-            PaymentSearchColumn.DueDate => "due_date_paid",
-            PaymentSearchColumn.ExpenseName => "expense_name",
-            PaymentSearchColumn.Amount => "cost",
-            PaymentSearchColumn.CreditCard => "credit_card",
-            PaymentSearchColumn.Category => "category_name",
-            PaymentSearchColumn.RecurrenceRate => "recurrence_rate",
+            PaymentSearchColumn.PaymentDate => "ep.payment_date",
+            PaymentSearchColumn.DueDate => "ep.due_date_paid",
+            PaymentSearchColumn.ExpenseName => "e.name",
+            PaymentSearchColumn.Amount => "ep.cost",
+            PaymentSearchColumn.CreditCard => "cc.credit_company",
+            PaymentSearchColumn.Category => "ec.name",
+            PaymentSearchColumn.RecurrenceRate => "e.recurrence_rate",
             _ => throw new GenericException("Invalid search column")
         };
     }

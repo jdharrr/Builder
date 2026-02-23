@@ -17,4 +17,8 @@ public class UpdateExpenseRequest
     public bool? AutomaticPayments { get; set; } = false;
     
     public int? AutomaticPaymentsCreditCardId { get; set; }
+
+    public bool? AutomaticPaymentsIgnoreCashBack { get; set; }
+
+    public decimal? AutomaticPaymentsCashBackOverwrite { get; set; }
 }

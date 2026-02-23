@@ -1,0 +1,63 @@
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+}
+
+.confirm-modal::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.confirm-modal .modal-dialog {
+    width: 20rem !important;
+    max-width: 20rem !important;
+    min-width: 0;
+    margin-top: 18vh;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.confirm-modal .modal-content {
+    border-radius: 0.85rem;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+}
+
+.confirm-modal .modal-header {
+    padding: 0.65rem 0.9rem 0.35rem;
+}
+
+.confirm-modal .modal-title {
+    font-size: 0.95rem;
+}
+
+.confirm-modal .modal-body {
+    padding: 0.35rem 0.9rem 0.65rem;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+}
+
+.confirm-modal .modal-body p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #374151;
+    line-height: 1.2;
+}
+
+.confirm-modal .modal-footer {
+    padding: 0 0.9rem 0.75rem;
+    border-top: none;
+    gap: 0.5rem;
+}
+
+.confirm-modal .modal-footer .btn {
+    padding: 0.35rem 0.7rem;
+}

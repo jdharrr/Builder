@@ -11,7 +11,7 @@ public class CreditCardPaymentsRepository : BuilderRepository
         _dbService = dbService;
     }
 
-    public async Task CreateCreditCardPaymentAsync(int creditCardId, decimal paymentAmount, string paymentDate, bool usingCashBack = false)
+    public async Task<long> CreateCreditCardPaymentAsync(int creditCardId, decimal paymentAmount, string paymentDate, bool usingCashBack = false)
     {
         var sql = @"INSERT INTO credit_card_payments (credit_card_id, payment_amount, payment_date, using_cash_back)
                     VALUES (@creditCardId, @paymentAmount, @paymentDate, @usingCashBack)";
@@ -23,6 +23,6 @@ public class CreditCardPaymentsRepository : BuilderRepository
             { "@usingCashBack", usingCashBack }
         };
 
-        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+        return (await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false)).LastInsertedId;
     }
 }

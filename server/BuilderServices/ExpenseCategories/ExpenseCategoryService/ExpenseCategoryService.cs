@@ -1,29 +1,22 @@
 ﻿using AuthenticationServices;
 using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 using BuilderServices.ExpenseCategories.ExpenseCategoryChartService.Enums;
 using BuilderServices.ExpenseCategories.ExpenseCategoryService.Responses;
 using DatabaseServices.Models;
 
 namespace BuilderServices.ExpenseCategories.ExpenseCategoryService;
 
-public class ExpenseCategoryService
+public class ExpenseCategoryService(
+    ExpenseCategoryRepository categoryRepo,
+    ExpenseRepository expenseRepo,
+    UserContext userContext)
 {
-    private readonly ExpenseCategoryRepository _categoryRepo;
-
-    private readonly ExpenseRepository _expenseRepo;
-
-    private readonly UserContext _userContext;
-
-    public ExpenseCategoryService(ExpenseCategoryRepository categoryRepo, ExpenseRepository expenseRepo, UserContext userContext)
-    {
-        _categoryRepo = categoryRepo;
-        _expenseRepo = expenseRepo;
-        _userContext = userContext;
-    }
-
+    #region Public service methods
+    
     public async Task<bool> CreateExpenseCategoryAsync(string categoryName)
     {
-        var rowsAffected = await _categoryRepo.CreateExpenseCategoryAsync(categoryName, _userContext.UserId).ConfigureAwait(false);
+        var rowsAffected = await categoryRepo.CreateExpenseCategoryAsync(categoryName, userContext.UserId).ConfigureAwait(false);
         if (rowsAffected == 0)
         {
             throw new GenericException("Failed to create expense category.");
@@ -34,7 +27,7 @@ public class ExpenseCategoryService
 
     public async Task<List<ExpenseCategoryResponse>> GetExpenseCategoriesAsync(bool active)
     {
-        var categories = await _categoryRepo.GetExpenseCategoriesAsync(_userContext.UserId, active).ConfigureAwait(false);
+        var categories = await categoryRepo.GetExpenseCategoriesAsync(userContext.UserId, active).ConfigureAwait(false);
 
         return categories.Select(category => new ExpenseCategoryResponse
         {
@@ -42,6 +35,15 @@ public class ExpenseCategoryService
             Name = category.Name,
             Active = category.Active
         }).ToList();
+    }
+    
+    public async Task<ExpenseCategoryDropdownResponse> GetExpenseCategoriesForDropdownAsync(bool active)
+    {
+        return new ExpenseCategoryDropdownResponse
+        {
+            Options = (await categoryRepo.GetExpenseCategoriesAsync(userContext.UserId, active).ConfigureAwait(false))
+                .Select(x => x.Name).ToList()
+        };
     }
 
     public static Dictionary<string, string> GetCategoryChartRangeOptions()
@@ -58,21 +60,23 @@ public class ExpenseCategoryService
 
     public async Task CategoryBatchUpdateAsync(List<int> expenseIds, int categoryId)
     {
-        await _expenseRepo.CategoryBatchUpdateAsync(expenseIds, categoryId, _userContext.UserId).ConfigureAwait(false);
+        await expenseRepo.CategoryBatchUpdateAsync(expenseIds, categoryId, userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task UpdateCategoryNameAsync(int categoryId, string newCategoryName)
     {
-        await _expenseRepo.UpdateCategoryNameAsync(categoryId, newCategoryName, _userContext.UserId).ConfigureAwait(false);
+        await expenseRepo.UpdateCategoryNameAsync(categoryId, newCategoryName, userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task DeleteExpenseCategoryAsync(int categoryId)
     {
-        await _categoryRepo.DeleteExpenseCategoryAsync(categoryId, _userContext.UserId).ConfigureAwait(false);
+        await categoryRepo.DeleteExpenseCategoryAsync(categoryId, userContext.UserId).ConfigureAwait(false);
     }
 
     public async Task SetExpenseCategoryActiveStatusAsync(int categoryId, bool active)
     {
-        await _categoryRepo.SetExpenseCategoryActiveStatusAsync(categoryId, active, _userContext.UserId).ConfigureAwait(false);
+        await categoryRepo.SetExpenseCategoryActiveStatusAsync(categoryId, active, userContext.UserId).ConfigureAwait(false);
     }
+    
+    #endregion
 }

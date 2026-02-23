@@ -30,6 +30,18 @@ public class CategoryController(
 
         return Ok(categories);
     }
+    
+    [HttpGet("dropdown")]
+    public async Task<IActionResult> GetExpenseCategoriesForDropdown([FromQuery] GetExpenseCategoriesRequest request)
+    {
+        var validationResult = await validatorService.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors);
+        
+        var options = await categoryService.GetExpenseCategoriesForDropdownAsync(request.Active).ConfigureAwait(false);
+
+        return Ok(options);
+    }
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateExpenseCategory([FromBody] CreateExpenseCategoryRequest request)

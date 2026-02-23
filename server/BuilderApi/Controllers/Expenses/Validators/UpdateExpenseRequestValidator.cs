@@ -34,6 +34,15 @@ public class UpdateExpenseRequestValidator : AbstractValidator<UpdateExpenseRequ
         RuleFor(x => x.AutomaticPaymentsCreditCardId)
             .GreaterThan(0)
             .When(x => x.AutomaticPaymentsCreditCardId is not null);
+
+        RuleFor(x => x.AutomaticPaymentsCashBackOverwrite)
+            .GreaterThan(0)
+            .When(x => x.AutomaticPaymentsCashBackOverwrite is not null)
+            .WithMessage("Cash back overwrite must be greater than 0.");
+
+        RuleFor(x => x)
+            .Must(request => !(request.AutomaticPaymentsIgnoreCashBack == true && request.AutomaticPaymentsCashBackOverwrite.HasValue))
+            .WithMessage("Ignore cash back cannot be combined with a cash back overwrite.");
     }
 
 }

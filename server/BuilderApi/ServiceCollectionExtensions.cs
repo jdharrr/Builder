@@ -59,6 +59,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CreditCardRepository>();
         services.AddScoped<CreditCardPaymentsRepository>();
         services.AddScoped<ScheduledPaymentRepository>();
+        services.AddScoped<CreditCardRewardRulesRepository>();
 
         return services;
     }

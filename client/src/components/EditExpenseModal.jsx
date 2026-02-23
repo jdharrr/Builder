@@ -8,6 +8,11 @@ import {CategorySelect} from "./CategorySelect.jsx";
 import '../css/createExpenseForm.css';
 
 export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
+    const normalizedAutomaticPaymentOverwrite =
+        expense.automaticPaymentCashBackOverwrite && expense.automaticPaymentCashBackOverwrite > 0
+            ? expense.automaticPaymentCashBackOverwrite
+            : '';
+
     const [expenseProps, setExpenseProps] = useState({
         name: expense.name || null,
         cost: expense.cost || null,
@@ -17,11 +22,15 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
         automaticPayments: expense.automaticPayments || false,
         automaticPaymentsUseCredit: Boolean(expense.automaticPaymentCreditCardId),
         automaticPaymentsCreditCardId: expense.automaticPaymentCreditCardId || null,
+        automaticPaymentsIgnoreCashBack: expense.automaticPaymentIgnoreCashBack ?? false,
+        automaticPaymentsCashBackOverwriteEnabled: !!normalizedAutomaticPaymentOverwrite,
+        automaticPaymentsCashBackOverwrite: normalizedAutomaticPaymentOverwrite,
     });
     const [fieldErrors, setFieldErrors] = useState({
         name: false,
         cost: false,
         endDate: false,
+        automaticPaymentsCashBackOverwrite: false,
     });
     const isPaidOneTimeExpense = expense.recurrenceRate === 'once' && expense.oneTimeExpenseIsPaid;
 
@@ -55,15 +64,22 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                     []
                 ).valid);
 
+        const automaticPaymentOverwriteValue = Number(expenseProps.automaticPaymentsCashBackOverwrite);
+        const automaticPaymentOverwriteInvalid = expenseProps.automaticPaymentsUseCredit
+            && expenseProps.automaticPaymentsCashBackOverwriteEnabled
+            && (Number.isNaN(automaticPaymentOverwriteValue) || automaticPaymentOverwriteValue <= 0);
+
         const nextErrors = {
             name: !expenseProps.name?.trim(),
             cost: Number.isNaN(costValue) || costValue <= 0,
             endDate: !endDateValid,
             creditCardId: expenseProps.automaticPaymentsUseCredit && expenseProps.automaticPaymentsCreditCardId === null,
+            automaticPaymentsCashBackOverwrite: automaticPaymentOverwriteInvalid,
         };
 
         setFieldErrors(nextErrors);
-        if (nextErrors.name || nextErrors.cost || nextErrors.endDate || nextErrors.creditCardId) {
+        if (nextErrors.name || nextErrors.cost || nextErrors.endDate || nextErrors.creditCardId
+            || nextErrors.automaticPaymentsCashBackOverwrite) {
             return;
         }
 
@@ -76,6 +92,13 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
             automaticPayments: expenseProps.automaticPayments,
             automaticPaymentsCreditCardId: expenseProps.automaticPaymentsUseCredit
                 ? expenseProps.automaticPaymentsCreditCardId
+                : null,
+            automaticPaymentsIgnoreCashBack: expenseProps.automaticPaymentsUseCredit
+                ? expenseProps.automaticPaymentsIgnoreCashBack
+                : false,
+            automaticPaymentsCashBackOverwrite: expenseProps.automaticPaymentsUseCredit
+                && expenseProps.automaticPaymentsCashBackOverwriteEnabled
+                ? Number(expenseProps.automaticPaymentsCashBackOverwrite)
                 : null,
         });
     };
@@ -260,6 +283,9 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                                                             automaticPayments: !prevState.automaticPayments,
                                                             automaticPaymentsUseCredit: false,
                                                             automaticPaymentsCreditCardId: null,
+                                                            automaticPaymentsIgnoreCashBack: false,
+                                                            automaticPaymentsCashBackOverwriteEnabled: false,
+                                                            automaticPaymentsCashBackOverwrite: '',
                                                         }));
                                                     }}
                                                 />
@@ -282,6 +308,15 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                                                                     automaticPaymentsCreditCardId: prevState.automaticPaymentsUseCredit
                                                                         ? null
                                                                         : prevState.automaticPaymentsCreditCardId,
+                                                                    automaticPaymentsIgnoreCashBack: prevState.automaticPaymentsUseCredit
+                                                                        ? false
+                                                                        : prevState.automaticPaymentsIgnoreCashBack,
+                                                                    automaticPaymentsCashBackOverwriteEnabled: prevState.automaticPaymentsUseCredit
+                                                                        ? false
+                                                                        : prevState.automaticPaymentsCashBackOverwriteEnabled,
+                                                                    automaticPaymentsCashBackOverwrite: prevState.automaticPaymentsUseCredit
+                                                                        ? ''
+                                                                        : prevState.automaticPaymentsCashBackOverwrite,
                                                                 }));
                                                             }}
                                                         />
@@ -298,7 +333,70 @@ export const EditExpenseModal = ({expense, handleSave, handleClose}) => {
                                                                         automaticPaymentsCreditCardId: e.target.value || null
                                                                     }));
                                                                 }}
-                                                            />
+                                                            >
+                                                                <div className="credit-card-options-label">Cash back options</div>
+                                                                <div className="expense-toggle-row">
+                                                                    <label className={'form-label'} htmlFor="ignoreCashBackOnAutomaticEdit">
+                                                                        Ignore Cash Back?
+                                                                    </label>
+                                                                    <input
+                                                                        className={'form-check-input'}
+                                                                        type={'checkbox'}
+                                                                        id="ignoreCashBackOnAutomaticEdit"
+                                                                        checked={expenseProps.automaticPaymentsIgnoreCashBack}
+                                                                        onChange={() => {
+                                                                            setExpenseProps((prevState) => ({
+                                                                                ...prevState,
+                                                                                automaticPaymentsIgnoreCashBack: !prevState.automaticPaymentsIgnoreCashBack,
+                                                                                automaticPaymentsCashBackOverwriteEnabled: false,
+                                                                                automaticPaymentsCashBackOverwrite: ''
+                                                                            }));
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <div className="expense-toggle-row">
+                                                                    <label className={'form-label'} htmlFor="cashBackOverwriteToggleAutomaticEdit">
+                                                                        Cash Back Overwrite?
+                                                                    </label>
+                                                                    <input
+                                                                        className={'form-check-input'}
+                                                                        type={'checkbox'}
+                                                                        id="cashBackOverwriteToggleAutomaticEdit"
+                                                                        checked={expenseProps.automaticPaymentsCashBackOverwriteEnabled}
+                                                                        onChange={() => {
+                                                                            setExpenseProps((prevState) => ({
+                                                                                ...prevState,
+                                                                                automaticPaymentsIgnoreCashBack: false,
+                                                                                automaticPaymentsCashBackOverwriteEnabled: !prevState.automaticPaymentsCashBackOverwriteEnabled,
+                                                                                automaticPaymentsCashBackOverwrite: !prevState.automaticPaymentsCashBackOverwriteEnabled
+                                                                                    ? prevState.automaticPaymentsCashBackOverwrite
+                                                                                    : ''
+                                                                            }));
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                {expenseProps.automaticPaymentsCashBackOverwriteEnabled && (
+                                                                    <div className="expense-input">
+                                                                        <label className={'form-label'}>Cash Back Overwrite percentage</label>
+                                                                        <input
+                                                                            className={`form-control${fieldErrors.automaticPaymentsCashBackOverwrite ? ' is-invalid' : ''}`}
+                                                                            type="number"
+                                                                            min="0"
+                                                                            step="0.01"
+                                                                            value={expenseProps.automaticPaymentsCashBackOverwrite}
+                                                                            onChange={(e) => {
+                                                                                setExpenseProps((prevState) => ({
+                                                                                    ...prevState,
+                                                                                    automaticPaymentsCashBackOverwrite: e.target.value
+                                                                                }));
+                                                                                if (fieldErrors.automaticPaymentsCashBackOverwrite) {
+                                                                                    setFieldErrors((prev) => ({...prev, automaticPaymentsCashBackOverwrite: false}));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </CreditCardSelect>
                                                         </div>
                                                     )}
                                                 </>

@@ -130,6 +130,9 @@ export const postExpense = async (expenseProps) => {
         oneTimePayment,
         payToNowPayment,
         automaticPayment,
+        ignoreCashBackForPaymentsOnCreation,
+        cashBackOverwrite,
+        cashBackOverwriteEnabled,
     } = expenseProps;
 
     const token = getAccessToken();
@@ -139,33 +142,51 @@ export const postExpense = async (expenseProps) => {
         isPaid: Boolean(oneTimePayment?.isPaid),
         isCredit: Boolean(oneTimePayment?.isCredit),
         paymentDate: oneTimePayment?.paymentDate || null,
-        creditCardId: oneTimePayment?.isCredit ? (oneTimePayment?.creditCardId || null) : null,
+        creditCardId: oneTimePayment?.isCredit && oneTimePayment?.creditCardId
+            ? Number(oneTimePayment.creditCardId)
+            : null,
     };
 
     const normalizedPayToNowPayment = {
         enabled: Boolean(payToNowPayment?.enabled),
         isCredit: Boolean(payToNowPayment?.isCredit),
-        creditCardId: payToNowPayment?.isCredit ? (payToNowPayment?.creditCardId || null) : null,
+        creditCardId: payToNowPayment?.isCredit && payToNowPayment?.creditCardId
+            ? Number(payToNowPayment.creditCardId)
+            : null,
     };
 
     const normalizedAutomaticPayment = {
         enabled: Boolean(automaticPayment?.enabled),
-        creditCardId: automaticPayment?.isCredit ? (automaticPayment?.creditCardId || null) : null,
+        creditCardId: automaticPayment?.isCredit && automaticPayment?.creditCardId
+            ? Number(automaticPayment.creditCardId)
+            : null,
+        ignoreCashBack: Boolean(automaticPayment?.ignoreCashBack),
+        cashBackOverwrite: automaticPayment?.cashBackOverwriteEnabled
+            ? Number(automaticPayment?.cashBackOverwrite)
+            : null,
     };
 
-    const result = await apiClient.post('/api/expenses/create', {
+    const payload = {
         name,
         cost,
         recurrenceRate,
-        categoryId,
+        categoryId: categoryId ? Number(categoryId) : null,
         description,
         startDate,
         endDate,
         endOfTheMonth: dueLastDayOfMonth,
+        ignoreCashBackForPaymentsOnCreation: Boolean(ignoreCashBackForPaymentsOnCreation),
+        cashBackOverwrite: cashBackOverwriteEnabled && cashBackOverwrite
+            ? Number(cashBackOverwrite)
+            : null,
         oneTimePayment: normalizedOneTimePayment,
         payToNowPayment: normalizedPayToNowPayment,
         automaticPayment: normalizedAutomaticPayment,
-    });
+    };
+
+    console.log('Create expense payload', payload);
+
+    const result = await apiClient.post('/api/expenses/create', payload);
 
     return result.data;
 }
@@ -174,7 +195,7 @@ export const updateExpense = async (expenseId, expenseData) => {
     const token = getAccessToken();
     if (!token) throw new Error('401');
 
-    const result = await apiClient.patch(`/api/expenses/update/${expenseId}`, {
+    const body = {
         name: expenseData.name,
         cost: expenseData.cost,
         description: expenseData.description,
@@ -182,7 +203,17 @@ export const updateExpense = async (expenseId, expenseData) => {
         categoryId: expenseData.categoryId,
         automaticPayments: expenseData.automaticPayments,
         automaticPaymentsCreditCardId: expenseData.automaticPaymentsCreditCardId,
-    });
+    };
+
+    if (expenseData.automaticPaymentsIgnoreCashBack !== undefined) {
+        body.automaticPaymentsIgnoreCashBack = expenseData.automaticPaymentsIgnoreCashBack;
+    }
+
+    if (expenseData.automaticPaymentsCashBackOverwrite !== undefined) {
+        body.automaticPaymentsCashBackOverwrite = expenseData.automaticPaymentsCashBackOverwrite;
+    }
+
+    const result = await apiClient.patch(`/api/expenses/update/${expenseId}`, body);
 
     return result.data;
 };
@@ -206,7 +237,15 @@ export const deletePayments = async (paymentIds, expenseId, removeFromCreditCard
 };
 
 
-export const payDueDates = async (expenseId, dueDates, datePaid, isSkipped = false, creditCardId = null) => {
+export const payDueDates = async (
+    expenseId,
+    dueDates,
+    datePaid,
+    isSkipped = false,
+    creditCardId = null,
+    ignoreCashBackForPaymentsOnCreation = false,
+    cashBackOverwrite = null
+) => {
     const body = {
         expenseId: expenseId,
         dueDates: dueDates,
@@ -218,6 +257,12 @@ export const payDueDates = async (expenseId, dueDates, datePaid, isSkipped = fal
     }
     if (creditCardId) {
         body.creditCardId = creditCardId;
+    }
+    if (ignoreCashBackForPaymentsOnCreation) {
+        body.ignoreCashBackForPaymentsOnCreation = true;
+    }
+    if (cashBackOverwrite) {
+        body.cashBackOverwrite = Number(cashBackOverwrite);
     }
     const result = await apiClient.patch('/api/payments/pay/dueDates', body);
 
@@ -340,6 +385,17 @@ export const getExpenseSearchableColumns = async () => {
     return result.data?.searchableColumns ?? result.data;
 }
 
+export const getExpenseRecurrenceRates = async () => {
+    const result = await apiClient.get('/api/expenses/options/recurrenceRates');
+    return result.data?.options ?? result.data;
+}
+
+export const getFilterDropdownOptions = async (apiPath) => {
+    const trimmedPath = apiPath?.startsWith('/') ? apiPath.slice(1) : apiPath;
+    const result = await apiClient.get(`/api/${trimmedPath}`);
+    return result.data;
+}
+
 export const updateExpenseActiveStatus  = async (isActive, expenseId) => {
     const result = await apiClient.patch(`/api/expenses/update/${expenseId}`, {
         active: isActive,
@@ -451,16 +507,19 @@ export const getCreditCards = async () => {
     return result.data?.creditCards ?? result.data;
 }
 
-export const createCreditCard = async (creditCardCompany) => {
+export const createCreditCard = async (creditCardCompany, rewardsRules = []) => {
+    console.log(creditCardCompany);
     const result = await apiClient.post('/api/payments/creditCards/create', {
-        creditCardCompany
+        creditCardCompany,
+        rewardsRules
     });
     return result.data;
 }
 
-export const updateCreditCardCompany = async (creditCardId, creditCardCompany) => {
-    const result = await apiClient.patch(`/api/payments/creditCards/${creditCardId}/update/company`, {
-        newCompanyName: creditCardCompany
+export const updateCreditCard = async (creditCardId, creditCardCompany, rewardsRules = []) => {
+    const result = await apiClient.patch(`/api/payments/creditCards/${creditCardId}/update`, {
+        newCompanyName: creditCardCompany,
+        rewardsRules
     });
     return result.data;
 }

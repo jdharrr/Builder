@@ -39,6 +39,10 @@ public class ExpenseDto
     public bool AutomaticPayments { get; set; } = false;
     
     public int? AutomaticPaymentCreditCardId { get; set; }
+    
+    public decimal? AutomaticPaymentCashBackOverwrite { get; set; }
+
+    public bool AutomaticPaymentIgnoreCashBack { get; set; } = false;
 
     public bool OneTimeExpenseIsPaid { get; set; } = false;
 

@@ -10,58 +10,34 @@ public class ExpenseCategoryChartService(
     UserContext userContext
 )
 {
+    #region Public service methods
+    
     public async Task<CategoryTotalSpentResponse> GetCategoryTotalSpentByRangeAsync(CategoryChartRangeOption rangeOption)
     {
         var response = new CategoryTotalSpentResponse();
 
-        var startOfRange = DateOnly.FromDateTime(DateTime.Today);
-        var endOfRange = DateOnly.FromDateTime(DateTime.Today);
-        switch (rangeOption)
+        DateOnly? startOfRange = DateOnly.FromDateTime(DateTime.Today);
+        DateOnly? endOfRange = DateOnly.FromDateTime(DateTime.Today);
+        UpdateCategoryTotalSpentRange(rangeOption, ref startOfRange, ref endOfRange);
+
+        var categoryTotals = await paymentRepo.GetCategoryTotalSpentByRangeAsync(
+                    userContext.UserId,
+                    startOfRange?.ToString("yyyy-MM-dd"),
+                    endOfRange?.ToString("yyyy-MM-dd"))
+                .ConfigureAwait(false);
+        response.Categories = categoryTotals.Select(category => new CategoryTotalSpentCategoryResponse
         {
-            case CategoryChartRangeOption.ThisWeek:
-                endOfRange = endOfRange.AddDays(7 - (int)endOfRange.DayOfWeek);
-                startOfRange = startOfRange.AddDays(-(int)startOfRange.DayOfWeek);
-                break;
-            case CategoryChartRangeOption.ThisMonth:
-                endOfRange = endOfRange.AddDays(DateTime.DaysInMonth(startOfRange.Year, startOfRange.Month) - startOfRange.Day);
-                startOfRange = startOfRange.AddDays(-startOfRange.Day + 1);
-                break;
-            case CategoryChartRangeOption.ThisYear:
-                endOfRange = new DateOnly(startOfRange.Year, 12, 31);
-                startOfRange = new DateOnly(startOfRange.Year, 1, 1);
-                break;
-            case CategoryChartRangeOption.LastSixMonths:
-                startOfRange = startOfRange.AddMonths(-6);
-                break;
-            default:
-                response.Categories = (await paymentRepo.GetCategoryTotalSpentByRangeAsync(userContext.UserId).ConfigureAwait(false))
-                    .Select(category => new CategoryTotalSpentCategoryResponse
-                    {
-                        Id = category.Id,
-                        Name = category.Name,
-                        CategoryTotalSpent = category.CategoryTotalSpent
-                    }).ToList();
-                response.CombinedTotalSpend = await paymentRepo.GetTotalSpentForRangeAsync(userContext.UserId).ConfigureAwait(false);
-                return response;
-        }
-
-        response.Categories = (await paymentRepo.GetCategoryTotalSpentByRangeAsync(
-                userContext.UserId,
-                startOfRange.ToString("yyyy-MM-dd"),
-                endOfRange.ToString("yyyy-MM-dd"))
-            .ConfigureAwait(false))
-            .Select(category => new CategoryTotalSpentCategoryResponse
-            {
-                Id = category.Id,
-                Name = category.Name,
-                CategoryTotalSpent = category.CategoryTotalSpent
-            }).ToList();
+            Id = category.Id,
+            Name = category.Name,
+            CategoryTotalSpent = category.CategoryTotalSpent
+        }).ToList();
+        
         response.CombinedTotalSpend = await paymentRepo.GetTotalSpentForRangeAsync(
-                userContext.UserId,
-                startOfRange.ToString("yyyy-MM-dd"),
-                endOfRange.ToString("yyyy-MM-dd"))
-            .ConfigureAwait(false);
-
+                    userContext.UserId,
+                    startOfRange?.ToString("yyyy-MM-dd"),
+                    endOfRange?.ToString("yyyy-MM-dd"))
+                .ConfigureAwait(false);
+        
         return response;
     }
 
@@ -77,4 +53,39 @@ public class ExpenseCategoryChartService(
 
         return response;
     }
+    
+    #endregion
+    #region Private Helpers
+
+    private static void UpdateCategoryTotalSpentRange(CategoryChartRangeOption rangeOption, ref DateOnly? startOfRange, ref DateOnly? endOfRange)
+    {
+        switch (rangeOption)
+        {
+            case CategoryChartRangeOption.ThisWeek:
+                endOfRange = endOfRange?.AddDays(7 - (int)endOfRange?.DayOfWeek!);
+                startOfRange = startOfRange?.AddDays(-(int)startOfRange?.DayOfWeek!);
+                break;
+            case CategoryChartRangeOption.ThisMonth:
+                if (startOfRange is null)
+                    break;
+                endOfRange = endOfRange?.AddDays(DateTime.DaysInMonth((int)startOfRange?.Year!, (int)startOfRange?.Month!) - (int)startOfRange?.Day!);
+                startOfRange = startOfRange?.AddDays(-(int)startOfRange?.Day! + 1);
+                break;
+            case CategoryChartRangeOption.ThisYear:
+                if (startOfRange is null)
+                    break;
+                endOfRange = new DateOnly((int)startOfRange?.Year!, 12, 31);
+                startOfRange = new DateOnly((int)startOfRange?.Year!, 1, 1);
+                break;
+            case CategoryChartRangeOption.LastSixMonths:
+                startOfRange = startOfRange?.AddMonths(-6);
+                break;
+            case CategoryChartRangeOption.AllTime:
+                startOfRange = null;
+                endOfRange = null;
+                break;
+        }
+    }
+    
+    #endregion
 }

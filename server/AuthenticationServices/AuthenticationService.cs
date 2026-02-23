@@ -2,9 +2,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
+using AuthenticationServices.Exceptions;
 using AuthenticationServices.Requests;
 using AuthenticationServices.Responses;
 using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 using DatabaseServices.Models;
 using EmailServices;
 using EmailServices.Requests;

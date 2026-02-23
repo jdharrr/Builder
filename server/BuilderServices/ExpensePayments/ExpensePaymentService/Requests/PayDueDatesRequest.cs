@@ -11,4 +11,8 @@ public class PayDueDatesRequest
     public bool IsSkipped { get; set; } = false;
     
     public int? CreditCardId { get; set; }
+
+    public bool IgnoreCashBackForPaymentsOnCreation { get; set; } = false;
+
+    public decimal? CashBackOverwrite { get; set; }
 }

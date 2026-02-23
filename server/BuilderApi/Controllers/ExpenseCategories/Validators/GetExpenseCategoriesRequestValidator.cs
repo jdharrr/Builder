@@ -7,7 +7,6 @@ public class GetExpenseCategoriesRequestValidator : AbstractValidator<GetExpense
 {
     public GetExpenseCategoriesRequestValidator()
     {
-        RuleFor(x => x.Active)
-            .NotNull();
+        RuleFor(x => x.Active);
     }
 }

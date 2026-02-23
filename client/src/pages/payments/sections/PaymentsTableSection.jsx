@@ -8,6 +8,9 @@ import {getStatus} from "../../../util.jsx";
 import {DateRangeFilterInput} from "../../expenses/components/filters/DateRangeFilterInput.jsx";
 import {NumberRangeFilterInput} from "../../expenses/components/filters/NumberRangeFilterInput.jsx";
 import {TextFilterInput} from "../../expenses/components/filters/TextFilterInput.jsx";
+import {SingleSelectFilterInput} from "../../expenses/components/filters/SingleSelectFilterInput.jsx";
+import {MultiSelectFilterInput} from "../../expenses/components/filters/MultiSelectFilterInput.jsx";
+import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 
 import '../css/paymentsTableSection.css';
 
@@ -67,6 +70,7 @@ export const PaymentsTableSection = () => {
     });
     const [clickedActionRowId, setClickedActionRowId] = useState(null);
     const filterMenuRef = useRef(null);
+    const {openConfirm, confirmModal} = useConfirmModal();
 
     const {data: searchableHeaders = {}} = useSuspenseQuery({
         queryKey: ['paymentTableHeaders'],
@@ -171,6 +175,24 @@ export const PaymentsTableSection = () => {
                         filter: filterName,
                         value1: value.min,
                         value2: value.max || null,
+                    };
+                }
+
+                if (filterType === 'singleselect') {
+                    if (!value) return null;
+                    return {
+                        filter: filterName,
+                        value1: value,
+                        value2: null,
+                    };
+                }
+
+                if (filterType === 'multiselect') {
+                    if (!Array.isArray(value) || value.length === 0) return null;
+                    return {
+                        filter: filterName,
+                        value1: value.join(','),
+                        value2: null,
                     };
                 }
 
@@ -306,17 +328,32 @@ export const PaymentsTableSection = () => {
 
         switch (action) {
             case 'DeletePayment': {
-                if (!window.confirm("Are you sure you want to delete this payment?")) {
+                const hasCreditCard = payment?.creditCardId || payment?.CreditCardId || payment?.creditCard;
+                if (hasCreditCard) {
+                    openConfirm(
+                        "This payment is tied to a credit card. Do you want it removed from the credit card balance and cash back balance?",
+                        () => deletePaymentsMutation.mutate({
+                            selectedIds: [payment.id],
+                            expenseId: payment.expenseId,
+                            removeFromCreditCard: true
+                        }),
+                        {
+                            onCancel: () => deletePaymentsMutation.mutate({
+                                selectedIds: [payment.id],
+                                expenseId: payment.expenseId,
+                                removeFromCreditCard: false
+                            })
+                        }
+                    );
                     return;
                 }
-                const hasCreditCard = payment?.creditCardId || payment?.creditCard;
-                const removeFromCreditCard = hasCreditCard
-                    ? window.confirm("Remove the cost from the credit card balance as well?")
-                    : false;
-                deletePaymentsMutation.mutate({
-                    selectedIds: [payment.id],
-                    expenseId: payment.expenseId,
-                    removeFromCreditCard
+
+                openConfirm("Are you sure you want to delete this payment?", () => {
+                    deletePaymentsMutation.mutate({
+                        selectedIds: [payment.id],
+                        expenseId: payment.expenseId,
+                        removeFromCreditCard: false
+                    });
                 });
                 break;
             }
@@ -441,13 +478,15 @@ export const PaymentsTableSection = () => {
                     <div className="payments-filter-inputs">
                         {selectedFilterOptions.map((option) => {
                             const filterType = option.filterType?.toLowerCase();
+                            const filterLabel = option.displayText ?? option.DisplayText ?? option.display_text ?? option.filter;
+                            const apiPath = option.api ?? option.dropdownApi;
                             const onChange = (value) => handleFilterValueChange(option.filter, value);
 
                             if (filterType === 'daterange') {
                                 return (
                                     <DateRangeFilterInput
                                         key={option.filter}
-                                        label={option.displayText}
+                                        label={filterLabel}
                                         onChange={onChange}
                                         onRemove={() => handleRemoveFilter(option.filter)}
                                     />
@@ -458,7 +497,31 @@ export const PaymentsTableSection = () => {
                                 return (
                                     <NumberRangeFilterInput
                                         key={option.filter}
-                                        label={option.displayText}
+                                        label={filterLabel}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            if (filterType === 'singleselect') {
+                                return (
+                                    <SingleSelectFilterInput
+                                        key={option.filter}
+                                        label={filterLabel}
+                                        apiPath={apiPath}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            if (filterType === 'multiselect') {
+                                return (
+                                    <MultiSelectFilterInput
+                                        key={option.filter}
+                                        label={filterLabel}
+                                        apiPath={apiPath}
                                         onChange={onChange}
                                         onRemove={() => handleRemoveFilter(option.filter)}
                                     />
@@ -468,7 +531,7 @@ export const PaymentsTableSection = () => {
                             return (
                                 <TextFilterInput
                                     key={option.filter}
-                                    label={option.displayText}
+                                    label={filterLabel}
                                     onChange={onChange}
                                     onRemove={() => handleRemoveFilter(option.filter)}
                                 />
@@ -572,6 +635,7 @@ export const PaymentsTableSection = () => {
                     </button>
                 </div>
             )}
+            {confirmModal}
         </div>
     );
 };

@@ -13,6 +13,7 @@ import {
 } from "../api.jsx";
 import {getStatus} from "../util.jsx";
 import {showError, showSuccess, showWarning} from "../utils/toast.js";
+import {useConfirmModal} from "../hooks/useConfirmModal.jsx";
 
 import '../css/manageCategoriesModal.css';
 
@@ -27,6 +28,7 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
     const [showActiveOnly, setShowActiveOnly] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 5;
+    const {openConfirm, confirmModal} = useConfirmModal();
 
     const wrapperRef = useRef(null);
     const closeModal = useCallback(() => {
@@ -37,6 +39,9 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
     }, [handleClose, onClose]);
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (event.target.closest('.confirm-modal')) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 closeModal();
             }
@@ -181,10 +186,9 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
     }
 
     const handleDeleteCategory = (category) => {
-        if (!window.confirm(`Delete "${category.name}"? This cannot be undone.`)) {
-            return;
-        }
-        deleteCategoryMutation.mutate(category.id);
+        openConfirm(`Delete "${category.name}"? This cannot be undone.`, () => {
+            deleteCategoryMutation.mutate(category.id);
+        });
     }
 
     const handleNewCategorySave = async () => {
@@ -388,6 +392,7 @@ export const ManageCategoriesModal = ({handleClose, onClose}) => {
                     </div>
                 </div>
             </div>
+            {confirmModal}
         </div>
     );
     return createPortal(modalContent, document.body);

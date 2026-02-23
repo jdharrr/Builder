@@ -9,27 +9,13 @@ public class ExpensePaymentChartService(
     UserContext userContext
 )
 {
+    #region Public service methods
+    
     public async Task<PaymentMonthlyTotalsResponse> GetMonthlyTotalsByYearAsync(int year, int? categoryId = null)
     {
-        var months = new Dictionary<int, string>
-        {
-            { 1, "January" },
-            { 2, "February" },
-            { 3, "March" },
-            { 4, "April" },
-            { 5, "May" },
-            { 6, "June" },
-            { 7, "July" },
-            { 8, "August" },
-            { 9, "September" },
-            { 10, "October" },
-            { 11, "November" },
-            { 12, "December" }
-        };
-
         var response = new PaymentMonthlyTotalsResponse();
 
-        foreach (var month in months)
+        foreach (var month in BuilderUtils.Months)
         {
             var startDate = new DateOnly(year, month.Key, 1);
             var endDate = new DateOnly(year, month.Key, DateTime.DaysInMonth(year, month.Key));
@@ -57,4 +43,6 @@ public class ExpensePaymentChartService(
 
         return response;
     }
+    
+    #endregion
 }

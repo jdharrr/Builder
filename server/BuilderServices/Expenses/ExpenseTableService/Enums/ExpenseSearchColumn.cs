@@ -1,4 +1,5 @@
 ﻿using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.Expenses.ExpenseTableService.Enums;
 
@@ -21,15 +22,15 @@ public static class ExpenseSearchColumnHelper
     {
         return column switch
         {
-            ExpenseSearchColumn.NextDueDate => "next_due_date",
-            ExpenseSearchColumn.Cost => "cost",
-            ExpenseSearchColumn.Category => "category_name",
-            ExpenseSearchColumn.CreatedDate => "created_at",
-            ExpenseSearchColumn.EndDate => "end_date",
-            ExpenseSearchColumn.UpdatedDate => "updated_at",
-            ExpenseSearchColumn.RecurrenceRate => "recurrence_rate",
-            ExpenseSearchColumn.StartDate => "start_date",
-            ExpenseSearchColumn.Name => "name",
+            ExpenseSearchColumn.NextDueDate => "e.next_due_date",
+            ExpenseSearchColumn.Cost => "e.cost",
+            ExpenseSearchColumn.Category => "ec.name",
+            ExpenseSearchColumn.CreatedDate => "e.created_at",
+            ExpenseSearchColumn.EndDate => "e.end_date",
+            ExpenseSearchColumn.UpdatedDate => "e.updated_at",
+            ExpenseSearchColumn.RecurrenceRate => "e.recurrence_rate",
+            ExpenseSearchColumn.StartDate => "e.start_date",
+            ExpenseSearchColumn.Name => "e.name",
             _ => throw new GenericException("Invalid search column")
         };
     }

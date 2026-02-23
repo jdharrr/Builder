@@ -59,11 +59,21 @@
 }
 
 .manage-credit-cards-balance {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #6b7280;
+    line-height: 1.1;
+}
+
+.manage-credit-cards-cashback {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    line-height: 1.1;
 }
 
 .manage-credit-cards-icon-button {
@@ -110,4 +120,107 @@
 
 .manage-credit-cards-toggle-row .form-label {
     margin-bottom: 0;
+}
+
+.manage-credit-cards-modal .form-control.is-invalid {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.2);
+}
+
+.manage-credit-card-issuer {
+    margin-bottom: 1.5rem;
+}
+
+.reward-rules-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.reward-rules-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.reward-rules-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.reward-rules-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.reward-rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.reward-rule-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+}
+
+.reward-rule-field .form-label {
+    margin-bottom: 0.35rem;
+}
+
+.reward-rule-percent-input {
+    position: relative;
+}
+
+.reward-rule-percent-input .form-control {
+    padding-right: 2rem;
+}
+
+.reward-rule-percent-suffix {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+.reward-rule-add {
+    align-self: flex-start;
+}
+
+.reward-rule-remove {
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    color: #6b7280;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    transition: all 0.2s ease;
+}
+
+.reward-rule-remove:hover {
+    border-color: #9ca3af;
+    color: #111827;
+    background-color: #f3f4f6;
+}
+
+@media (max-width: 720px) {
+    .reward-rule-row {
+        grid-template-columns: 1fr;
+    }
 }

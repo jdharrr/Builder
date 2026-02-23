@@ -11,6 +11,7 @@ import '../css/upcomingList.css';
 import '../css/animations.css';
 import '../../../css/global.css';
 import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
+import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 import {showSuccess, showError} from "../../../utils/toast.js";
 
 export const UpcomingList = () => {
@@ -21,6 +22,7 @@ export const UpcomingList = () => {
     const [checkedExpense, setCheckedExpense] = useState(null);
     const [checkedDueDate, setCheckedDueDate] = useState(null);
     const [skippingDate, setSkippingDate] = useState(null);
+    const {openConfirm, confirmModal} = useConfirmModal();
 
     const weekDays = ['Sun', 'Mon', 'Tues', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentWeekDay = new Date().getDay();
@@ -39,12 +41,34 @@ export const UpcomingList = () => {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     })
 
-    const handleDateInputSave = async (paymentDate, dueDates, creditCardId) => {
-        payDueDateMutation.mutate({ expenseId: checkedExpense.id, dueDates, paymentDate, creditCardId });
+    const handleDateInputSave = async (paymentDate, dueDates, creditCardId, ignoreCashBack, cashBackOverwrite) => {
+        payDueDateMutation.mutate({
+            expenseId: checkedExpense.id,
+            dueDates,
+            paymentDate,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation: ignoreCashBack,
+            cashBackOverwrite
+        });
     }
 
     const payDueDateMutation = useMutation({
-        mutationFn: ({ expenseId, dueDates, paymentDate, creditCardId }) => payDueDates(expenseId, dueDates, paymentDate, false, creditCardId),
+        mutationFn: ({
+            expenseId,
+            dueDates,
+            paymentDate,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation,
+            cashBackOverwrite
+        }) => payDueDates(
+            expenseId,
+            dueDates,
+            paymentDate,
+            false,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation,
+            cashBackOverwrite
+        ),
         onSuccess: () => {
             showSuccess('Payment saved!');
             setShowExpenseDatePaidModal(false);
@@ -145,14 +169,14 @@ export const UpcomingList = () => {
                                                 <label className="checkbox-label" htmlFor={`paid-${expense.id}-${date}`}>
                                                     Paid?
                                                 </label>
-                                                <button
+                                                    <button
                                                     type="button"
                                                     className="expense-skip-button"
                                                     disabled={skippingDate === date}
                                                     onClick={() => {
-                                                        const confirmed = window.confirm('Skip this payment?');
-                                                        if (!confirmed) return;
-                                                        skipDueDateMutation.mutate({ expenseId: expense.id, dueDate: date });
+                                                        openConfirm('Skip this payment?', () => {
+                                                            skipDueDateMutation.mutate({ expenseId: expense.id, dueDate: date });
+                                                        });
                                                     }}
                                                 >
                                                     {skippingDate === date ? 'Skipping...' : 'Skip'}
@@ -179,6 +203,7 @@ export const UpcomingList = () => {
                     }}
                 />
             }
+            {confirmModal}
         </>
     );
 }

@@ -2,9 +2,10 @@
 using DatabaseServices.Models;
 using DatabaseServices.Repsonses;
 using BuilderRepositories.Requests;
-using BuilderServices.Enums;
+using BuilderRepositories.Enums;
 using MySql.Data.MySqlClient;
 using System.Data;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderRepositories;
 
@@ -31,7 +32,9 @@ public class ExpenseRepository : BuilderRepository
                     category_id,
                     due_end_of_month,
                     automatic_payments,
-                    automatic_payment_credit_card_id
+                    automatic_payment_credit_card_id,
+                    automatic_payment_cash_back_overwrite,
+                    automatic_payment_ignore_cash_back
                 ) VALUES(
                     @name,
                     @cost,
@@ -44,7 +47,9 @@ public class ExpenseRepository : BuilderRepository
                     @categoryId,
                     @dueLastDayOfMonth,
                     @automaticPayments,
-                    @automaticPaymentCreditCardId
+                    @automaticPaymentCreditCardId,
+                    @automaticPaymentCashBackOverwrite,
+                    @automaticPaymentIgnoreCashBack
                 )";
 
         var parameters = new Dictionary<string, object?>()
@@ -61,6 +66,8 @@ public class ExpenseRepository : BuilderRepository
             { "@dueLastDayOfMonth", dto.DueEndOfMonth },
             { "@automaticPayments", dto.AutomaticPayments },
             { "@automaticPaymentCreditCardId", dto.AutomaticPaymentCreditCardId },
+            { "@automaticPaymentCashBackOverwrite", dto.AutomaticPaymentCashBackOverwrite },
+            { "@automaticPaymentIgnoreCashBack", dto.AutomaticPaymentIgnoreCashBack }
         };
 
         ExecuteResponse result;
@@ -101,7 +108,9 @@ public class ExpenseRepository : BuilderRepository
                     category_id,
                     due_end_of_month,
                     automatic_payments,
-                    automatic_payment_credit_card_id
+                    automatic_payment_credit_card_id,
+                    automatic_payment_cash_back_overwrite,
+                    automatic_payment_ignore_cash_back
                 FROM expenses
                 WHERE id = @expenseId 
                     AND user_id = @userId";
@@ -134,7 +143,10 @@ public class ExpenseRepository : BuilderRepository
             EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
             CategoryId = row.Field<int?>("category_id"),
             AutomaticPayments = row.Field<bool>("automatic_payments"),
-            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id"),
+            AutomaticPaymentCashBackOverwrite = row.Field<decimal?>("automatic_payment_cash_back_overwrite"),
+            AutomaticPaymentIgnoreCashBack = row.Field<bool>("automatic_payment_ignore_cash_back"),
+            DueEndOfMonth = row.Field<bool>("due_end_of_month")
         });
     }
 
@@ -152,7 +164,9 @@ public class ExpenseRepository : BuilderRepository
             "end_date",
             "category_id",
             "automatic_payments",
-            "automatic_payment_credit_card_id"
+            "automatic_payment_credit_card_id",
+            "automatic_payment_cash_back_overwrite",
+            "automatic_payment_ignore_cash_back"
         };
 
         if (updateColumns.Where(x => !allowedUpdateFields.Contains(x.Key)).Any())
@@ -232,7 +246,9 @@ public class ExpenseRepository : BuilderRepository
             IsLate = Convert.ToBoolean(Convert.ToInt32(row["is_late"])),
             CategoryName = row.Field<string>("category_name"),
             AutomaticPayments = row.Field<bool>("automatic_payments"),
-            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id"),
+            AutomaticPaymentCashBackOverwrite = row.Field<decimal?>("automatic_payment_cash_back_overwrite"),
+            AutomaticPaymentIgnoreCashBack = row.Field<bool>("automatic_payment_ignore_cash_back")
         }) ?? [];
     }
 
@@ -243,9 +259,9 @@ public class ExpenseRepository : BuilderRepository
             { "@userId", userId }
         };
 
-        var selectFrom = "SELECT e.*, c.name as category_name FROM expenses e";
+        var selectFrom = "SELECT e.*, ec.name as category_name FROM expenses e";
 
-        var join = " LEFT JOIN expense_categories c ON e.category_id = c.id ";
+        var join = " LEFT JOIN expense_categories ec ON e.category_id = ec.id ";
 
         var where = " WHERE e.user_id = @userId";
 
@@ -254,7 +270,7 @@ public class ExpenseRepository : BuilderRepository
 
         AddTableSearch(ref where, ref parameters, searchColumn, searchValue);
         AddTableFilters(ref where, ref parameters, filters);
-        var orderBy = AddTableSort(sortDir, sortColumn);
+        var orderBy = AddTableSort(sortDir, sortColumn, "e");
 
         var sql = selectFrom + join + where + orderBy;
 
@@ -279,81 +295,13 @@ public class ExpenseRepository : BuilderRepository
             CategoryName = row.Field<string>("category_name"),
             DueEndOfMonth = row.Field<bool>("due_end_of_month"),
             AutomaticPayments = row.Field<bool>("automatic_payments"),
-            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id")
+            AutomaticPaymentCreditCardId = row.Field<int?>("automatic_payment_credit_card_id"),
+            AutomaticPaymentCashBackOverwrite = row.Field<decimal?>("automatic_payment_cash_back_overwrite"),
+            AutomaticPaymentIgnoreCashBack = row.Field<bool>("automatic_payment_ignore_cash_back")
         }) ?? [];
     }
 
-    private static void AddTableSearch(ref string where, ref Dictionary<string, object?> parameters, string? searchColumn, string? searchValue)
-    {
-        if (string.IsNullOrEmpty(searchColumn) || string.IsNullOrEmpty(searchValue)) return;
-
-        var searchCol = searchColumn == "category_name" ? "c.name" : $"e.{searchColumn}";
-        where += $" AND {searchCol} LIKE @searchValue";
-
-        var escapedSearchValue = searchValue.Replace("%", "\\%").Replace("_", "\\_");
-        parameters["@searchValue"] = $"%{escapedSearchValue}%";
-    }
-
-    private static void AddTableFilters(ref string where, ref Dictionary<string, object?> parameters, List<TableFilter> filters)
-    {
-        if (filters.Count <= 0) return;
-
-        var i = 0;
-        foreach (var filter in filters)
-        {
-            if (string.IsNullOrEmpty(filter.Value1))
-                continue;
-
-            switch (filter.FilterType)
-            {
-                case TableFilterType.Text:
-                    var filterCol = filter.FilterColumn == "category_name" ? "c.name" : $"e.{filter.FilterColumn}";
-                    where += $" AND {filterCol} LIKE @filterValue{i}";
-
-                    var escapedFilterValue = filter.Value1.Replace("%", "\\%").Replace("_", "\\_");
-                    parameters[$"@filterValue{i}"] = $"%{escapedFilterValue}%";
-                    break;
-                case TableFilterType.DateRange:
-                    if (!DateOnly.TryParse(filter.Value1, out var _))
-                        continue;
-
-                    where += $" AND e.{filter.FilterColumn} >= @dateFrom{i}";
-                    parameters[$"@dateFrom{i}"] = filter.Value1;
-
-                    if (string.IsNullOrEmpty(filter.Value2) || !DateOnly.TryParse(filter.Value2, out var _))
-                        break;
-
-                    where += $" AND e.{filter.FilterColumn} <= @dateTo{i}";
-                    parameters[$"@dateTo{i}"] = filter.Value2;
-                    break;
-                case TableFilterType.NumberRange:
-                    if (!double.TryParse(filter.Value1, out var _))
-                        continue;
-
-                    where += $" AND e.{filter.FilterColumn} >= @numMin{i}";
-                    parameters[$"@numMin{i}"] = filter.Value1;
-
-                    if (string.IsNullOrEmpty(filter.Value2) || !double.TryParse(filter.Value2, out var _))
-                        break;
-
-                    where += $" AND e.{filter.FilterColumn} <= @numMax{i}";
-                    parameters[$"@numMax{i}"] = filter.Value2;
-                    break;
-            }
-
-            i++;
-        }
-    }
-
-    private static string AddTableSort(string sortDir, string sortColumn)
-    {
-        var sort = sortColumn == "category_name" ? "c.name" : $"e.{sortColumn}";
-        var sortDirection = sortDir.ToLower() == "asc" ? "ASC" : "DESC";
-
-        return $" ORDER BY {sort} {sortDirection}, e.id DESC";
-    }
-
-    public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId)
+    public async Task<List<ExpenseDto>> GetAllExpensesAsync(int userId, bool includeInactive = false)
     {
         var sql = @"SELECT 
                         id,
@@ -363,8 +311,11 @@ public class ExpenseRepository : BuilderRepository
                         start_date,
                         end_date
                     FROM expenses
-                    WHERE user_id = @userid
-                        AND active = 1";
+                    WHERE user_id = @userid";
+        
+        if (!includeInactive)
+            sql += " AND active = 1";
+        
         var parameters = new Dictionary<string, object?>
         {
             { "@userid", userId }
@@ -379,7 +330,7 @@ public class ExpenseRepository : BuilderRepository
             RecurrenceRate = row.Field<string>("recurrence_rate") ?? "once",
             NextDueDate = row.Field<DateTime?>("next_due_date")?.ToString("yyyy-MM-dd"),
             StartDate = row.Field<DateTime>("start_date")!.ToString("yyyy-MM-dd"),
-            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd"),
+            EndDate = row.Field<DateTime?>("end_date")?.ToString("yyyy-MM-dd")
         }) ?? [];
     }
 

@@ -3,14 +3,19 @@ import {useQuery} from "@tanstack/react-query";
 
 import {getPaymentsForExpense} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
+import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 import '../../../css/createExpenseForm.css';
 
 export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     const [selectedIds, setSelectedIds] = useState([]);
+    const {openConfirm, confirmModal} = useConfirmModal();
 
     const wrapperRef = useRef(null);
     useEffect(() => {
         const handleClickOutside = (event) => {
+            if (event.target.closest('.confirm-modal')) {
+                return;
+            }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
                 handleClose();
             }
@@ -23,10 +28,21 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     const handleSaveClick = () => {
         const selectedPayments = payments.filter((payment) => selectedIds.includes(payment.id));
         const hasCreditCard = selectedPayments.some((payment) => payment.creditCardId || payment.creditCard);
-        const removeFromCreditCard = hasCreditCard
-            ? window.confirm("Remove the cost from the credit card balance as well?")
-            : false;
-        handleSave(selectedIds, expenseId, removeFromCreditCard);
+        if (hasCreditCard) {
+            openConfirm(
+                "One or more payments are tied to a credit card. Do you want these to be removed from the credit card balance and cash back balance?",
+                () => handleSave(selectedIds, expenseId, true),
+                {
+                    onCancel: () => handleSave(selectedIds, expenseId, false)
+                }
+            );
+            return;
+        }
+
+        openConfirm(
+            "Are you sure you want to unpay the selected payments?",
+            () => handleSave(selectedIds, expenseId, false)
+        );
     }
 
     const handleCheckboxClick = (checked, id) => {
@@ -106,6 +122,7 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
                     </div>
                 </div>
             </div>
+            {confirmModal}
         </div>
     );
 }

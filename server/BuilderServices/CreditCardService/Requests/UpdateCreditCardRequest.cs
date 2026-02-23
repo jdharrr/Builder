@@ -1,6 +1,8 @@
 namespace BuilderServices.CreditCardService.Requests;
 
-public class UpdateCreditCardCompanyRequest
+public class UpdateCreditCardRequest
 {
     public required string NewCompanyName { get; set; }
+
+    public List<RewardsRule> RewardsRules { get; set; } = [];
 }

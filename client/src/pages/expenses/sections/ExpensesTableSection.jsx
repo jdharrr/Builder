@@ -20,6 +20,9 @@ import {Dropdown} from "../../../components/Dropdown.jsx";
 import {DateRangeFilterInput} from "../components/filters/DateRangeFilterInput.jsx";
 import {NumberRangeFilterInput} from "../components/filters/NumberRangeFilterInput.jsx";
 import {TextFilterInput} from "../components/filters/TextFilterInput.jsx";
+import {SingleSelectFilterInput} from "../components/filters/SingleSelectFilterInput.jsx";
+import {MultiSelectFilterInput} from "../components/filters/MultiSelectFilterInput.jsx";
+import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 
 import '../css/expensesTableSection.css';
 import {UnpayDatesModal} from "../components/UnpayDatesModal.jsx";
@@ -107,6 +110,7 @@ export const ExpensesTableSection = ({
     const [selectedFilters, setSelectedFilters] = useState([]);
     const [filterValues, setFilterValues] = useState({});
     const filterMenuRef = useRef(null);
+    const {openConfirm, confirmModal} = useConfirmModal();
 
     const { data: filterOptionsResponse } = useSuspenseQuery({
         queryKey: ['expenseFilterOptions'],
@@ -148,6 +152,24 @@ export const ExpensesTableSection = ({
                         filter: filterName,
                         value1: value.min,
                         value2: value.max || null,
+                    };
+                }
+
+                if (filterType === 'singleselect') {
+                    if (!value) return null;
+                    return {
+                        filter: filterName,
+                        value1: value,
+                        value2: null,
+                    };
+                }
+
+                if (filterType === 'multiselect') {
+                    if (!Array.isArray(value) || value.length === 0) return null;
+                    return {
+                        filter: filterName,
+                        value1: value.join(','),
+                        value2: null,
                     };
                 }
 
@@ -314,10 +336,7 @@ export const ExpensesTableSection = ({
                     const confirmMessage = isActive
                         ? 'Mark this expense as active?'
                         : 'Mark this expense as inactive?';
-                    if (!window.confirm(confirmMessage)) {
-                        return;
-                    }
-                    updateActiveMutation.mutate({ isActive, expenseId });
+                    openConfirm(confirmMessage, () => updateActiveMutation.mutate({ isActive, expenseId }));
                     break;
                 }
                 case 'Pay':
@@ -327,9 +346,9 @@ export const ExpensesTableSection = ({
                     handlePaidChangeAction(false, expenseId);
                     break;
                 case 'Delete':
-                    if (window.confirm("Are you sure you want to delete this expense?")) {
+                    openConfirm("Are you sure you want to delete this expense?", () => {
                         deleteExpenseMutation.mutate(expenseId);
-                    }
+                    });
                     break;
                 case 'Edit': {
                     const expenseToEdit = expenses.find(e => e.id === expenseId);
@@ -394,9 +413,16 @@ export const ExpensesTableSection = ({
         updateExpenseMutation.mutate({ expenseId, expenseData });
     };
 
-    const handleDateInputSave = async (paymentDate, dueDates, creditCardId) => {
+    const handleDateInputSave = async (paymentDate, dueDates, creditCardId, ignoreCashBack, cashBackOverwrite) => {
         const expense = viewDateInputModal.expense;
-        payDueDateMutation.mutate({ expenseId: expense.id, dueDates, paymentDate, creditCardId });
+        payDueDateMutation.mutate({
+            expenseId: expense.id,
+            dueDates,
+            paymentDate,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation: ignoreCashBack,
+            cashBackOverwrite
+        });
     }
 
     const handleSelectChange = (checked, id) => {
@@ -487,7 +513,22 @@ export const ExpensesTableSection = ({
     });
 
     const payDueDateMutation = useMutation({
-        mutationFn: ({ expenseId, dueDates, paymentDate, creditCardId }) => payDueDates(expenseId, dueDates, paymentDate, false, creditCardId),
+        mutationFn: ({
+            expenseId,
+            dueDates,
+            paymentDate,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation,
+            cashBackOverwrite
+        }) => payDueDates(
+            expenseId,
+            dueDates,
+            paymentDate,
+            false,
+            creditCardId,
+            ignoreCashBackForPaymentsOnCreation,
+            cashBackOverwrite
+        ),
         onSuccess: () => {
             showSuccess('Payment saved!');
             setViewDateInputModal({isShowing: false, expense: null});
@@ -597,13 +638,14 @@ export const ExpensesTableSection = ({
                     <div className="expenses-filter-inputs">
                         {selectedFilterOptions.map((option) => {
                             const filterType = option.filterType?.toLowerCase();
+                            const filterLabel = option.displayText ?? option.DisplayText ?? option.display_text ?? option.filter;
                             const onChange = (value) => handleFilterValueChange(option.filter, value);
 
                             if (filterType === 'daterange') {
                                 return (
                                     <DateRangeFilterInput
                                         key={option.filter}
-                                        label={option.displayText}
+                                        label={filterLabel}
                                         onChange={onChange}
                                         onRemove={() => handleRemoveFilter(option.filter)}
                                     />
@@ -614,7 +656,31 @@ export const ExpensesTableSection = ({
                                 return (
                                     <NumberRangeFilterInput
                                         key={option.filter}
-                                        label={option.displayText}
+                                        label={filterLabel}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            if (filterType === 'singleselect') {
+                                return (
+                                    <SingleSelectFilterInput
+                                        key={option.filter}
+                                        label={filterLabel}
+                                        apiPath={option.api}
+                                        onChange={onChange}
+                                        onRemove={() => handleRemoveFilter(option.filter)}
+                                    />
+                                );
+                            }
+
+                            if (filterType === 'multiselect') {
+                                return (
+                                    <MultiSelectFilterInput
+                                        key={option.filter}
+                                        label={filterLabel}
+                                        apiPath={option.api}
                                         onChange={onChange}
                                         onRemove={() => handleRemoveFilter(option.filter)}
                                     />
@@ -624,7 +690,7 @@ export const ExpensesTableSection = ({
                             return (
                                 <TextFilterInput
                                     key={option.filter}
-                                    label={option.displayText}
+                                    label={filterLabel}
                                     onChange={onChange}
                                     onRemove={() => handleRemoveFilter(option.filter)}
                                 />
@@ -768,6 +834,7 @@ export const ExpensesTableSection = ({
                     handleClose={() => setViewEditExpenseModal({ isShowing: false, expense: null })}
                 />
             }
+            {confirmModal}
         </div>
     );
 }
@@ -797,7 +864,9 @@ const useDeleteExpense = (navigate) => {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to delete expense.');
+                const responseData = _err?.response?.data;
+                const message = responseData?.message ?? responseData?.Message ?? responseData;
+                showError(typeof message === 'string' ? message : 'Failed to delete expense.');
             }
 
             if (context?.previous?.length) {

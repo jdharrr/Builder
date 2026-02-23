@@ -3,6 +3,7 @@ using DatabaseServices.Models;
 using DatabaseServices.Repsonses;
 using MySql.Data.MySqlClient;
 using System.Data;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderRepositories;
 

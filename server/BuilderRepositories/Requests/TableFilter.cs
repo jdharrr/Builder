@@ -1,4 +1,4 @@
-using BuilderServices.Enums;
+using BuilderRepositories.Enums;
 
 namespace BuilderRepositories.Requests;
 

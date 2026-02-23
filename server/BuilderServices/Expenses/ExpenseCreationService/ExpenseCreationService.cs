@@ -9,10 +9,12 @@ public class ExpenseCreationService(
     ExpensePaymentService paymentService
 )
 {
+    #region Public service methods
+    
     public async Task<CreateExpenseResponse> CreateExpenseAsync(CreateExpenseRequest request)
     {
         var expenseId = await expenseService.CreateExpenseAsync(request).ConfigureAwait(false);
-        await SetUpPayOnExpenseCreation(request, (int)expenseId).ConfigureAwait(false);
+        await SetUpPayOnCreationForExpense(request, (int)expenseId).ConfigureAwait(false);
         
         return new CreateExpenseResponse
         {
@@ -20,15 +22,20 @@ public class ExpenseCreationService(
         };
     }
     
-    private async Task SetUpPayOnExpenseCreation(CreateExpenseRequest request, int expenseId)
+    #endregion
+    #region Private helpers
+    
+    private async Task SetUpPayOnCreationForExpense(CreateExpenseRequest request, int expenseId)
     {
         var hasOneTimePayment = request.OneTimePayment.IsPaid || request.OneTimePayment.IsCredit;
         if (hasOneTimePayment && !request.AutomaticPayment.Enabled)
             await paymentService
-                .PayDueDateAsync(expenseId, request.StartDate, false, request.OneTimePayment.CreditCardId, request.OneTimePayment.PaymentDate)
+                .PayDueDateAsync(expenseId, request.StartDate, false, request.OneTimePayment.CreditCardId, request.OneTimePayment.PaymentDate, request.IgnoreCashBackForPaymentsOnCreation, request.CashBackOverwrite)
                 .ConfigureAwait(false);
         
         if (request.PayToNowPayment.Enabled)
-            await paymentService.PayAllOverdueDatesAsync(expenseId, request.PayToNowPayment.CreditCardId).ConfigureAwait(false);
+            await paymentService.PayAllOverdueDatesAsync(expenseId, request.PayToNowPayment.CreditCardId, request.IgnoreCashBackForPaymentsOnCreation, request.CashBackOverwrite).ConfigureAwait(false);
     }
+    
+    #endregion
 }

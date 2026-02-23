@@ -2,6 +2,7 @@ using BuilderRepositories;
 using FluentValidation;
 using FluentValidation.Results;
 using System.Text.RegularExpressions;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices;
 

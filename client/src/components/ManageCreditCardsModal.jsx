@@ -2,9 +2,9 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {useNavigate} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {FaPen} from "react-icons/fa";
+import {FaPen, FaTrash} from "react-icons/fa";
 
-import {createCreditCard, getCreditCards, payCreditCardBalance, updateCreditCardCompany} from "../api.jsx";
+import {createCreditCard, getAllExpenseCategories, getCreditCards, payCreditCardBalance, updateCreditCard} from "../api.jsx";
 import {getStatus} from "../util.jsx";
 import {showError, showSuccess, showWarning} from "../utils/toast.js";
 import {Modal} from "./Modal.jsx";
@@ -13,11 +13,13 @@ import '../css/manageCreditCardsModal.css';
 import '../css/createExpenseForm.css';
 
 export const ManageCreditCardsModal = ({handleClose, onClose}) => {
+    const allOtherValue = 'all_other';
     const navigate = useNavigate();
     const qc = useQueryClient();
     const [newCardCompany, setNewCardCompany] = useState('');
-    const [cardEdits, setCardEdits] = useState({});
-    const [editingCardId, setEditingCardId] = useState(null);
+    const [cardModal, setCardModal] = useState({isShowing: false, mode: 'create', card: null});
+    const [rewardRules, setRewardRules] = useState([{ categoryId: '', cashBackPercent: '' }]);
+    const [createErrors, setCreateErrors] = useState({ company: false, rules: [] });
     const [payModal, setPayModal] = useState({isShowing: false, card: null});
     const [paymentAmount, setPaymentAmount] = useState('');
     const [useCashBack, setUseCashBack] = useState(false);
@@ -34,7 +36,7 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     }, [handleClose, onClose]);
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (payModal.isShowing) {
+            if (payModal.isShowing || cardModal.isShowing) {
                 return;
             }
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -44,7 +46,7 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [closeModal, payModal.isShowing]);
+    }, [closeModal, payModal.isShowing, cardModal.isShowing]);
 
     const { data: creditCards = [], isLoading } = useQuery({
         queryKey: ['creditCards'],
@@ -59,21 +61,28 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
 
-    useEffect(() => {
-        setCardEdits(() => (
-            creditCards.reduce((acc, card) => {
-                acc[card.id] = card.company ?? '';
-                return acc;
-            }, {})
-        ));
-    }, [creditCards]);
+    const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
+        queryKey: ['expenseCategories'],
+        queryFn: async () => {
+            return await getAllExpenseCategories();
+        },
+        staleTime: 60_000,
+        retry: (failureCount, error) => {
+            if (getStatus(error) === 401) return false;
+            return failureCount < 2;
+        },
+        throwOnError: (error) => { return getStatus(error) !== 401 }
+    });
 
     const createCreditCardMutation = useMutation({
-        mutationFn: (creditCardCompany) => createCreditCard(creditCardCompany),
+        mutationFn: ({creditCardCompany, rewardsRules}) => createCreditCard(creditCardCompany, rewardsRules),
         onSuccess: () => {
             showSuccess("Credit card created!");
             qc.invalidateQueries({ queryKey: ['creditCards'] });
             setNewCardCompany('');
+            setRewardRules([{ categoryId: '', cashBackPercent: '' }]);
+            setCreateErrors({ company: false, rules: [] });
+            setCardModal({isShowing: false, mode: 'create', card: null});
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
@@ -86,15 +95,16 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
     });
 
     const updateCreditCardMutation = useMutation({
-        mutationFn: ({creditCardId, creditCardCompany}) => updateCreditCardCompany(creditCardId, creditCardCompany),
-        onSuccess: (_data, variables) => {
+        mutationFn: ({creditCardId, creditCardCompany, rewardsRules}) => (
+            updateCreditCard(creditCardId, creditCardCompany, rewardsRules)
+        ),
+        onSuccess: () => {
             showSuccess("Credit card updated!");
-            setEditingCardId(null);
-            setCardEdits((prevState) => ({
-                ...prevState,
-                [variables.creditCardId]: variables.creditCardCompany
-            }));
             qc.invalidateQueries({ queryKey: ['creditCards'] });
+            setCardModal({isShowing: false, mode: 'create', card: null});
+            setNewCardCompany('');
+            setRewardRules([{ categoryId: '', cashBackPercent: '' }]);
+            setCreateErrors({ company: false, rules: [] });
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
@@ -128,38 +138,107 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         }
     });
 
-    const handleCreateCreditCard = () => {
+    const resetCreateCardState = () => {
+        setNewCardCompany('');
+        setRewardRules([{ categoryId: '', cashBackPercent: '' }]);
+        setCreateErrors({ company: false, rules: [] });
+    };
+
+    const handleOpenCreateCardModal = () => {
+        resetCreateCardState();
+        setCardModal({isShowing: true, mode: 'create', card: null});
+    };
+
+    const handleCreateCardSave = () => {
+        if (createCreditCardMutation.isPending) {
+            return;
+        }
+        if (updateCreditCardMutation.isPending) {
+            return;
+        }
         const trimmed = newCardCompany.trim();
-        if (!trimmed) {
-            showWarning('Please enter a credit card name.');
-            return;
-        }
-        createCreditCardMutation.mutate(trimmed);
-    }
+        const filledRules = rewardRules.filter((rule) => (
+            String(rule.categoryId || '').trim() !== '' || String(rule.cashBackPercent || '').trim() !== ''
+        ));
+        const nextErrors = {
+            company: !trimmed,
+            rules: rewardRules.map((rule) => {
+                const hasCategory = String(rule.categoryId || '').trim() !== '';
+                const hasPercent = String(rule.cashBackPercent || '').trim() !== '';
+                const percentValue = Number(rule.cashBackPercent);
+                return {
+                    category: hasPercent && !hasCategory,
+                    percent: hasCategory && (!Number.isFinite(percentValue) || percentValue <= 0)
+                };
+            })
+        };
 
-    const handleSaveCreditCard = (card) => {
-        const updatedCompany = (cardEdits[card.id] || '').trim();
-        if (!updatedCompany) {
-            showWarning('Credit card name cannot be empty.');
-            return;
-        }
-        if (updatedCompany === (card.company ?? '')) {
-            setEditingCardId(null);
-            return;
-        }
-        updateCreditCardMutation.mutate({
-            creditCardId: card.id,
-            creditCardCompany: updatedCompany
-        });
-    }
+        const hasRuleErrors = nextErrors.rules.some((rule) => rule.category || rule.percent);
+        setCreateErrors(nextErrors);
 
-    const handleCancelEdit = (card) => {
-        setCardEdits((prevState) => ({
-            ...prevState,
-            [card.id]: card.company ?? ''
+        if (nextErrors.company || hasRuleErrors) {
+            showWarning('Please complete the credit card details.');
+            return;
+        }
+
+        const selectedCategories = filledRules
+            .map((rule) => (rule.categoryId === allOtherValue ? allOtherValue : String(rule.categoryId)))
+            .filter(Boolean);
+        const hasDuplicateCategories = new Set(selectedCategories).size !== selectedCategories.length;
+        if (hasDuplicateCategories) {
+            showWarning('Each category can only be used once.');
+            return;
+        }
+
+        const rewardsRules = filledRules.map((rule) => ({
+            categoryId: rule.categoryId === allOtherValue ? null : Number(rule.categoryId),
+            allOtherCategories: rule.categoryId === allOtherValue,
+            cashBackPercent: Number(rule.cashBackPercent)
         }));
-        setEditingCardId(null);
-    }
+
+        if (cardModal.mode === 'edit' && cardModal.card) {
+            updateCreditCardMutation.mutate({
+                creditCardId: cardModal.card.id,
+                creditCardCompany: trimmed,
+                rewardsRules
+            });
+            return;
+        }
+
+        createCreditCardMutation.mutate({
+            creditCardCompany: trimmed,
+            rewardsRules
+        });
+    };
+
+    const handleOpenEditCardModal = (card) => {
+        const rules = card.rewardRules ?? card.RewardRules ?? [];
+        setNewCardCompany(card.company ?? '');
+        setRewardRules(
+            rules.length > 0
+                ? rules.map((rule) => ({
+                    categoryId: rule.allOtherCategories || rule.AllOtherCategories
+                        ? allOtherValue
+                        : (rule.categoryId ?? rule.CategoryId ?? ''),
+                    cashBackPercent: rule.cashBackPercent ?? rule.CashBackPercent ?? ''
+                }))
+                : [{ categoryId: '', cashBackPercent: '' }]
+        );
+        setCreateErrors({ company: false, rules: [] });
+        setCardModal({isShowing: true, mode: 'edit', card});
+    };
+
+    const handleAddRewardRule = () => {
+        setRewardRules((prevRules) => ([...prevRules, { categoryId: '', cashBackPercent: '' }]));
+    };
+
+    const handleRemoveRewardRule = (index) => {
+        setRewardRules((prevRules) => prevRules.filter((_rule, ruleIndex) => ruleIndex !== index));
+        setCreateErrors((prev) => ({
+            ...prev,
+            rules: prev.rules.filter((_rule, ruleIndex) => ruleIndex !== index)
+        }));
+    };
 
     const handleOpenPayModal = (card) => {
         setPayModal({isShowing: true, card});
@@ -175,13 +254,23 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
         setPaymentErrors({amount: false, date: false, cashBack: false});
     };
 
+    const handleCloseCreateCardModal = () => {
+        setCardModal({isShowing: false, mode: 'create', card: null});
+        setCreateErrors({ company: false, rules: [] });
+    };
+
     const handlePaySave = () => {
         const amountValue = Number(paymentAmount);
         const cashBackValue = useCashBack ? Number(cashBackAmount) : 0;
+        const availableCashBack = Number(payModal.card?.cashBackBalance ?? 0);
         const nextErrors = {
             amount: Number.isNaN(amountValue) || amountValue < 0,
             date: !paymentDate,
-            cashBack: useCashBack && (Number.isNaN(cashBackValue) || cashBackValue <= 0)
+            cashBack: useCashBack && (
+                Number.isNaN(cashBackValue)
+                || cashBackValue <= 0
+                || cashBackValue > availableCashBack
+            )
         };
 
         const totalPayment = (Number.isNaN(amountValue) ? 0 : amountValue) + (Number.isNaN(cashBackValue) ? 0 : cashBackValue);
@@ -204,6 +293,14 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
             cashBackAmount: cashBackValue
         });
     };
+
+    const selectedRewardCategoryIds = rewardRules
+        .map((rule) => String(rule.categoryId))
+        .filter((categoryId) => categoryId && categoryId !== allOtherValue);
+    const isAllOtherSelected = rewardRules.some((rule) => rule.categoryId === allOtherValue);
+    const availableRewardCategories = categories.filter(
+        (category) => !selectedRewardCategoryIds.includes(String(category.id))
+    );
 
     const modalContent = (
         <div className="modal show d-block manage-credit-cards-modal app-modal">
@@ -235,86 +332,44 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                                     ) : (
                                         creditCards.map((card) => (
                                             <div className="manage-credit-cards-row" key={card.id}>
-                                                {editingCardId === card.id ? (
-                                                    <>
-                                                        <input
-                                                            className="form-control manage-credit-cards-input"
-                                                            type="text"
-                                                            value={cardEdits[card.id] ?? ''}
-                                                            onChange={(e) => {
-                                                                const { value } = e.target;
-                                                                setCardEdits((prevState) => ({
-                                                                    ...prevState,
-                                                                    [card.id]: value
-                                                                }));
-                                                            }}
-                                                        />
-                                                        <button
-                                                            className="btn btn-outline-success btn-sm"
-                                                            type="button"
-                                                            disabled={updateCreditCardMutation.isPending}
-                                                            onClick={() => handleSaveCreditCard(card)}
-                                                        >
-                                                            Save
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-outline-secondary btn-sm"
-                                                            type="button"
-                                                            onClick={() => handleCancelEdit(card)}
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="manage-credit-cards-info">
-                                                            <span className="manage-credit-cards-name">
-                                                                {card.company || 'Unnamed card'}
-                                                            </span>
-                                                            <span className="manage-credit-cards-balance">
-                                                                ${Number(card.runningBalance ?? 0).toFixed(2)}
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            className="manage-credit-cards-icon-button"
-                                                            type="button"
-                                                            onClick={() => setEditingCardId(card.id)}
-                                                            aria-label="Edit credit card"
-                                                        >
-                                                            <FaPen size={12} />
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-outline-primary btn-sm"
-                                                            type="button"
-                                                            onClick={() => handleOpenPayModal(card)}
-                                                        >
-                                                            Pay
-                                                        </button>
-                                                    </>
-                                                )}
+                                                <div className="manage-credit-cards-info">
+                                                    <span className="manage-credit-cards-name">
+                                                        {card.company || 'Unnamed card'}
+                                                    </span>
+                                                    <span className="manage-credit-cards-balance">
+                                                        Balance: ${Number(card.runningBalance ?? 0).toFixed(2)}
+                                                    </span>
+                                                    <span className="manage-credit-cards-cashback">
+                                                        Cash back: ${Number(card.cashBackBalance ?? 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    className="manage-credit-cards-icon-button"
+                                                    type="button"
+                                                    onClick={() => handleOpenEditCardModal(card)}
+                                                    aria-label="Edit credit card"
+                                                >
+                                                    <FaPen size={12} />
+                                                </button>
+                                                <button
+                                                    className="btn btn-outline-primary btn-sm"
+                                                    type="button"
+                                                    onClick={() => handleOpenPayModal(card)}
+                                                >
+                                                    Pay
+                                                </button>
                                             </div>
                                         ))
                                     )}
                                 </div>
                                 <div className="manage-credit-cards-create">
-                                    <label className="form-label">New Credit Card</label>
-                                    <div className="manage-credit-cards-create-row">
-                                        <input
-                                            className="form-control"
-                                            type="text"
-                                            value={newCardCompany}
-                                            onChange={(e) => setNewCardCompany(e.target.value)}
-                                            placeholder="Card issuer"
-                                        />
-                                        <button
-                                            className="btn btn-success"
-                                            type="button"
-                                            onClick={handleCreateCreditCard}
-                                            disabled={createCreditCardMutation.isPending}
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
+                                    <button
+                                        className="btn btn-success"
+                                        type="button"
+                                        onClick={handleOpenCreateCardModal}
+                                    >
+                                        Add Credit Card
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -332,7 +387,7 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                     className="app-modal"
                     saveLabel="Pay"
                 >
-                    <div className="payment-section">
+                    <div className="payment-section manage-credit-card-issuer">
                         <label className="form-label">Payment Amount</label>
                         <input
                             className={`form-control${paymentErrors.amount ? ' is-invalid' : ''}`}
@@ -369,17 +424,29 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                     {useCashBack && (
                         <div className="payment-section">
                             <label className="form-label">Cash Back Amount</label>
+                            <span className="manage-credit-cards-muted">
+                                Available: ${Number(payModal.card?.cashBackBalance ?? 0).toFixed(2)}
+                            </span>
                             <input
                                 className={`form-control${paymentErrors.cashBack ? ' is-invalid' : ''}`}
                                 type="number"
                                 step="0.01"
                                 min="0"
+                                max={Number(payModal.card?.cashBackBalance ?? 0)}
                                 value={cashBackAmount}
                                 onChange={(e) => {
-                                    setCashBackAmount(e.target.value);
-                                    if (paymentErrors.cashBack) {
-                                        setPaymentErrors((prev) => ({...prev, cashBack: false}));
-                                    }
+                                    const { value } = e.target;
+                                    const numericValue = Number(value);
+                                    const availableCashBack = Number(payModal.card?.cashBackBalance ?? 0);
+                                    const isInvalid = !Number.isFinite(numericValue)
+                                        || numericValue <= 0
+                                        || numericValue > availableCashBack;
+
+                                    setCashBackAmount(value);
+                                    setPaymentErrors((prev) => ({
+                                        ...prev,
+                                        cashBack: value === '' ? false : isInvalid
+                                    }));
                                 }}
                             />
                         </div>
@@ -397,6 +464,155 @@ export const ManageCreditCardsModal = ({handleClose, onClose}) => {
                                 }
                             }}
                         />
+                    </div>
+                </Modal>
+            )}
+            {cardModal.isShowing && (
+                <Modal
+                    title="Credit Card Details"
+                    handleSave={handleCreateCardSave}
+                    handleClose={handleCloseCreateCardModal}
+                    className="app-modal"
+                    saveLabel={cardModal.mode === 'edit' ? 'Update' : 'Create'}
+                >
+                    <div className="credit-card-details">
+                        <div className="credit-card-issuer manage-credit-card-issuer">
+                            <label className="form-label reward-rules-label">Credit Card Issuer</label>
+                            <input
+                                className={`form-control${createErrors.company ? ' is-invalid' : ''}`}
+                                type="text"
+                                value={newCardCompany}
+                                onChange={(e) => {
+                                    setNewCardCompany(e.target.value);
+                                    if (createErrors.company) {
+                                        setCreateErrors((prev) => ({...prev, company: false}));
+                                    }
+                                }}
+                                placeholder="Card issuer"
+                            />
+                        </div>
+                        <div className="reward-rules-section">
+                            <div className="reward-rules-header">
+                                <div className="reward-rules-title">
+                                    <span className="reward-rules-label">Cash Back Rules</span>
+                                </div>
+                                <div className="reward-rules-actions">
+                                    <button
+                                        className="btn btn-outline-danger btn-sm"
+                                        type="button"
+                                        onClick={() => {
+                                            setRewardRules([{ categoryId: '', cashBackPercent: '' }]);
+                                            setCreateErrors((prev) => ({...prev, rules: []}));
+                                        }}
+                                    >
+                                        Reset
+                                    </button>
+                                    <button
+                                        className="btn btn-outline-primary btn-sm"
+                                        type="button"
+                                        onClick={handleAddRewardRule}
+                                        disabled={isCategoriesLoading || (availableRewardCategories.length === 0 && isAllOtherSelected)}
+                                    >
+                                        Add another
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="reward-rules-list">
+                            {rewardRules.map((rule, index) => {
+                                const hasAllOtherSelectedElsewhere = rewardRules.some((otherRule, otherIndex) => (
+                                    otherIndex !== index && otherRule.categoryId === allOtherValue
+                                ));
+                                const canShowAllOther = rule.categoryId === allOtherValue || !hasAllOtherSelectedElsewhere;
+                                const availableCategories = categories.filter((category) => {
+                                    const isSelected = String(rule.categoryId) === String(category.id);
+                                    const isTaken = rewardRules.some((otherRule, otherIndex) => (
+                                        otherIndex !== index
+                                        && String(otherRule.categoryId) === String(category.id)
+                                    ));
+                                    return isSelected || !isTaken;
+                                });
+
+                                return (
+                                    <div className="reward-rule-row" key={`${index}-${rule.categoryId}`}>
+                                        <div className="reward-rule-field">
+                                            <label className="form-label">Category</label>
+                                            <select
+                                                className={`form-select${createErrors.rules[index]?.category ? ' is-invalid' : ''}`}
+                                                value={rule.categoryId}
+                                                onChange={(e) => {
+                                                    const { value } = e.target;
+                                                    setRewardRules((prevRules) => prevRules.map((item, itemIndex) => (
+                                                        itemIndex === index ? {...item, categoryId: value} : item
+                                                    )));
+                                                    if (createErrors.rules[index]?.category) {
+                                                        setCreateErrors((prev) => ({
+                                                            ...prev,
+                                                            rules: prev.rules.map((error, errorIndex) => (
+                                                                errorIndex === index ? {...error, category: false} : error
+                                                            ))
+                                                        }));
+                                                    }
+                                                }}
+                                                disabled={isCategoriesLoading}
+                                            >
+                                                <option value="">Select category</option>
+                                                {canShowAllOther && (
+                                                    <option value={allOtherValue}>All Other Categories</option>
+                                                )}
+                                                {isCategoriesLoading ? (
+                                                    <option value="" disabled>Loading categories...</option>
+                                                ) : (
+                                                    availableCategories.map((category) => (
+                                                        <option key={category.id} value={category.id}>
+                                                            {category.name}
+                                                        </option>
+                                                    ))
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="reward-rule-field reward-rule-percent">
+                                            <label className="form-label">Percent</label>
+                                            <div className="reward-rule-percent-input">
+                                                <input
+                                                    className={`form-control${createErrors.rules[index]?.percent ? ' is-invalid' : ''}`}
+                                                    type="number"
+                                                    min="0.01"
+                                                    step="0.01"
+                                                    value={rule.cashBackPercent}
+                                                    onChange={(e) => {
+                                                        const { value } = e.target;
+                                                        setRewardRules((prevRules) => prevRules.map((item, itemIndex) => (
+                                                            itemIndex === index ? {...item, cashBackPercent: value} : item
+                                                        )));
+                                                        if (createErrors.rules[index]?.percent) {
+                                                            setCreateErrors((prev) => ({
+                                                                ...prev,
+                                                                rules: prev.rules.map((error, errorIndex) => (
+                                                                    errorIndex === index ? {...error, percent: false} : error
+                                                                ))
+                                                            }));
+                                                        }
+                                                    }}
+                                                    placeholder="2.5"
+                                                />
+                                                <span className="reward-rule-percent-suffix">%</span>
+                                            </div>
+                                        </div>
+                                        {rewardRules.length > 1 && (
+                                            <button
+                                                className="reward-rule-remove"
+                                                type="button"
+                                                onClick={() => handleRemoveRewardRule(index)}
+                                                aria-label="Remove reward rule"
+                                            >
+                                                <FaTrash size={12} />
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                     </div>
                 </Modal>
             )}

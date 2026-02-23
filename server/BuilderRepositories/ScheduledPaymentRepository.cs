@@ -14,15 +14,14 @@ public class ScheduledPaymentRepository : BuilderRepository
         _dbService = dbService;
     }
 
-    public async Task<long> SchedulePaymentAsync(int expenseId, string dueDate, int? creditCardId = null)
+    public async Task<long> SchedulePaymentAsync(int expenseId, string dueDate)
     {
-        var sql = @"INSERT INTO scheduled_payments (expense_id, scheduled_due_date, credit_card_id)
-                    VALUE (@expenseId, @dueDate, @creditCardId)";
+        var sql = @"INSERT INTO scheduled_payments (expense_id, scheduled_due_date)
+                    VALUE (@expenseId, @dueDate)";
         var parameters = new Dictionary<string, object?>
         {
             { "@expenseId", expenseId },
-            { "@dueDate", dueDate },
-            { "@creditCardId", creditCardId }
+            { "@dueDate", dueDate }
         };
 
         return (await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false)).LastInsertedId;
@@ -56,7 +55,6 @@ public class ScheduledPaymentRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             ExpenseId = row.Field<int>("expense_id"),
-            CreditCardId = row.Field<int?>("credit_card_id"),
             ScheduledDueDate = row.Field<DateTime>("scheduled_due_date").ToString("yyyy-MM-dd")
         }) ?? [];
     }
@@ -80,26 +78,11 @@ public class ScheduledPaymentRepository : BuilderRepository
         {
             Id = row.Field<int>("id"),
             ExpenseId = row.Field<int>("expense_id"),
-            CreditCardId = row.Field<int?>("credit_card_id"),
             ScheduledDueDate = row.Field<DateTime>("scheduled_due_date").ToString("yyyy-MM-dd")
         });
     }
 
-    public async Task UpdateCreditCardIdAsync(int scheduledPaymentId, int? creditCardId)
-    {
-        var sql = @"UPDATE scheduled_payments
-                    SET credit_card_id = @creditCardId
-                    WHERE id = @scheduledPaymentId";
-        var parameters = new Dictionary<string, object?>
-        {
-            { "@creditCardId", creditCardId },
-            { "@scheduledPaymentId", scheduledPaymentId }
-        };
-
-        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
-    }
-
-    public async Task DeleteScheduledPaymentByDueDateAsync(int expenseId, string dueDate)
+    public async Task<bool> DeleteScheduledPaymentByDueDateAsync(int expenseId, string dueDate)
     {
         var sql = @"DELETE FROM scheduled_payments
                     WHERE expense_id = @expenseId
@@ -110,7 +93,7 @@ public class ScheduledPaymentRepository : BuilderRepository
             { "@dueDate", dueDate }
         };
 
-        await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false);
+        return (await _dbService.ExecuteAsync(sql, parameters).ConfigureAwait(false)).RowsAffected > 0;
     }
     
     public async Task<long> DeleteScheduledPaymentByIdAsync(int scheduledPaymentId)

@@ -1,5 +1,6 @@
 using BuilderRepositories;
-using BuilderServices.Enums;
+using BuilderRepositories.Enums;
+using BuilderRepositories.Exceptions;
 
 namespace BuilderServices.Expenses.ExpenseTableService.Enums;
 
@@ -41,13 +42,13 @@ public static class ExpenseTableFilterOptionsHelper
         {
             ExpenseTableFilterOption.CreatedDate => TableFilterType.DateRange,
             ExpenseTableFilterOption.UpdatedDate => TableFilterType.DateRange,
-            ExpenseTableFilterOption.Category => TableFilterType.Text,
+            ExpenseTableFilterOption.Category => TableFilterType.MultiSelect,
             ExpenseTableFilterOption.Name => TableFilterType.Text,
             ExpenseTableFilterOption.Cost => TableFilterType.NumberRange,
             ExpenseTableFilterOption.NextDueDate => TableFilterType.DateRange,
             ExpenseTableFilterOption.StartDate => TableFilterType.DateRange,
             ExpenseTableFilterOption.EndDate => TableFilterType.DateRange,
-            ExpenseTableFilterOption.RecurrenceRate => TableFilterType.Text,
+            ExpenseTableFilterOption.RecurrenceRate => TableFilterType.MultiSelect,
             _ => throw new GenericException("Invalid expense table action.")
         };
     }
@@ -56,16 +57,26 @@ public static class ExpenseTableFilterOptionsHelper
     {
         return filter switch
         {
-            ExpenseTableFilterOption.CreatedDate => "created_at",
-            ExpenseTableFilterOption.UpdatedDate => "updated_at",
-            ExpenseTableFilterOption.Category => "category_name",
-            ExpenseTableFilterOption.Name => "name",
-            ExpenseTableFilterOption.Cost => "cost",
-            ExpenseTableFilterOption.NextDueDate => "next_due_date",
-            ExpenseTableFilterOption.StartDate => "start_date",
-            ExpenseTableFilterOption.EndDate => "end_date",
-            ExpenseTableFilterOption.RecurrenceRate => "recurrence_rate",
+            ExpenseTableFilterOption.CreatedDate => "e.created_at",
+            ExpenseTableFilterOption.UpdatedDate => "e.updated_at",
+            ExpenseTableFilterOption.Category => "ec.name",
+            ExpenseTableFilterOption.Name => "e.name",
+            ExpenseTableFilterOption.Cost => "e.cost",
+            ExpenseTableFilterOption.NextDueDate => "e.next_due_date",
+            ExpenseTableFilterOption.StartDate => "e.start_date",
+            ExpenseTableFilterOption.EndDate => "e.end_date",
+            ExpenseTableFilterOption.RecurrenceRate => "e.recurrence_rate",
             _ => throw new GenericException("Invalid expense table action.")
+        };
+    }
+
+    public static string? GetFilterDropdownApi(this ExpenseTableFilterOption filter)
+    {
+        return filter switch
+        {
+            ExpenseTableFilterOption.Category => "expenses/categories/dropdown",
+            ExpenseTableFilterOption.RecurrenceRate => "expenses/options/recurrenceRates",
+            _ => null
         };
     }
 }

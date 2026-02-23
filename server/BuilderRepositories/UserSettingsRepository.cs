@@ -1,4 +1,5 @@
-﻿using DatabaseServices;
+﻿using BuilderRepositories.Exceptions;
+using DatabaseServices;
 
 namespace BuilderRepositories;
 

@@ -1,7 +1,9 @@
 ﻿using AuthenticationServices;
+using AuthenticationServices.Exceptions;
 using AuthenticationServices.Requests;
 using AuthenticationServices.Responses;
 using BuilderRepositories;
+using BuilderRepositories.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BuilderServices;
@@ -74,10 +76,6 @@ public class AuthenticationController(
         try
         {
             return Ok(await authService.LoginAsync(request).ConfigureAwait(false));
-        }
-        catch (UserNotFoundException)
-        {
-            return Unauthorized("Email or password are incorrect.");
         }
         catch (InvalidCredentialsException)
         {

@@ -1,3 +1,4 @@
+using BuilderRepositories.Enums;
 using BuilderServices;
 using BuilderServices.Expenses.ExpenseService.Requests;
 using FluentValidation;
@@ -20,8 +21,8 @@ public partial class CreateExpenseRequestValidator : AbstractValidator<CreateExp
             .MaximumLength(500);
 
         RuleFor(x => x.RecurrenceRate)
-            .NotEmpty()
-            .Must(rate => rate is "once" or "daily" or "weekly" or "monthly" or "yearly")
+            .NotNull()
+            .IsInEnum()
             .WithMessage("Invalid recurrence rate.");
 
         RuleFor(x => x.StartDate)
@@ -54,6 +55,23 @@ public partial class CreateExpenseRequestValidator : AbstractValidator<CreateExp
         RuleFor(x => x.AutomaticPayment.CreditCardId)
             .GreaterThan(0)
             .When(x => x.AutomaticPayment.CreditCardId is not null);
+
+        RuleFor(x => x)
+            .Must(request => !(request.IgnoreCashBackForPaymentsOnCreation && request.CashBackOverwrite.HasValue))
+            .WithMessage("Ignore cash back cannot be combined with a cash back overwrite.");
+
+        RuleFor(x => x.CashBackOverwrite)
+            .GreaterThan(0)
+            .When(x => x.CashBackOverwrite.HasValue)
+            .WithMessage("Cash back overwrite must be greater than 0.");
+
+        RuleFor(x => x.AutomaticPayment.CashBackOverwrite)
+            .GreaterThan(0)
+            .When(x => x.AutomaticPayment.CashBackOverwrite is not null);
+
+        RuleFor(x => x.AutomaticPayment)
+            .Must(payment => !(payment.IgnoreCashBack && payment.CashBackOverwrite.HasValue))
+            .WithMessage("Automatic payment cannot ignore cash back and overwrite cash back.");
         
         #region Policy Rules
         RuleFor(x => x.OneTimePayment)
@@ -79,11 +97,11 @@ public partial class CreateExpenseRequestValidator : AbstractValidator<CreateExp
             .WithMessage("Must provide a payment date for expense.");
 
         RuleFor(x => x)
-            .Must(request => request.RecurrenceRate == "once" || !(request.OneTimePayment.IsPaid || request.OneTimePayment.IsCredit))
+            .Must(request => request.RecurrenceRate == ExpenseRecurrenceRate.Once || !(request.OneTimePayment.IsPaid || request.OneTimePayment.IsCredit))
             .WithMessage("Payment requires a recurrence rate of once.");
 
         RuleFor(x => x)
-            .Must(request => request.RecurrenceRate != "once" || !request.PayToNowPayment.Enabled)
+            .Must(request => request.RecurrenceRate != ExpenseRecurrenceRate.Once || !request.PayToNowPayment.Enabled)
             .WithMessage("Pay to now cannot have recurrence rate of once.");
         #endregion
     }

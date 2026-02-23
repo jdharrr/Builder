@@ -16,6 +16,8 @@ public class PaymentTablePaymentResponse
 
     public string CreditCard { get; set; } = string.Empty;
 
+    public int? CreditCardId { get; set; }
+
     public bool Skipped { get; set; }
     
     public string Category { get; set; } = string.Empty;

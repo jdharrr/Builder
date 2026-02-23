@@ -21,6 +21,10 @@ public class ExpensePaymentDto
     public string ExpenseName { get; set; } = string.Empty;
 
     public string Category { get; set; } = string.Empty;
+    
+    public int? CategoryId { get; set; }
 
     public string RecurrenceRate { get; set; } = string.Empty;
+
+    public decimal CashBackEarned { get; set; }
 }
