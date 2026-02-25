@@ -28,6 +28,7 @@
     height: auto !important;
     max-height: none !important;
     display: block !important;
+    animation: modalLiftIn 0.25s ease both;
 }
 
 .confirm-modal .modal-header {

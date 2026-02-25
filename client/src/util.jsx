@@ -1,5 +1,26 @@
+import {showError} from "./utils/toast.js";
+
 export const getStatus = (e) =>
     e?.response?.status ?? e?.status ?? e?.cause?.status ?? null;
+
+export const getApiErrorMessage = (error, fallback = 'Something went wrong.') => {
+    if (!error) return fallback;
+
+    const dataMessage = error?.response?.data?.message ?? error?.data?.message;
+    if (typeof dataMessage === 'string' && dataMessage.trim().length) {
+        return dataMessage;
+    }
+
+    if (typeof error.message === 'string' && error.message.trim().length) {
+        return error.message;
+    }
+
+    return fallback;
+};
+
+export const showApiErrorToast = (error, fallback = 'Something went wrong.') => {
+    showError(getApiErrorMessage(error, fallback));
+};
 
 const validateRecurrencePattern = (selectedDate, startDate, recurrenceRate, dueEndOfMonth) => {
     const selectedDay = Number(selectedDate.substring(8, 10));

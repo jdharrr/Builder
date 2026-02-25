@@ -16,7 +16,7 @@ export default function PaymentsPage() {
                 </div>
             </div>
 
-            <Card className="payments-page-card" bodyClassName="payments-page-body" style={{width: 'min(90rem, 100%)'}}>
+            <Card className="payments-page-card" bodyClassName="payments-page-body" style={{width: 'min(90rem, 100%)'}} noMargin={true}>
                 <PaymentsTableSection />
             </Card>
         </div>

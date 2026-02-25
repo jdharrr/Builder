@@ -3,8 +3,8 @@ import {useNavigate} from "react-router-dom";
 import {useMutation} from "@tanstack/react-query";
 
 import {createUser} from "../../api.jsx";
-import {getStatus} from "../../util.jsx";
-import {showError, showSuccess} from "../../utils/toast.js";
+import {showApiErrorToast, getStatus} from "../../util.jsx";
+import {showSuccess} from "../../utils/toast.js";
 
 import './css/createUser.css';
 
@@ -23,11 +23,10 @@ export default function CreateUserPage() {
         },
         onError: (error) => {
             if (getStatus(error) === 400) {
-                const message = error?.response?.data;
-                showError(typeof message === 'string' ? message : 'Unable to create account.');
+                showApiErrorToast(error, 'Unable to create account.');
                 return;
             }
-            showError('Unable to create account.');
+            showApiErrorToast(error, 'Unable to create account.');
         }
     });
 
@@ -72,7 +71,7 @@ export default function CreateUserPage() {
                         onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
-                <button className="createUserSubmit" type="button" onClick={handleSubmit}>
+                <button className="createUserSubmit" type="button" onClick={handleSubmit} disabled={createUserMutation.isPending}>
                     Create Account
                 </button>
                 <p className="createUserFootnote">

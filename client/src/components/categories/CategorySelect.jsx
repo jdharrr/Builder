@@ -1,20 +1,16 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {useQuery} from "@tanstack/react-query";
 
-import {getAllExpenseCategories} from "../api.jsx";
-import {getStatus} from "../util.jsx";
-import {ManageCategoriesModal} from "./ManageCategoriesModal.jsx";
+import {getAllExpenseCategories} from "../../api.jsx";
+import {getStatus} from "../../util.jsx";
+import {ManageCategoriesModal} from "./manageCategories/ManageCategoriesModal.jsx";
 
 export const CategorySelect = ({
-    label,
+    label = null,
     onChange = () => {},
     required = false,
     isInvalid = false,
-    includeNoneOption = true,
-    noneLabel = 'No Category',
-    initialValue = '',
-    onManageOpen = () => {},
-    onManageClose = () => {}
+    initialValue = ''
 }) => {
     const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(initialValue ?? '');
@@ -31,10 +27,6 @@ export const CategorySelect = ({
         },
         throwOnError: (error) => { return getStatus(error) !== 401 }
     });
-
-    useEffect(() => {
-        setSelectedCategory(initialValue ?? '');
-    }, [initialValue]);
 
     const handleOnChange = (e) => {
         setSelectedCategory(e.target.value);
@@ -56,11 +48,7 @@ export const CategorySelect = ({
                             value={selectedCategory}
                             onChange={handleOnChange}
                         >
-                            {includeNoneOption ? (
-                                <option value="">{noneLabel}</option>
-                            ) : (
-                                <option value="">Select a category</option>
-                            )}
+                            <option value="">No Category</option>
                             {categories.map((category) => (
                                 <option key={category.id} value={category.id}>
                                     {category.name}
@@ -74,7 +62,6 @@ export const CategorySelect = ({
                             type="button"
                             onClick={() => {
                                 setShowManageCategoriesModal(true);
-                                onManageOpen();
                             }}
                         >
                             Manage
@@ -86,7 +73,6 @@ export const CategorySelect = ({
                 <ManageCategoriesModal
                     handleClose={() => {
                         setShowManageCategoriesModal(false);
-                        onManageClose();
                     }}
                 />
             )}

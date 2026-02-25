@@ -6,7 +6,7 @@ import { UpcomingExpensesSection } from "./sections/UpcomingExpensesSection.jsx"
 import {ExpenseTrackerSection} from "./sections/ExpenseTrackerSection.jsx";
 import {ExpenseTrackerSectionSkeleton} from "./sections/skeletons/ExpenseTrackerSectionSkeleton.jsx";
 import {UpcomingExpensesSectionSkeleton} from "./sections/skeletons/UpcomingExpensesSectionSkeleton.jsx";
-import {CreateExpenseModal} from "../../components/CreateExpenseModal.jsx";
+import {CreateExpenseModal} from "../../components/expense/createExpense/CreateExpenseModal.jsx";
 import {CreateExpenseFormContext} from "../../providers/expenses/CreateExpenseFormContext.jsx";
 
 import './css/dashboardPage.css';
@@ -16,11 +16,20 @@ export default function DashboardPage() {
 
     return (
         <>
-            <div className="d-flex justify-content-center align-items-stretch dashboard-cards">
+            <div className="dashboard-page">
+                <div className="dashboard-hero">
+                    <div className="dashboard-hero-title">
+                        <span className="dashboard-eyebrow">Dashboard</span>
+                        <h1 className="dashboard-title">Overview</h1>
+                        <p className="dashboard-subtitle">Keep an eye on what is due next and what needs attention.</p>
+                    </div>
+                </div>
+                <div className="dashboard-cards">
                     <Card
                         title='Expense Tracker'
                         className="dashboard-card expense-tracker-card"
-                        style={{width: 'min(38rem, 100%)'}}
+                        style={{width: 'min(40rem, 100%)'}}
+                        noMargin={true}
                     >
                         <Suspense fallback={<ExpenseTrackerSectionSkeleton />}>
                             <ErrorBoundary FallbackComponent={ExpenseTrackerSectionSkeleton} >
@@ -31,7 +40,8 @@ export default function DashboardPage() {
                 <Card
                     title='Upcoming Expenses'
                     className="dashboard-card upcoming-expenses-card"
-                    style={{width: 'min(38rem, 100%)'}}
+                    style={{width: 'min(40rem, 100%)'}}
+                    noMargin={true}
                 >
                     <Suspense fallback={<UpcomingExpensesSectionSkeleton />}>
                         <ErrorBoundary FallbackComponent={UpcomingExpensesSectionSkeleton} >
@@ -39,6 +49,7 @@ export default function DashboardPage() {
                         </ErrorBoundary>
                     </Suspense>
                 </Card>
+                </div>
             </div>
             { showCreateExpenseForm.isShowing && !showCreateExpenseForm.isFab &&
                 <CreateExpenseModal

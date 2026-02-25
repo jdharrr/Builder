@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
 import {useQuery} from "@tanstack/react-query";
 
-import {getCreditCards} from "../api.jsx";
-import {getStatus} from "../util.jsx";
-import {ManageCreditCardsModal} from "./ManageCreditCardsModal.jsx";
+import {getCreditCards} from "../../api.jsx";
+import {getStatus} from "../../util.jsx";
+import {ManageCreditCardsModal} from "./manageCreditCards/ManageCreditCardsModal.jsx";
 
 export const CreditCardSelect = ({
     label,
@@ -17,6 +17,7 @@ export const CreditCardSelect = ({
     onManageClose = () => {},
     children
 }) => {
+    const hasChildren = React.Children.count(children) > 0;
     const [showManageCreditCardsModal, setShowManageCreditCardsModal] = useState(false);
     const [selectedCard, setSelectedCard] = useState(initialValue ?? '');
 
@@ -82,7 +83,7 @@ export const CreditCardSelect = ({
                         </button>
                     </div>
                 </div>
-                {children && (
+                {hasChildren && (
                     <div className="credit-card-select-children">
                         {children}
                     </div>

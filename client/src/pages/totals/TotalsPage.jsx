@@ -131,8 +131,8 @@ export default function TotalsPage() {
     
     const { categories, combinedTotalSpent } = useMemo(() => {
         return {
-            categories: categoryTotals.categories ?? categoryTotals.Categories ?? [],
-            combinedTotalSpent: categoryTotals.combinedTotalSpend ?? categoryTotals.CombinedTotalSpend ?? 0
+            categories: categoryTotals.categories ?? [],
+            combinedTotalSpent: categoryTotals.combinedTotalSpend ?? 0
         };
     }, [categoryTotals]);
 
@@ -158,9 +158,9 @@ export default function TotalsPage() {
     }, [categories]);
 
     const monthlyTotalsData = useMemo(() => {
-        const totals = monthlyTotals.monthlyTotals ?? monthlyTotals.MonthlyTotals ?? [];
+        const totals = monthlyTotals.monthlyTotals ?? [];
         const totalsByMonth = totals.reduce((acc, item) => {
-            acc[item.month ?? item.Month] = item.totalSpent ?? item.TotalSpent ?? 0;
+            acc[item.month ?? item.Month] = item.totalSpent ?? 0;
             return acc;
         }, {});
 
@@ -182,11 +182,11 @@ export default function TotalsPage() {
     }, [monthlyTotals, selectedYear]);
 
     const yearTotalSpent = useMemo(() => {
-        return monthlyTotals.yearTotalSpent ?? monthlyTotals.YearTotalSpent ?? 0;
+        return monthlyTotals.yearTotalSpent ?? 0;
     }, [monthlyTotals]);
 
     const categoryAvgList = useMemo(() => {
-        const avgMap = categoryAvgSpent.categories ?? categoryAvgSpent.Categories ?? categoryAvgSpent ?? {};
+        const avgMap = categoryAvgSpent ?? {};
         const items = Object.entries(avgMap)
             .map(([name, value]) => [name, Number(value) || 0])
             .sort((a, b) => b[1] - a[1]);
@@ -268,6 +268,7 @@ export default function TotalsPage() {
                     className="totals-card"
                     bodyClassName="totals-card-body"
                     style={{width: '100%'}}
+                    noMargin={true}
                 >
                     <div className="totals-range">
                         <span className="totals-stat-label">Range</span>
@@ -291,6 +292,7 @@ export default function TotalsPage() {
                     className="totals-card"
                     bodyClassName="totals-card-body"
                     style={{width: '100%'}}
+                    noMargin={true}
                 >
                     <div className="totals-range">
                         <span className="totals-stat-label">Year</span>
@@ -327,6 +329,7 @@ export default function TotalsPage() {
                     className="totals-card"
                     bodyClassName="totals-card-body"
                     style={{width: '100%'}}
+                    noMargin={true}
                 >
                     <div className="totals-range">
                         <span className="totals-stat-label">Year</span>

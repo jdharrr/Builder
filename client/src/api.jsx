@@ -1,6 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 import {API_BASE_URL} from "./constants/api.js";
+import {showApiErrorToast} from "./util.jsx";
 
 const getAccessToken = () => Cookies.get("access_token");
 
@@ -48,7 +49,8 @@ export const validateToken = async () => {
     try {
         const result = await apiClient.get('/api/auth/validate/accessToken');
         return result.data?.isValid ?? result.data;
-    } catch {
+    } catch (error) {
+        showApiErrorToast(error, 'Session validation failed.');
         return false;
     }
 }
@@ -372,7 +374,7 @@ export const getCategoryAvgSpent = async (year) => {
     const result = await apiClient.get('/api/expenses/categories/avg', {
         params: { year }
     });
-    return result.data?.categories ?? result.data?.Categories ?? result.data;
+    return result.data?.categories ?? result.data;
 }
 
 export const getExpenseSortOptions = async () => {

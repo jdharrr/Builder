@@ -1,29 +1,15 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useState} from 'react';
 import {useQuery} from "@tanstack/react-query";
 
 import {getPaymentsForExpense} from "../../../api.jsx";
 import {getStatus} from "../../../util.jsx";
 import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
+import {Modal} from "../../../components/Modal.jsx";
 import '../../../css/createExpenseForm.css';
 
-export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
+export const UnpayDatesModal = ({expenseId, handleSave, handleClose, isSaving = false}) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const {openConfirm, confirmModal} = useConfirmModal();
-
-    const wrapperRef = useRef(null);
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (event.target.closest('.confirm-modal')) {
-                return;
-            }
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                handleClose();
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [handleClose]);
 
     const handleSaveClick = () => {
         const selectedPayments = payments.filter((payment) => selectedIds.includes(payment.id));
@@ -68,61 +54,54 @@ export const UnpayDatesModal = ({expenseId, handleSave, handleClose}) => {
     });
 
     return (
-        <div className="modal show d-block app-modal select-payments-modal">
-            <div className="modal-dialog" ref={wrapperRef}>
-                <div className={"modal-content"}>
-                    <div className="modal-header">
-                        <h5 className="modal-title">Select dates to mark unpaid</h5>
-                        <button
-                            type="button"
-                            className="modal-close-button"
-                            onClick={handleClose}
-                            aria-label="Close"
-                        >
-                            x
-                        </button>
-                    </div>
-                    <div className="modal-body">
-                        <div className="payment-list">
-                            {payments && payments.length > 0 ? (
-                                payments.map((item, idx) => (
-                                    <label key={idx} className="payment-row">
-                                        <div className="payment-row-details">
-                                            <span className="payment-row-label">Due date</span>
-                                            <span className="payment-row-value">{item.dueDatePaid}</span>
-                                            <span className="payment-row-label">Paid on</span>
-                                            <span className="payment-row-value">{item.paymentDate}</span>
-                                            {item.skipped && (
-                                                <span className="payment-row-skipped">Skipped</span>
-                                            )}
-                                        </div>
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            checked={selectedIds.includes(item.id)}
-                                            onChange={(e) => handleCheckboxClick(e.target.checked, item.id)}
-                                        />
-                                    </label>
-                                ))
-                            ) : (
-                                <p className="modal-empty">This expense has no payments.</p>
-                            )}
-                        </div>
-                    </div>
-                    <div className="modal-footer">
+        <>
+            <Modal
+                title="Select dates to mark unpaid"
+                handleClose={handleClose}
+                className="app-modal select-payments-modal"
+                showSave={false}
+                ignoreOutsideClickSelectors={['.confirm-modal']}
+                footerContent={(
+                    <>
                         <button type="button" className="btn btn-secondary" onClick={handleClose}>Close</button>
                         <button
                             type="button"
                             className="btn btn-warning"
-                            disabled={selectedIds.length <= 0}
+                            disabled={isSaving || selectedIds.length <= 0}
                             onClick={handleSaveClick}
                         >
                             Unpay Selected ({selectedIds.length})
                         </button>
-                    </div>
+                    </>
+                )}
+            >
+                <div className="payment-list">
+                    {payments && payments.length > 0 ? (
+                        payments.map((item, idx) => (
+                            <label key={idx} className="payment-row">
+                                <div className="payment-row-details">
+                                    <span className="payment-row-label">Due date</span>
+                                    <span className="payment-row-value">{item.dueDatePaid}</span>
+                                    <span className="payment-row-label">Paid on</span>
+                                    <span className="payment-row-value">{item.paymentDate}</span>
+                                    {item.skipped && (
+                                        <span className="payment-row-skipped">Skipped</span>
+                                    )}
+                                </div>
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={selectedIds.includes(item.id)}
+                                    onChange={(e) => handleCheckboxClick(e.target.checked, item.id)}
+                                />
+                            </label>
+                        ))
+                    ) : (
+                        <p className="modal-empty">This expense has no payments.</p>
+                    )}
                 </div>
-            </div>
+            </Modal>
             {confirmModal}
-        </div>
+        </>
     );
 }

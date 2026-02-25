@@ -1,6 +1,7 @@
 /* Container */
 .late-expenses-list {
-    max-height: 28rem;
+    max-height: 35rem;
+    min-height: 35rem;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 0.5rem;

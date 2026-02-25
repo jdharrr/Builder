@@ -4,13 +4,20 @@ import {FaSearch} from "react-icons/fa";
 
 import {Dropdown} from "../../../components/Dropdown.jsx";
 import {deletePayments, getAllPayments, getPaymentSearchableColumns, getPaymentSortOptions, getPaymentTableFilterOptions} from "../../../api.jsx";
-import {getStatus} from "../../../util.jsx";
+import {showApiErrorToast, getStatus} from "../../../util.jsx";
 import {DateRangeFilterInput} from "../../expenses/components/filters/DateRangeFilterInput.jsx";
 import {NumberRangeFilterInput} from "../../expenses/components/filters/NumberRangeFilterInput.jsx";
 import {TextFilterInput} from "../../expenses/components/filters/TextFilterInput.jsx";
 import {SingleSelectFilterInput} from "../../expenses/components/filters/SingleSelectFilterInput.jsx";
 import {MultiSelectFilterInput} from "../../expenses/components/filters/MultiSelectFilterInput.jsx";
 import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
+import {
+    invalidateExpenseCaches,
+    invalidateLateDateCaches,
+    invalidatePaymentCaches,
+    invalidatePaymentsForExpense,
+    invalidateTotalsCaches
+} from "../../../utils/queryInvalidations.js";
 
 import '../css/paymentsTableSection.css';
 
@@ -313,12 +320,20 @@ export const PaymentsTableSection = () => {
 
     const deletePaymentsMutation = useMutation({
         mutationFn: ({ selectedIds, expenseId, removeFromCreditCard }) => deletePayments(selectedIds, expenseId, removeFromCreditCard),
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             setClickedActionRowId(null);
-            qc.invalidateQueries({ queryKey: ['tablePayments'] });
+            invalidatePaymentCaches(qc);
+            invalidateExpenseCaches(qc);
+            invalidateLateDateCaches(qc, variables.expenseId);
+            invalidatePaymentsForExpense(qc, variables.expenseId);
+            invalidateTotalsCaches(qc);
+            if (variables.removeFromCreditCard) {
+                qc.invalidateQueries({ queryKey: ['creditCards'] });
+            }
         },
-        onError: () => {
-            qc.invalidateQueries({ queryKey: ['tablePayments'] });
+        onError: (err) => {
+            showApiErrorToast(err, 'Failed to delete payment.');
+            invalidatePaymentCaches(qc);
         }
     });
 
@@ -478,8 +493,8 @@ export const PaymentsTableSection = () => {
                     <div className="payments-filter-inputs">
                         {selectedFilterOptions.map((option) => {
                             const filterType = option.filterType?.toLowerCase();
-                            const filterLabel = option.displayText ?? option.DisplayText ?? option.display_text ?? option.filter;
-                            const apiPath = option.api ?? option.dropdownApi;
+                            const filterLabel = option.displayText;
+                            const apiPath = option.api;
                             const onChange = (value) => handleFilterValueChange(option.filter, value);
 
                             if (filterType === 'daterange') {

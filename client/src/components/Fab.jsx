@@ -1,10 +1,10 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import { FaPlus } from 'react-icons/fa';
 
-import {CreateExpenseModal} from "./CreateExpenseModal.jsx";
+import {CreateExpenseModal} from "./expense/createExpense/CreateExpenseModal.jsx";
 import {CreateExpenseFormContext} from "../providers/expenses/CreateExpenseFormContext.jsx";
-import {ManageCategoriesModal} from "./ManageCategoriesModal.jsx";
-import {ManageCreditCardsModal} from "./ManageCreditCardsModal.jsx";
+import {ManageCategoriesModal} from "./categories/manageCategories/ManageCategoriesModal.jsx";
+import {ManageCreditCardsModal} from "./creditCards/manageCreditCards/ManageCreditCardsModal.jsx";
 
 export const Fab = () => {
     const { showCreateExpenseForm, setShowCreateExpenseForm } = useContext(CreateExpenseFormContext);
@@ -71,7 +71,9 @@ export const Fab = () => {
                 )}
             </div>
 
-            { showCreateExpenseForm.isShowing && showCreateExpenseForm.isFab && <CreateExpenseModal includeStartDateInput={true} /> }
+            { showCreateExpenseForm.isShowing && showCreateExpenseForm.isFab && (
+                <CreateExpenseModal includeStartDateInput={true} />
+            )}
             { showManageCategoriesModal && (
                 <ManageCategoriesModal handleClose={() => setShowManageCategoriesModal(false)} />
             )}

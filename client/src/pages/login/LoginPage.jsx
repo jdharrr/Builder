@@ -4,8 +4,9 @@ import {useNavigate} from "react-router-dom";
 import {useMutation, useQueryClient} from "@tanstack/react-query";
 
 import {fetchUser, login, payScheduledPayments} from "../../api.jsx";
-import {getStatus} from "../../util.jsx";
-import {showSuccess, showError} from "../../utils/toast.js";
+import {showApiErrorToast, getStatus} from "../../util.jsx";
+import {showSuccess} from "../../utils/toast.js";
+import {invalidateExpenseCaches, invalidatePaymentCaches, invalidateTotalsCaches} from "../../utils/queryInvalidations.js";
 
 import './css/login.css';
 
@@ -30,25 +31,29 @@ export const LoginPage = ({setAuthenticated}) =>  {
                     queryFn: fetchUser,
                     staleTime: 60_000,
                 });
-            } catch {
-                // If profile prefetch fails, modal query can retry later.
+            } catch (error) {
+                showApiErrorToast(error, 'Failed to load profile.');
             }
             setAuthenticated(true);
             try {
                 await payScheduledPayments();
+                invalidateExpenseCaches(qc);
+                invalidatePaymentCaches(qc);
+                invalidateTotalsCaches(qc);
+                qc.invalidateQueries({ queryKey: ['creditCards'] });
             } catch (error) {
-                showError('Automatic payments could not be processed.');
+                showApiErrorToast(error, 'Automatic payments could not be processed.');
             }
             showSuccess('Welcome back!');
             navigate('/dashboard');
         },
         onError: (error) => {
             if (getStatus(error) === 401) {
-                showError('Login failed. Please check your credentials.');
+                showApiErrorToast(error, 'Login failed. Please check your credentials.');
                 navigate('/login');
                 return;
             }
-            showError('Login failed. Please check your credentials.');
+            showApiErrorToast(error, 'Login failed. Please check your credentials.');
         }
     });
 
@@ -78,7 +83,9 @@ export const LoginPage = ({setAuthenticated}) =>  {
                       onChange={(e) => setPassword(e.target.value)}
                   />
               </div>
-              <button className="loginSubmit" type="submit" onClick={handleSubmitClick}>Login</button>
+              <button className="loginSubmit" type="submit" onClick={handleSubmitClick} disabled={loginMutation.isPending}>
+                  Login
+              </button>
               <p className="loginFootnote">
                   Need an account? <button type="button" className="loginLinkButton" onClick={() => navigate('/create-user')}>Create one</button>
               </p>

@@ -4,8 +4,9 @@ import {useMutation, useQueryClient} from "@tanstack/react-query";
 
 import {ExpensesTableSection} from "./sections/ExpensesTableSection.jsx";
 import {categoryBatchUpdate} from "../../api.jsx";
-import {getStatus} from "../../util.jsx";
+import {showApiErrorToast, getStatus} from "../../util.jsx";
 import {Card} from "../../components/Card.jsx";
+import {invalidateCategoryCaches, invalidateExpenseCaches, invalidateTotalsCaches} from "../../utils/queryInvalidations.js";
 
 import './css/expensesPage.css';
 import {UpdateCategoryModal} from "./components/UpdateCategoryModal.jsx";
@@ -34,14 +35,16 @@ export default function ExpensesPage() {
             showSuccess("Successfully updated category");
             setShowUpdateCategoryModal(false);
             setSelectedIds([]);
-            qc.refetchQueries({ queryKey: ['tableExpenses']});
+            invalidateCategoryCaches(qc);
+            invalidateExpenseCaches(qc);
+            invalidateTotalsCaches(qc);
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError("Failed to update category");
+                showApiErrorToast(err, 'Failed to update category.');
             }
         }
     });
@@ -64,7 +67,7 @@ export default function ExpensesPage() {
                 )}
             </div>
 
-            <Card className="expenses-page-card" bodyClassName="expenses-page-body" style={{width: 'min(90rem, 100%)'}}>
+            <Card className="expenses-page-card" bodyClassName="expenses-page-body" style={{width: 'min(90rem, 100%)'}} noMargin={true}>
                 <ExpensesTableSection
                     enableSearch={enableSearch}
                     setEnableSearch={setEnableSearch}
@@ -80,6 +83,7 @@ export default function ExpensesPage() {
                     <UpdateCategoryModal
                         setShowUpdateCategoryModal={setShowUpdateCategoryModal}
                         handleSave={handleCategoryUpdateSave}
+                        saveDisabled={updateCategoryMutation.isPending}
                     />
                 )}
             </Card>

@@ -5,14 +5,21 @@ import {OverlayTrigger, Tooltip} from "react-bootstrap";
 import {FaCalendarAlt, FaDollarSign} from 'react-icons/fa';
 
 import {getUpcomingExpenses, payDueDates} from "../../../api.jsx";
-import {getStatus} from "../../../util.jsx";
+import {showApiErrorToast, getStatus} from "../../../util.jsx";
 
 import '../css/upcomingList.css';
 import '../css/animations.css';
 import '../../../css/global.css';
-import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
+import {ExpensePaymentInputModal} from "../../../components/payment/ExpensePaymentInputModal.jsx";
 import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 import {showSuccess, showError} from "../../../utils/toast.js";
+import {
+    invalidateExpenseCaches,
+    invalidateLateDateCaches,
+    invalidatePaymentCaches,
+    invalidatePaymentsForExpense,
+    invalidateTotalsCaches
+} from "../../../utils/queryInvalidations.js";
 
 export const UpcomingList = () => {
     const navigate = useNavigate();
@@ -69,17 +76,24 @@ export const UpcomingList = () => {
             ignoreCashBackForPaymentsOnCreation,
             cashBackOverwrite
         ),
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             showSuccess('Payment saved!');
             setShowExpenseDatePaidModal(false);
-            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
+            invalidateExpenseCaches(qc);
+            invalidatePaymentCaches(qc);
+            invalidateLateDateCaches(qc, variables.expenseId);
+            invalidatePaymentsForExpense(qc, variables.expenseId);
+            invalidateTotalsCaches(qc);
+            if (variables.creditCardId) {
+                qc.invalidateQueries({ queryKey: ['creditCards'] });
+            }
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to save payment');
+                showApiErrorToast(err, 'Failed to save payment.');
             }
         }
     });
@@ -89,16 +103,18 @@ export const UpcomingList = () => {
         onMutate: ({ dueDate }) => {
             setSkippingDate(dueDate);
         },
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             showSuccess('Payment skipped.');
-            qc.refetchQueries({ queryKey: ['upcomingExpenses']});
+            invalidateExpenseCaches(qc);
+            invalidateLateDateCaches(qc, variables.expenseId);
+            invalidateTotalsCaches(qc);
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to skip payment');
+                showApiErrorToast(err, 'Failed to skip payment.');
             }
         },
         onSettled: () => {
@@ -201,6 +217,7 @@ export const UpcomingList = () => {
                         setCheckedExpense(null);
                         setCheckedDueDate(null);
                     }}
+                    isSaving={payDueDateMutation.isPending}
                 />
             }
             {confirmModal}

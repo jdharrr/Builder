@@ -14,8 +14,8 @@ import {
     getAllExpenses,
     deletePayments
 } from "../../../api.jsx";
-import {getStatus} from "../../../util.jsx";
-import {ExpensePaymentInputModal} from "../../../components/ExpensePaymentInputModal.jsx";
+import {showApiErrorToast, getStatus} from "../../../util.jsx";
+import {ExpensePaymentInputModal} from "../../../components/payment/ExpensePaymentInputModal.jsx";
 import {Dropdown} from "../../../components/Dropdown.jsx";
 import {DateRangeFilterInput} from "../components/filters/DateRangeFilterInput.jsx";
 import {NumberRangeFilterInput} from "../components/filters/NumberRangeFilterInput.jsx";
@@ -26,12 +26,16 @@ import {useConfirmModal} from "../../../hooks/useConfirmModal.jsx";
 
 import '../css/expensesTableSection.css';
 import {UnpayDatesModal} from "../components/UnpayDatesModal.jsx";
-import {EditExpenseModal} from "../../../components/EditExpenseModal.jsx";
+import {EditExpenseModal} from "../../../components/expense/EditExpenseModal.jsx";
 import {showSuccess, showWarning, showError} from "../../../utils/toast.js";
 import {FaSearch} from "react-icons/fa";
-
-//TODO: Fix exception handling on 401 after token expires
-// Currently it causes the components to error out
+import {
+    invalidateExpenseCaches,
+    invalidateLateDateCaches,
+    invalidatePaymentCaches,
+    invalidatePaymentsForExpense,
+    invalidateTotalsCaches
+} from "../../../utils/queryInvalidations.js";
 
 // Search row extracted for readability
 const SearchRow = ({
@@ -361,7 +365,10 @@ export const ExpensesTableSection = ({
         } catch (err) {
             if (err.status === 401) {
                 navigate('/login');
+                showError('Session expired. Please log in again.');
+                return;
             }
+            showApiErrorToast(err, 'Failed to handle expense action.');
         }
     }
 
@@ -462,14 +469,15 @@ export const ExpensesTableSection = ({
         mutationFn: ({ isActive, expenseId }) => updateExpenseActiveStatus(isActive, expenseId),
         onSuccess: () => {
             showSuccess("Active status successfully updated!");
-            qc.refetchQueries({ queryKey: ['tableExpenses'] });
+            invalidateExpenseCaches(qc);
+            invalidateTotalsCaches(qc);
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError("Failed to update active status for expense.");
+                showApiErrorToast(err, 'Failed to update active status for expense.');
             }
         }
     });
@@ -479,14 +487,21 @@ export const ExpensesTableSection = ({
         onSuccess: (_data, variables) => {
             showSuccess(`Successfully deleted ${variables.selectedIds.length} payment(s)!`);
             setViewUnpayDatesModal({isShowing: false, expenseId: null});
-            qc.refetchQueries({ queryKey: ['lateDates']});
+            invalidatePaymentCaches(qc);
+            invalidateExpenseCaches(qc);
+            invalidateLateDateCaches(qc, variables.expenseId);
+            invalidatePaymentsForExpense(qc, variables.expenseId);
+            invalidateTotalsCaches(qc);
+            if (variables.removeFromCreditCard) {
+                qc.invalidateQueries({ queryKey: ['creditCards'] });
+            }
         },
         onError: (err, variables) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to delete payment(s)');
+                showApiErrorToast(err, 'Failed to delete payment(s).');
             }
             if (variables?.expenseId) {
                 qc.invalidateQueries({ queryKey: ['paymentsForExpense', variables.expenseId] });
@@ -500,14 +515,15 @@ export const ExpensesTableSection = ({
         onSuccess: () => {
             showSuccess('Expense updated successfully!');
             setViewEditExpenseModal({ isShowing: false, expense: null });
-            qc.refetchQueries({ queryKey: ['tableExpenses'] });
+            invalidateExpenseCaches(qc);
+            invalidateTotalsCaches(qc);
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to update expense');
+                showApiErrorToast(err, 'Failed to update expense.');
             }
         }
     });
@@ -529,17 +545,24 @@ export const ExpensesTableSection = ({
             ignoreCashBackForPaymentsOnCreation,
             cashBackOverwrite
         ),
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             showSuccess('Payment saved!');
             setViewDateInputModal({isShowing: false, expense: null});
-            qc.refetchQueries({ queryKey: ['tableExpenses']});
+            invalidateExpenseCaches(qc);
+            invalidatePaymentCaches(qc);
+            invalidateLateDateCaches(qc, variables.expenseId);
+            invalidatePaymentsForExpense(qc, variables.expenseId);
+            invalidateTotalsCaches(qc);
+            if (variables.creditCardId) {
+                qc.invalidateQueries({ queryKey: ['creditCards'] });
+            }
         },
         onError: (err) => {
             if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                showError('Failed to save payment');
+                showApiErrorToast(err, 'Failed to save payment.');
             }
         }
     });
@@ -624,13 +647,13 @@ export const ExpensesTableSection = ({
                             <input className="form-check-input" type="checkbox" role="switch" id="selectToggle" onChange={() => setSelectActive((prev) => !prev)} />
                             <span>Select</span>
                         </label>
-                        <label className="expenses-toggle" htmlFor="showInactiveToggle">
-                            <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
-                            <span>Show Inactive</span>
-                        </label>
                         <label className="expenses-toggle" htmlFor="searchToggle">
                             <input className="form-check-input" type="checkbox" role="switch" id="searchToggle" onChange={() => setEnableSearch((prevState) => (!prevState))} />
                             <span>Search</span>
+                        </label>
+                        <label className="expenses-toggle" htmlFor="showInactiveToggle">
+                            <input className="form-check-input" type="checkbox" role="switch" id="showInactiveToggle" onChange={() => setShowInactiveExpenses((prev) => !prev)} />
+                            <span>Show Inactive</span>
                         </label>
                     </div>
                 </div>
@@ -638,7 +661,7 @@ export const ExpensesTableSection = ({
                     <div className="expenses-filter-inputs">
                         {selectedFilterOptions.map((option) => {
                             const filterType = option.filterType?.toLowerCase();
-                            const filterLabel = option.displayText ?? option.DisplayText ?? option.display_text ?? option.filter;
+                            const filterLabel = option.displayText;
                             const onChange = (value) => handleFilterValueChange(option.filter, value);
 
                             if (filterType === 'daterange') {
@@ -816,6 +839,7 @@ export const ExpensesTableSection = ({
                     expenseId={viewUnpayDatesModal.expenseId}
                     handleSave={handleExpenseSelectSave}
                     handleClose={() => setViewUnpayDatesModal({isShowing: false, expenseId: null})}
+                    isSaving={deletePaymentsMutation.isPending}
                 />
             }
 
@@ -824,6 +848,7 @@ export const ExpensesTableSection = ({
                     handleSave={handleDateInputSave}
                     handleClose={() => setViewDateInputModal({isShowing: false, expenses: {}})}
                     expense={viewDateInputModal.expense}
+                    isSaving={payDueDateMutation.isPending}
                 />
             }
 
@@ -832,6 +857,7 @@ export const ExpensesTableSection = ({
                     expense={viewEditExpenseModal.expense}
                     handleSave={handleEditExpenseSave}
                     handleClose={() => setViewEditExpenseModal({ isShowing: false, expense: null })}
+                    saveDisabled={updateExpenseMutation.isPending}
                 />
             }
             {confirmModal}
@@ -859,14 +885,12 @@ const useDeleteExpense = (navigate) => {
 
             return { previous };
         },
-        onError: (_err, _isChecked, context) => {
-            if (getStatus(_err) === 401) {
+        onError: (err, _isChecked, context) => {
+            if (getStatus(err) === 401) {
                 showError('Session expired. Please log in again.');
                 navigate('/login');
             } else {
-                const responseData = _err?.response?.data;
-                const message = responseData?.message ?? responseData?.Message ?? responseData;
-                showError(typeof message === 'string' ? message : 'Failed to delete expense.');
+                showApiErrorToast(err, 'Failed to delete expense.');
             }
 
             if (context?.previous?.length) {
@@ -877,6 +901,9 @@ const useDeleteExpense = (navigate) => {
         },
         onSettled: () => {
             qc.refetchQueries({ queryKey: queryKey });
+            invalidateExpenseCaches(qc);
+            invalidatePaymentCaches(qc);
+            invalidateTotalsCaches(qc);
         },
     });
 }

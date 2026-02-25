@@ -122,6 +122,10 @@
     margin-bottom: 0;
 }
 
+.manage-credit-cards-pay-body .payment-section {
+    height: auto;
+}
+
 .manage-credit-cards-modal .form-control.is-invalid {
     border-color: #dc2626;
     box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.2);
@@ -177,15 +181,15 @@
     margin-bottom: 0.35rem;
 }
 
-.reward-rule-percent-input {
+.reward-rule-percent-field {
     position: relative;
 }
 
-.reward-rule-percent-input .form-control {
+.reward-rule-percent-field .form-control {
     padding-right: 2rem;
 }
 
-.reward-rule-percent-suffix {
+.reward-rule-suffix {
     position: absolute;
     right: 0.75rem;
     top: 50%;
